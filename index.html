@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rainbows - Calendario de Cultivo</title>
+  <meta name="theme-color" content="#226b4a" />
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Rainbows</h1>
+      <p>Calendario de cultivo</p>
+    </div>
+    <button id="todayBtn" class="btn">Hoy</button>
+  </header>
+
+  <main>
+    <section class="month-nav">
+      <button id="prevBtn" class="btn secondary">Anterior</button>
+      <h2 id="monthTitle"></h2>
+      <button id="nextBtn" class="btn secondary">Siguiente</button>
+    </section>
+
+    <section class="legend">
+      <span>Riego: todas</span>
+      <span>Fum: fumigación</span>
+      <span>KNF: fermentos</span>
+      <span>Veg/Mad: veges y madres</span>
+    </section>
+
+    <section class="calendar" id="calendar"></section>
+  </main>
+
+  <dialog id="dayDialog">
+    <form method="dialog" class="dialog-card">
+      <div class="dialog-head">
+        <h3 id="dialogTitle"></h3>
+        <button class="icon-btn" value="cancel">×</button>
+      </div>
+      <pre id="dialogContent"></pre>
+      <label class="note-label" for="noteInput">Nota editable del día</label>
+      <textarea id="noteInput" rows="5" placeholder="Agregar observaciones, cambios o tareas extra..."></textarea>
+      <div class="dialog-actions">
+        <button id="saveNoteBtn" class="btn" value="default">Guardar nota</button>
+        <button class="btn secondary" value="cancel">Cerrar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
