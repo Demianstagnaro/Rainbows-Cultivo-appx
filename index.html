@@ -3,47 +3,42 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rainbows OS V2.1</title>
   <meta name="theme-color" content="#111827" />
-  <title>Rainbows OS</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="app-header">
+  <header class="topbar">
     <div>
-      <h1>Rainbows OS</h1>
-      <p id="todayText" class="muted"></p>
+      <div class="eyebrow">Rainbows OS</div>
+      <h1 id="screen-title">Hoy</h1>
+      <p id="today-label" class="muted"></p>
     </div>
-    <button id="installBtn" class="small hidden">Instalar</button>
+    <div class="version">V2.1</div>
   </header>
 
-  <nav class="tabs">
-    <button class="tab active" data-view="today">Hoy</button>
-    <button class="tab" data-view="calendar">Calendario</button>
-    <button class="tab" data-view="rooms">Salas</button>
-    <button class="tab" data-view="settings">Config</button>
+  <main id="app"></main>
+
+  <nav class="bottom-nav" aria-label="Navegación principal">
+    <button data-view="today" class="active">Hoy</button>
+    <button data-view="calendar">Calendario</button>
+    <button data-view="rooms">Salas</button>
+    <button data-view="settings">Config</button>
   </nav>
 
-  <main>
-    <section id="todayView" class="view active"></section>
-    <section id="calendarView" class="view"></section>
-    <section id="roomsView" class="view"></section>
-    <section id="settingsView" class="view"></section>
-  </main>
-
-  <dialog id="doneDialog">
-    <form method="dialog" class="dialog-card">
+  <dialog id="worker-dialog" class="dialog">
+    <form method="dialog">
       <h3>¿Quién realizó esta tarea?</h3>
-      <p id="dialogTask" class="muted"></p>
-      <select id="workerSelect"></select>
-      <textarea id="obsInput" placeholder="Observación opcional"></textarea>
-      <div class="dialog-actions">
+      <div id="worker-options" class="worker-options"></div>
+      <input id="worker-other" class="text-input" placeholder="Otro nombre" />
+      <menu>
         <button value="cancel" class="secondary">Cancelar</button>
-        <button id="confirmDoneBtn" value="default" class="primary">Guardar</button>
-      </div>
+        <button id="confirm-worker" value="default" class="primary">Guardar</button>
+      </menu>
     </form>
   </dialog>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=2.1"></script>
 </body>
 </html>
