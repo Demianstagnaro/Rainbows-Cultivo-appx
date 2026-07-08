@@ -1,17 +1,23 @@
-# Rainbows OS V2
+# Rainbows OS V2.1
 
-App web/PWA para GitHub Pages.
+App web/PWA simple para GitHub Pages.
 
-## Cambios V2
-- Pantalla Hoy agrupada por sala.
+## Correcciones V2.1
+- Incluye todos los archivos requeridos: `index.html`, `styles.css`, `app.js`, `manifest.json`, `sw.js`.
+- Fechas fijadas según lo confirmado:
+  - 01/07/2026: Flora 1 = Inicio Flora S7.
+  - 01/07/2026: Flora 3 = Inicio Flora S7.
+  - 01/07/2026: Flora 2 = Inicio Flora S1.
+- Tareas agrupadas por sala.
 - Barras de progreso naranjas.
-- Checkboxes con pregunta “¿Quién realizó esta tarea?”.
-- Guardado local en el navegador.
 - Flora 1 no tiene riego manual diario.
-- Flora 1 tiene “Calibrar riego” en: trasplante, inicio flora e inicio Flora S7.
-- Service worker con cache V2 para forzar actualización.
+- Flora 1 tiene tarea “Calibrar riego” en:
+  - trasplante / nuevo ciclo,
+  - inicio Flora S1,
+  - inicio Flora S7.
+- Checkboxes con responsable guardado localmente.
 
-## Subida a GitHub Pages
+## Publicación
 Subir/reemplazar en la raíz del repositorio:
 - index.html
 - styles.css
@@ -20,5 +26,5 @@ Subir/reemplazar en la raíz del repositorio:
 - sw.js
 - README.md
 
-Después abrir:
-https://demianstagnaro.github.io/Rainbows-Cultivo-appx/?v=2
+Luego abrir:
+`https://demianstagnaro.github.io/Rainbows-Cultivo-appx/?v=2.1`

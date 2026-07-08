@@ -1,167 +1,282 @@
-/* Rainbows OS V2 - GitHub Pages / Vanilla JS / localStorage */
-const MS_DAY = 86400000;
-const STORAGE_KEY = 'rainbows_os_v2_completions';
-const EMPLOYEES_KEY = 'rainbows_os_v2_employees';
+'use strict';
 
-const state = { view:'today', selectedDate: todayISO(), calendarDate: new Date(), pendingTask:null };
+const APP_VERSION = '2.1.0';
+const STORAGE_KEY = 'rainbows_os_task_completions_v2_1';
+const CONFIG_KEY = 'rainbows_os_config_v2_1';
 
+const employeesDefault = ['Demian', 'Empleado 1', 'Empleado 2', 'Empleado 3', 'Otro'];
+
+// Fechas fijadas según lo confirmado en la conversación:
+// 01/07/2026: Flora 1 y Flora 3 inician Flora S7. Flora 2 inicia Flora S1.
 const rooms = [
-  { name:'Flora 1', type:'flora', transplant:'2026-04-30', autoWater:true },
-  { name:'Flora 2', type:'flora', transplant:'2026-06-10', autoWater:false },
-  { name:'Flora 3', type:'flora', transplant:'2026-05-20', autoWater:false },
-  { name:'Veges', type:'vege' },
-  { name:'Madres', type:'madres' }
+  { name: 'Flora 1', type: 'flora', transplant: '2026-04-30', floraStart: '2026-05-20', automaticIrrigation: true },
+  { name: 'Flora 2', type: 'flora', transplant: '2026-06-10', floraStart: '2026-07-01', automaticIrrigation: false },
+  { name: 'Flora 3', type: 'flora', transplant: '2026-04-30', floraStart: '2026-05-20', automaticIrrigation: false },
+  { name: 'Veges', type: 'vege' },
+  { name: 'Madres', type: 'madres' }
 ];
 
-function defaultEmployees(){ return ['Demian','Empleado 1','Empleado 2','Empleado 3','Otro']; }
-function getEmployees(){ return JSON.parse(localStorage.getItem(EMPLOYEES_KEY) || JSON.stringify(defaultEmployees())); }
-function setEmployees(list){ localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(list)); }
-function getCompletions(){ return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
-function setCompletions(data){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
-function taskKey(dateISO, room, task){ return `${dateISO}__${room}__${task}`; }
-function getCompletion(dateISO, room, task){ return getCompletions()[taskKey(dateISO, room, task)] || null; }
-function saveTaskCompletion({dateISO, room, task, done, worker, notes=''}){
-  // Punto preparado para reemplazar localStorage por Google Sheets más adelante.
-  const data = getCompletions();
-  const key = taskKey(dateISO, room, task);
-  if(done){ data[key] = {done:true, worker, notes, doneAt:new Date().toISOString()}; }
-  else { delete data[key]; }
-  setCompletions(data);
+const app = document.getElementById('app');
+const title = document.getElementById('screen-title');
+const todayLabel = document.getElementById('today-label');
+const workerDialog = document.getElementById('worker-dialog');
+const workerOptions = document.getElementById('worker-options');
+const workerOther = document.getElementById('worker-other');
+const confirmWorker = document.getElementById('confirm-worker');
+
+let state = {
+  view: 'today',
+  selectedMonth: startOfMonth(today()),
+  selectedRoom: null,
+  pendingTask: null,
+  selectedWorker: null
+};
+
+function today(){
+  const d = new Date();
+  d.setHours(0,0,0,0);
+  return d;
 }
+function parseDate(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function ymd(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); x.setHours(0,0,0,0); return x; }
+function diffDays(a,b){ return Math.round((startDay(a)-startDay(b))/86400000); }
+function startDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
+function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
+function sameDay(a,b){ return ymd(a)===ymd(b); }
+function dayName(d){ return ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]; }
+function monthName(d){ return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'}); }
+function niceDate(d){ return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
 
-function parseISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
-function toISO(date){ return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; }
-function todayISO(){ return toISO(new Date()); }
-function addDays(date, n){ const d=new Date(date); d.setDate(d.getDate()+n); return d; }
-function diffDays(a,b){ return Math.floor((parseISO(a)-parseISO(b))/MS_DAY); }
-function dayName(dateISO){ return ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][parseISO(dateISO).getDay()]; }
-function prettyDate(dateISO){ return parseISO(dateISO).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
-
-function cycleInfo(room, dateISO){
-  if(room.type !== 'flora') return {label: room.name, stage:'permanente', week:null, dayInCycle:null};
-  const cycleLen = 77; // 11 semanas: 3 vegetación + 8 flora
-  let day = diffDays(dateISO, room.transplant);
-  day = ((day % cycleLen) + cycleLen) % cycleLen;
-  const week = Math.floor(day/7) + 1;
-  if(day < 21) return {stage:'vege', week, dayInCycle:day, label:`Vege S${week}`};
-  const floraWeek = Math.floor((day-21)/7) + 1;
-  return {stage:'flora', week:floraWeek, dayInCycle:day, label:`Flora S${floraWeek}`};
-}
-function isStartOfWeek(room, dateISO, stage, week){ const i=cycleInfo(room,dateISO); return i.stage===stage && i.week===week && i.dayInCycle % 7 === 0; }
-function isTransplantDay(room,dateISO){ const i=cycleInfo(room,dateISO); return room.type==='flora' && i.dayInCycle===0; }
-function isDayAfterTransplant(room,dateISO){ const i=cycleInfo(room,dateISO); return room.type==='flora' && i.dayInCycle===1; }
-function isStartFlora(room,dateISO){ const i=cycleInfo(room,dateISO); return room.type==='flora' && i.dayInCycle===21; }
-function isTuesdayBeforeFlora(room,dateISO){
-  if(room.type !== 'flora') return false;
-  const target = addDays(parseISO(dateISO), 1);
-  return dayName(dateISO)==='martes' && isStartFlora(room, toISO(target));
-}
-
-function tasksForRoom(room, dateISO){
-  const tasks=[]; const dname=dayName(dateISO); const info=cycleInfo(room,dateISO);
-  const add=(name, kind='normal')=>tasks.push({room:room.name, task:name, kind});
-
-  if(room.type==='flora'){
-    if(isTransplantDay(room,dateISO)) { add('Trasplante','event'); add('Enmienda','important'); }
-    if(isDayAfterTransplant(room,dateISO)) add('Redes','important');
-    if(isTuesdayBeforeFlora(room,dateISO)) { add('Esquejes','important'); add('Poda bajos','important'); }
-    if(isStartFlora(room,dateISO)) { add('Inicio flora','event'); add('Enmienda','important'); }
-    if(isStartOfWeek(room,dateISO,'flora',3)) add('Schwazzing','important');
-    if(isStartOfWeek(room,dateISO,'flora',4)) add('Enmienda','important');
-    if(room.name==='Flora 1'){
-      if(isTransplantDay(room,dateISO) || isStartFlora(room,dateISO) || isStartOfWeek(room,dateISO,'flora',7)) add('Calibrar riego','important');
-    } else add('Riego');
-    if(['lunes','miercoles','viernes'].includes(dname) && info.stage==='flora' && info.week<=3) add('Fumigacion');
-    if(dname==='jueves' && info.stage==='flora' && info.week<=6) add('KNF');
-  } else {
-    add('Riego');
-    if(['lunes','miercoles','viernes'].includes(dname)) add('Fumigacion');
-    if(dname==='jueves') add('KNF');
+function roomCycle(room, date){
+  if(room.type !== 'flora') return { label:'Permanente', stage:'permanente', week:null, cycleStart:null, floraStart:null, dayInCycle:null };
+  const baseTransplant = parseDate(room.transplant);
+  const baseFloraStart = parseDate(room.floraStart);
+  const cycleDays = 77;
+  let cycles = Math.floor(diffDays(date, baseTransplant) / cycleDays);
+  if (diffDays(date, baseTransplant) < 0) cycles = -1;
+  const transplant = addDays(baseTransplant, cycles * cycleDays);
+  const floraStart = addDays(baseFloraStart, cycles * cycleDays);
+  const nextTransplant = addDays(transplant, cycleDays);
+  const d = startDay(date);
+  const dayInCycle = diffDays(d, transplant);
+  if(dayInCycle < 0){ return { label:'Pendiente', stage:'pendiente', week:null, cycleStart:transplant, floraStart, dayInCycle }; }
+  if(dayInCycle >= cycleDays){ return roomCycle(room, addDays(d, -cycleDays)); }
+  if(sameDay(d, nextTransplant) || dayInCycle === cycleDays) return { label:'Trasplante', stage:'trasplante', week:1, cycleStart:transplant, floraStart, dayInCycle };
+  if(diffDays(d, floraStart) < 0){
+    const wk = Math.floor(dayInCycle / 7) + 1;
+    return { label:`Vege S${Math.min(wk,3)}`, stage:'vege', week:Math.min(wk,3), cycleStart:transplant, floraStart, dayInCycle };
   }
+  const floraDay = diffDays(d, floraStart);
+  if(floraDay >= 56){
+    return { label:'Cosecha / Trasplante', stage:'cosecha', week:8, cycleStart:transplant, floraStart, dayInCycle };
+  }
+  const wk = Math.floor(floraDay / 7) + 1;
+  const prefix = floraDay % 7 === 0 ? 'Inicio Flora' : 'Flora';
+  return { label:`${prefix} S${wk}`, stage:'flora', week:wk, cycleStart:transplant, floraStart, dayInCycle };
+}
+
+function isStartFloraWeek(room, date, week){
+  const c = roomCycle(room, date);
+  if(c.stage !== 'flora') return false;
+  return c.week === week && diffDays(date, c.floraStart) % 7 === 0;
+}
+function isTransplantDay(room, date){
+  const c = roomCycle(room, date);
+  return room.type === 'flora' && diffDays(date, c.cycleStart) === 0;
+}
+function isHarvestDay(room, date){
+  if(room.type !== 'flora') return false;
+  const c = roomCycle(room, date);
+  return diffDays(date, c.floraStart) === 56;
+}
+
+function getTasksForDate(date){
+  const tasks=[];
+  const dow = dayName(date);
+  rooms.forEach(room => {
+    const c = roomCycle(room,date);
+    // Riego manual diario: todas salvo Flora 1, porque tiene riego automático.
+    if(!(room.name === 'Flora 1' && room.automaticIrrigation)) addTask(tasks,date,room.name,'Riego','Riego diario manual');
+
+    // Flora 1: calibrar riego en trasplante, inicio de flora e inicio Flora S7.
+    if(room.name === 'Flora 1'){
+      if(isTransplantDay(room,date)) addTask(tasks,date,room.name,'Calibrar riego','Trasplante / nuevo ciclo');
+      if(isStartFloraWeek(room,date,1)) addTask(tasks,date,room.name,'Calibrar riego','Inicio Flora S1');
+      if(isStartFloraWeek(room,date,7)) addTask(tasks,date,room.name,'Calibrar riego','Inicio Flora S7');
+    }
+
+    if(['lunes','miercoles','viernes'].includes(dow)){
+      if(room.type === 'vege' || room.type === 'madres') addTask(tasks,date,room.name,'Fumigacion','Lunes, miércoles y viernes');
+      if(room.type === 'flora' && (c.stage === 'vege' || (c.stage === 'flora' && c.week <= 3))) addTask(tasks,date,room.name,'Fumigacion','Flora hasta S3');
+    }
+    if(dow === 'jueves'){
+      if(room.type === 'vege' || room.type === 'madres') addTask(tasks,date,room.name,'KNF','Jueves');
+      if(room.type === 'flora' && (c.stage === 'vege' || (c.stage === 'flora' && c.week <= 6))) addTask(tasks,date,room.name,'KNF','Flora hasta S6');
+    }
+    if(room.type === 'flora'){
+      if(isTransplantDay(room,date)) addTask(tasks,date,room.name,'Enmienda','Trasplante / inicio Vege S1');
+      if(isStartFloraWeek(room,date,1)) addTask(tasks,date,room.name,'Enmienda','Inicio Flora S1');
+      if(isStartFloraWeek(room,date,4)) addTask(tasks,date,room.name,'Enmienda','Inicio Flora S4');
+      if(sameDay(date, addDays(c.floraStart,-1))){
+        addTask(tasks,date,room.name,'Esquejes','Martes previo a floración');
+        addTask(tasks,date,room.name,'Poda bajos','Martes previo a floración');
+      }
+      if(isStartFloraWeek(room,date,3)) addTask(tasks,date,room.name,'Schwazzing','Inicio Flora S3');
+      if(sameDay(date, addDays(c.cycleStart,1))) addTask(tasks,date,room.name,'Redes','Día siguiente al trasplante');
+      if(isTransplantDay(room,date)) addTask(tasks,date,room.name,'Trasplante','Nuevo ciclo');
+      if(isStartFloraWeek(room,date,1)) addTask(tasks,date,room.name,'Inicio flora','Inicio Flora S1');
+      if(isHarvestDay(room,date)) addTask(tasks,date,room.name,'Cosecha','Final Flora S8');
+    }
+  });
   return tasks;
 }
-function allTasks(dateISO){ return rooms.flatMap(r => tasksForRoom(r,dateISO)); }
-function eventsForRoom(room,dateISO){ return tasksForRoom(room,dateISO).filter(t=>['event','important'].includes(t.kind)).map(t=>t.task); }
-function progressForRoom(room,dateISO){
-  const tasks=tasksForRoom(room,dateISO); const done=tasks.filter(t=>getCompletion(dateISO,t.room,t.task)?.done).length;
-  return {total:tasks.length, done, pct:tasks.length ? Math.round(done/tasks.length*100) : 100};
+function addTask(tasks,date,room,task,detail){ tasks.push({ id:`${ymd(date)}|${room}|${task}`, date:ymd(date), room, task, detail }); }
+
+function loadCompletions(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } }
+function saveCompletions(data){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function isDone(task){ return Boolean(loadCompletions()[task.id]); }
+function getCompletion(task){ return loadCompletions()[task.id] || null; }
+
+function saveTaskCompletion(task, worker, observations=''){
+  // Punto preparado para futura conexión con Google Sheets.
+  const data = loadCompletions();
+  data[task.id] = { ...task, status:'realizada', worker, observations, completedAt:new Date().toISOString(), appVersion:APP_VERSION };
+  saveCompletions(data);
 }
+function removeTaskCompletion(task){ const data=loadCompletions(); delete data[task.id]; saveCompletions(data); }
+
+function tasksByRoom(tasks){ return rooms.map(r => ({ room:r, tasks:tasks.filter(t => t.room === r.name) })).filter(g => g.tasks.length); }
+function roomProgress(room,date){ const tasks = getTasksForDate(date).filter(t => t.room === room.name); const done = tasks.filter(isDone).length; return { total:tasks.length, done, pct: tasks.length ? Math.round(done/tasks.length*100) : 100 }; }
 
 function render(){
-  document.querySelectorAll('.bottom-nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===state.view));
-  document.getElementById('today-label').textContent = prettyDate(state.selectedDate);
-  const title = {today:'Hoy',calendar:'Calendario',rooms:'Salas',settings:'Configuración'}[state.view];
-  document.getElementById('screen-title').textContent=title;
-  if(state.view==='today') renderToday();
-  if(state.view==='calendar') renderCalendar();
-  if(state.view==='rooms') renderRooms();
-  if(state.view==='settings') renderSettings();
+  todayLabel.textContent = niceDate(today());
+  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === state.view));
+  if(state.view === 'today') renderToday();
+  if(state.view === 'calendar') renderCalendar();
+  if(state.view === 'rooms') renderRooms();
+  if(state.view === 'settings') renderSettings();
 }
+
 function renderToday(){
-  const app=document.getElementById('app'); const dateISO=state.selectedDate; const tasks=allTasks(dateISO);
-  const done=tasks.filter(t=>getCompletion(dateISO,t.room,t.task)?.done).length;
-  app.innerHTML = `<section class="summary"><div class="card"><div class="muted">Tareas</div><div class="big">${tasks.length}</div></div><div class="card"><div class="muted">Realizadas</div><div class="big">${done}</div></div><div class="card"><div class="muted">Pendientes</div><div class="big">${tasks.length-done}</div></div><div class="card"><div class="muted">Fecha</div><div class="big">${parseISO(dateISO).getDate()}</div></div></section><section class="grid rooms">${rooms.map(r=>roomCard(r,dateISO,true)).join('')}</section>`;
-  bindTaskChecks();
+  title.textContent = 'Hoy';
+  const d = today();
+  const tasks = getTasksForDate(d);
+  const done = tasks.filter(isDone).length;
+  app.innerHTML = `
+    <div class="panel"><strong>${done}/${tasks.length}</strong> tareas realizadas hoy</div>
+    <div class="section-title">Estado de salas</div>
+    <div class="grid">${rooms.map(room => {
+      const c = roomCycle(room,d); const p = roomProgress(room,d);
+      return `<section class="room-card" data-room="${room.name}"><div class="room-head"><div><div class="room-title">${room.name}</div><div class="stage">${c.label}</div></div><span class="pill">${p.done}/${p.total}</span></div><div class="progress"><span style="width:${p.pct}%"></span></div><div class="progress-text">${p.total ? `${p.pct}% completado` : 'Sin tareas hoy'}</div></section>`;
+    }).join('')}</div>
+    <div class="section-title">Tareas de hoy</div>
+    ${renderTaskGroups(tasks)}
+  `;
+  bindTaskInputs();
+  app.querySelectorAll('.room-card').forEach(el => el.addEventListener('click', () => { state.selectedRoom = el.dataset.room; state.view='rooms'; render(); }));
 }
-function roomCard(room,dateISO,showTasks=false){
-  const info=cycleInfo(room,dateISO); const progress=progressForRoom(room,dateISO); const tasks=tasksForRoom(room,dateISO);
-  return `<article class="card"><div class="room-head"><div><div class="room-title">${room.name}</div><div class="stage">${info.label}${room.autoWater?' · riego automático':''}</div></div><span class="pill ${progress.total-progress.done?'important':''}">${progress.done}/${progress.total}</span></div><div class="progress-wrap"><div class="progress-meta"><span>Progreso</span><span>${progress.pct}%</span></div><div class="progress"><div class="progress-bar" style="width:${progress.pct}%"></div></div></div>${showTasks?`<div class="task-list">${tasks.map(t=>taskItem(t,dateISO)).join('') || '<p class="muted">Sin tareas para hoy.</p>'}</div>`:''}</article>`;
+
+function renderTaskGroups(tasks){
+  const groups = tasksByRoom(tasks);
+  if(!groups.length) return '<div class="panel">No hay tareas para este día.</div>';
+  return groups.map(g => `<section class="task-group"><h3>${g.room.name} <span class="stage">${roomCycle(g.room, parseDate(g.tasks[0].date)).label}</span></h3>${g.tasks.map(renderTaskRow).join('')}</section>`).join('');
 }
-function taskItem(t,dateISO){
-  const c=getCompletion(dateISO,t.room,t.task); const checked=c?.done?'checked':''; const done=c?.done?'done':'';
-  const sub=c?.done ? `Hecha por ${escapeHtml(c.worker || 'sin nombre')} · ${new Date(c.doneAt).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}` : t.kind==='important'?'Tarea importante':t.kind==='event'?'Evento del ciclo':'Pendiente';
-  return `<label class="task ${done}"><input type="checkbox" ${checked} data-date="${dateISO}" data-room="${escapeAttr(t.room)}" data-task="${escapeAttr(t.task)}"><div><div class="task-name">${t.task}</div><div class="task-sub">${sub}</div></div></label>`;
+function renderTaskRow(task){
+  const done = isDone(task); const c = getCompletion(task);
+  return `<div class="task-row ${done?'done':''}"><input type="checkbox" ${done?'checked':''} data-task-id="${task.id}"><label><strong>${task.task}</strong><div class="stage">${task.detail || ''}</div></label><div class="task-meta">${done ? `${c.worker}<br>${new Date(c.completedAt).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}` : ''}</div></div>`;
 }
-function renderCalendar(){
-  const app=document.getElementById('app'); const base=new Date(state.calendarDate.getFullYear(),state.calendarDate.getMonth(),1);
-  const monthLabel=base.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
-  const firstDay=(base.getDay()+6)%7; const daysInMonth=new Date(base.getFullYear(),base.getMonth()+1,0).getDate();
-  let cells=[]; for(let i=0;i<firstDay;i++) cells.push('<div class="day empty"></div>');
-  for(let d=1; d<=daysInMonth; d++){
-    const iso=toISO(new Date(base.getFullYear(),base.getMonth(),d)); const today=iso===todayISO()?'today':'';
-    const roomLines=rooms.filter(r=>r.type==='flora').map(r=>`${r.name.replace('Flora ','F')}: ${cycleInfo(r,iso).label.replace('Flora ','Fl ')}`).join('<br>');
-    const taskNames=[...new Set(allTasks(iso).map(t=>t.task))].slice(0,5).join(', ');
-    cells.push(`<button class="day ${today}" data-date="${iso}"><div class="day-num">${d}</div><div class="day-lines">${roomLines}<div class="tasks">${taskNames}</div></div></button>`);
-  }
-  app.innerHTML=`<div class="toolbar"><button class="secondary" id="prev-month">Anterior</button><strong>${capitalize(monthLabel)}</strong><button class="secondary" id="next-month">Siguiente</button></div><div class="calendar"><div class="dow">Lun</div><div class="dow">Mar</div><div class="dow">Mié</div><div class="dow">Jue</div><div class="dow">Vie</div><div class="dow">Sáb</div><div class="dow">Dom</div>${cells.join('')}</div>`;
-  document.getElementById('prev-month').onclick=()=>{state.calendarDate=new Date(base.getFullYear(),base.getMonth()-1,1);render();};
-  document.getElementById('next-month').onclick=()=>{state.calendarDate=new Date(base.getFullYear(),base.getMonth()+1,1);render();};
-  document.querySelectorAll('.day[data-date]').forEach(btn=>btn.onclick=()=>{state.selectedDate=btn.dataset.date; state.view='today'; render();});
+function bindTaskInputs(){
+  app.querySelectorAll('input[type="checkbox"][data-task-id]').forEach(input => input.addEventListener('change', e => {
+    const tasks = getTasksForDate(currentRenderedDate());
+    const task = tasks.find(t => t.id === input.dataset.taskId);
+    if(!task) return;
+    if(input.checked){ input.checked = false; openWorkerDialog(task); }
+    else { removeTaskCompletion(task); render(); }
+  }));
 }
-function renderRooms(){
-  const app=document.getElementById('app'); const dateISO=state.selectedDate;
-  app.innerHTML=`<section class="grid rooms">${rooms.map(r=>`<article class="card room-detail">${roomCard(r,dateISO,false)}<h3>Próximas tareas</h3><div class="task-list">${nextTasks(r,dateISO).map(x=>`<div class="task"><div><div class="task-name">${x.task}</div><div class="task-sub">${prettyDate(x.date)}</div></div></div>`).join('')}</div></article>`).join('')}</section>`;
+function currentRenderedDate(){ return state.view === 'calendar' && state.calendarDay ? state.calendarDay : today(); }
+
+function openWorkerDialog(task){
+  state.pendingTask = task; state.selectedWorker = null; workerOther.value = '';
+  const config = loadConfig();
+  workerOptions.innerHTML = config.employees.map(name => `<button type="button" data-worker="${name}">${name}</button>`).join('');
+  workerOptions.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { state.selectedWorker = b.dataset.worker; workerOther.value = b.dataset.worker === 'Otro' ? '' : b.dataset.worker; }));
+  workerDialog.showModal();
 }
-function nextTasks(room,fromISO){
-  const out=[]; for(let i=0;i<80 && out.length<5;i++){ const iso=toISO(addDays(parseISO(fromISO),i)); const tasks=tasksForRoom(room,iso).filter(t=>t.kind==='important'||t.kind==='event'||t.task==='KNF'||t.task==='Fumigacion'); tasks.forEach(t=>out.push({date:iso,task:t.task})); }
-  return out;
-}
-function renderSettings(){
-  const employees=getEmployees();
-  document.getElementById('app').innerHTML=`<section class="card"><h2>Empleados</h2><p class="muted">Un nombre por línea. Se usan al marcar tareas.</p><textarea id="employees-box" rows="7">${employees.join('\n')}</textarea><button class="primary" id="save-employees">Guardar empleados</button></section><section class="card"><h2>Datos locales</h2><p class="muted">Los checks de esta V1 se guardan en este navegador. Más adelante se conecta Google Sheets.</p><button class="secondary" id="clear-local">Borrar checks locales</button></section>`;
-  document.getElementById('save-employees').onclick=()=>{setEmployees(document.getElementById('employees-box').value.split('\n').map(x=>x.trim()).filter(Boolean)); alert('Empleados guardados');};
-  document.getElementById('clear-local').onclick=()=>{ if(confirm('¿Borrar todos los checks locales?')){ localStorage.removeItem(STORAGE_KEY); render(); }};
-}
-function bindTaskChecks(){ document.querySelectorAll('.task input[type=checkbox]').forEach(cb=>cb.onchange=(e)=>handleTaskToggle(e.target)); }
-function handleTaskToggle(cb){
-  const data={dateISO:cb.dataset.date, room:cb.dataset.room, task:cb.dataset.task};
-  if(cb.checked){ state.pendingTask={...data, cb}; openWorkerDialog(); }
-  else { saveTaskCompletion({...data, done:false}); render(); }
-}
-function openWorkerDialog(){
-  const dialog=document.getElementById('worker-dialog'); const box=document.getElementById('worker-options'); const employees=getEmployees();
-  box.innerHTML=employees.map((e,i)=>`<label><input type="radio" name="worker" value="${escapeAttr(e)}" ${i===0?'checked':''}> ${escapeHtml(e)}</label>`).join('');
-  document.getElementById('worker-other').value=''; dialog.showModal();
-}
-document.getElementById('confirm-worker').addEventListener('click',(ev)=>{
-  ev.preventDefault(); const pending=state.pendingTask; if(!pending) return;
-  const selected=document.querySelector('input[name="worker"]:checked')?.value || ''; const other=document.getElementById('worker-other').value.trim(); const worker=other || selected;
-  saveTaskCompletion({...pending, done:true, worker}); state.pendingTask=null; document.getElementById('worker-dialog').close(); render();
+confirmWorker.addEventListener('click', (e) => {
+  const task = state.pendingTask; if(!task) return;
+  const worker = (workerOther.value || state.selectedWorker || '').trim();
+  if(!worker){ e.preventDefault(); alert('Elegí o escribí quién realizó la tarea.'); return; }
+  saveTaskCompletion(task, worker);
+  state.pendingTask = null;
+  setTimeout(render, 0);
 });
-document.getElementById('worker-dialog').addEventListener('close',()=>{ if(state.pendingTask){ state.pendingTask.cb.checked=false; state.pendingTask=null; render(); }});
-document.querySelectorAll('.bottom-nav button').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;render();});
-function escapeHtml(s){ return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
-function escapeAttr(s){ return escapeHtml(s).replace(/'/g,'&#39;'); }
-function capitalize(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
-if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+
+function renderCalendar(){
+  title.textContent = 'Calendario';
+  const month = state.selectedMonth;
+  const first = startOfMonth(month);
+  const start = addDays(first, -((first.getDay()+6)%7)); // lunes
+  const days = Array.from({length:42},(_,i)=>addDays(start,i));
+  app.innerHTML = `<div class="toolbar"><button id="prev-month">‹</button><strong>${monthName(month)}</strong><button id="next-month">›</button></div><div class="calendar">${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d=>`<div class="dow">${d}</div>`).join('')}${days.map(renderDayCell).join('')}</div>`;
+  document.getElementById('prev-month').onclick = () => { state.selectedMonth = new Date(month.getFullYear(), month.getMonth()-1, 1); render(); };
+  document.getElementById('next-month').onclick = () => { state.selectedMonth = new Date(month.getFullYear(), month.getMonth()+1, 1); render(); };
+}
+function renderDayCell(d){
+  const inMonth = d.getMonth() === state.selectedMonth.getMonth();
+  const tasks = getTasksForDate(d);
+  const summary = summarizeTasks(tasks);
+  return `<div class="day-cell ${sameDay(d,today())?'today':''} ${inMonth?'':'dim'}"><div class="day-num">${d.getDate()}</div><div class="day-state">${rooms.filter(r=>r.type==='flora').map(r=>`${shortRoom(r.name)}: ${roomCycle(r,d).label.replace('Inicio ','')}`).join('<br>')}</div><div class="day-tasks">${summary}</div></div>`;
+}
+function summarizeTasks(tasks){
+  const important = ['Trasplante','Inicio flora','Cosecha','Enmienda','Schwazzing','Esquejes','Poda bajos','Redes','Calibrar riego','KNF','Fumigacion','Riego'];
+  const ordered = important.filter(t => tasks.some(x=>x.task===t));
+  return ordered.slice(0,6).join('<br>');
+}
+function shortRoom(name){ return name.replace('Flora ','F'); }
+
+function renderRooms(){
+  title.textContent = 'Salas';
+  const d = today();
+  if(state.selectedRoom){
+    const room = rooms.find(r=>r.name===state.selectedRoom);
+    const c = roomCycle(room,d);
+    app.innerHTML = `<button class="secondary" id="back-rooms">← Volver</button><section class="panel"><h2 class="room-detail-title">${room.name}</h2><p class="muted">${c.label}</p>${renderRoomFacts(room,d)}</section><div class="section-title">Tareas de hoy</div>${renderTaskGroups(getTasksForDate(d).filter(t=>t.room===room.name))}`;
+    document.getElementById('back-rooms').onclick = () => { state.selectedRoom=null; render(); };
+    bindTaskInputs(); return;
+  }
+  app.innerHTML = `<div class="list">${rooms.map(room => `<section class="room-card" data-room="${room.name}"><div class="room-head"><div><div class="room-title">${room.name}</div><div class="stage">${roomCycle(room,d).label}</div></div><span class="pill">Ver</span></div></section>`).join('')}</div>`;
+  app.querySelectorAll('.room-card').forEach(el => el.addEventListener('click', () => { state.selectedRoom = el.dataset.room; render(); }));
+}
+function renderRoomFacts(room,d){
+  if(room.type !== 'flora') return `<div class="kv"><span>Tipo</span><strong>${room.type}</strong></div><div class="kv"><span>Estado</span><strong>Permanente</strong></div>`;
+  const c = roomCycle(room,d);
+  const nexts = nextImportantDates(room,d).map(x=>`<div class="kv"><span>${x.name}</span><strong>${x.date.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}</strong></div>`).join('');
+  return `<div class="kv"><span>Trasplante ciclo</span><strong>${c.cycleStart.toLocaleDateString('es-AR')}</strong></div><div class="kv"><span>Inicio flora</span><strong>${c.floraStart.toLocaleDateString('es-AR')}</strong></div>${nexts}`;
+}
+function nextImportantDates(room,d){
+  const c = roomCycle(room,d);
+  const candidates = [
+    {name:'Próxima enmienda', date:c.cycleStart},
+    {name:'Inicio flora / enmienda', date:c.floraStart},
+    {name:'Schwazzing', date:addDays(c.floraStart,14)},
+    {name:'Enmienda Flora S4', date:addDays(c.floraStart,21)},
+    {name:'Calibrar riego S7', date:addDays(c.floraStart,42)},
+    {name:'Cosecha', date:addDays(c.floraStart,56)}
+  ];
+  return candidates.filter(x => diffDays(x.date,d) >= 0).slice(0,4);
+}
+
+function loadConfig(){ try { return JSON.parse(localStorage.getItem(CONFIG_KEY)) || { employees: employeesDefault }; } catch { return { employees: employeesDefault }; } }
+function saveConfig(config){ localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); }
+function renderSettings(){
+  title.textContent = 'Config';
+  const config = loadConfig();
+  app.innerHTML = `<section class="panel"><h3>Empleados V1</h3><p class="muted">Un nombre por línea. Se usa cuando se marca una tarea.</p><textarea id="employees" class="text-input" style="min-height:150px">${config.employees.join('\n')}</textarea><p><button id="save-config" class="primary">Guardar empleados</button></p></section><section class="panel"><h3>Versión</h3><p>Rainbows OS ${APP_VERSION}</p><p class="muted">Guardado local. Preparado para reemplazar saveTaskCompletion por Google Sheets.</p></section>`;
+  document.getElementById('save-config').onclick = () => { const employees = document.getElementById('employees').value.split('\n').map(x=>x.trim()).filter(Boolean); saveConfig({employees}); alert('Configuración guardada.'); render(); };
+}
+
+document.querySelectorAll('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => { state.view = btn.dataset.view; state.selectedRoom=null; render(); }));
+if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.1').catch(()=>{})); }
 render();
