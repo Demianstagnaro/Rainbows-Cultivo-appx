@@ -1,9 +1,10 @@
 {
-  "name": "Rainbows Calendario de Cultivo",
-  "short_name": "Rainbows",
-  "start_url": "./index.html",
+  "name": "Rainbows OS",
+  "short_name": "Rainbows OS",
+  "description": "Calendario y tareas de cultivo Rainbows.",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#f6f7f4",
-  "theme_color": "#226b4a",
-  "icons": []
+  "background_color": "#f5f2eb",
+  "theme_color": "#20382f"
 }
