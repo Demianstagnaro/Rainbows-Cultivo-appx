@@ -1,24 +1,18 @@
-# Rainbows OS V2.1
+# Rainbows OS V2.2
 
-App web/PWA simple para GitHub Pages.
+App web/PWA para GitHub Pages.
 
-## Correcciones V2.1
-- Incluye todos los archivos requeridos: `index.html`, `styles.css`, `app.js`, `manifest.json`, `sw.js`.
-- Fechas fijadas según lo confirmado:
-  - 01/07/2026: Flora 1 = Inicio Flora S7.
-  - 01/07/2026: Flora 3 = Inicio Flora S7.
-  - 01/07/2026: Flora 2 = Inicio Flora S1.
-- Tareas agrupadas por sala.
+## Cambios V2.2
+- Flora 3 sincronizada con Flora 1: el 01/07/2026 ambas inician Flora Semana 7.
+- Se quitó el bloque redundante de “Fecha” en la pantalla Hoy.
+- Se agregó sala “Esquejes”.
+- En las tarjetas de sala, debajo del nombre aparece la etapa/semana, por ejemplo “Floración - Semana 7”, sin repetir el nombre de la sala.
+- Flora 1 mantiene riego automático y solo muestra “Calibrar riego” en trasplante, inicio flora e inicio Flora S7.
 - Barras de progreso naranjas.
-- Flora 1 no tiene riego manual diario.
-- Flora 1 tiene tarea “Calibrar riego” en:
-  - trasplante / nuevo ciclo,
-  - inicio Flora S1,
-  - inicio Flora S7.
-- Checkboxes con responsable guardado localmente.
+- Checkboxes con pregunta “¿Quién realizó esta tarea?” y guardado local.
 
 ## Publicación
-Subir/reemplazar en la raíz del repositorio:
+Subir estos archivos a la raíz del repositorio de GitHub Pages:
 - index.html
 - styles.css
 - app.js
@@ -26,5 +20,5 @@ Subir/reemplazar en la raíz del repositorio:
 - sw.js
 - README.md
 
-Luego abrir:
-`https://demianstagnaro.github.io/Rainbows-Cultivo-appx/?v=2.1`
+Abrir con parámetro antibloqueo de caché:
+https://demianstagnaro.github.io/Rainbows-Cultivo-appx/?v=2.2

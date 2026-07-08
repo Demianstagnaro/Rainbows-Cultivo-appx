@@ -1,282 +1,393 @@
-'use strict';
+// Rainbows OS V2.2
+// App web/PWA sin dependencias. Estado local en localStorage.
 
-const APP_VERSION = '2.1.0';
-const STORAGE_KEY = 'rainbows_os_task_completions_v2_1';
-const CONFIG_KEY = 'rainbows_os_config_v2_1';
+const VERSION = '2.2.0';
+const MS_DAY = 24 * 60 * 60 * 1000;
+const CYCLE_DAYS = 77; // 3 semanas vege + 8 semanas flora
 
-const employeesDefault = ['Demian', 'Empleado 1', 'Empleado 2', 'Empleado 3', 'Otro'];
-
-// Fechas fijadas según lo confirmado en la conversación:
-// 01/07/2026: Flora 1 y Flora 3 inician Flora S7. Flora 2 inicia Flora S1.
-const rooms = [
-  { name: 'Flora 1', type: 'flora', transplant: '2026-04-30', floraStart: '2026-05-20', automaticIrrigation: true },
-  { name: 'Flora 2', type: 'flora', transplant: '2026-06-10', floraStart: '2026-07-01', automaticIrrigation: false },
-  { name: 'Flora 3', type: 'flora', transplant: '2026-04-30', floraStart: '2026-05-20', automaticIrrigation: false },
+const ROOMS = [
+  { name: 'Flora 1', type: 'flora', referenceDate: '2026-07-01', referenceCycleDay: 63, autoWater: true }, // Inicio Flora S7
+  { name: 'Flora 2', type: 'flora', referenceDate: '2026-07-01', referenceCycleDay: 21, autoWater: false }, // Inicio Flora S1
+  { name: 'Flora 3', type: 'flora', referenceDate: '2026-07-01', referenceCycleDay: 63, autoWater: false }, // Sincronizada con Flora 1
   { name: 'Veges', type: 'vege' },
-  { name: 'Madres', type: 'madres' }
+  { name: 'Madres', type: 'madres' },
+  { name: 'Esquejes', type: 'esquejes' },
 ];
 
-const app = document.getElementById('app');
-const title = document.getElementById('screen-title');
-const todayLabel = document.getElementById('today-label');
-const workerDialog = document.getElementById('worker-dialog');
-const workerOptions = document.getElementById('worker-options');
-const workerOther = document.getElementById('worker-other');
-const confirmWorker = document.getElementById('confirm-worker');
+const DEFAULT_WORKERS = ['Demian', 'Empleado 1', 'Empleado 2', 'Empleado 3', 'Otro'];
+let currentView = 'today';
+let calendarCursor = startOfMonth(todayLocal());
+let pendingTask = null;
 
-let state = {
-  view: 'today',
-  selectedMonth: startOfMonth(today()),
-  selectedRoom: null,
-  pendingTask: null,
-  selectedWorker: null
-};
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => [...document.querySelectorAll(sel)];
 
-function today(){
-  const d = new Date();
-  d.setHours(0,0,0,0);
-  return d;
-}
-function parseDate(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
-function ymd(d){ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-function addDays(d,n){ const x=new Date(d); x.setDate(x.getDate()+n); x.setHours(0,0,0,0); return x; }
-function diffDays(a,b){ return Math.round((startDay(a)-startDay(b))/86400000); }
-function startDay(d){ const x=new Date(d); x.setHours(0,0,0,0); return x; }
-function startOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
-function sameDay(a,b){ return ymd(a)===ymd(b); }
-function dayName(d){ return ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]; }
-function monthName(d){ return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'}); }
-function niceDate(d){ return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
+function dateKey(date){ return toLocalISO(date); }
+function parseDate(str){ const [y,m,d] = str.split('-').map(Number); return new Date(y, m-1, d); }
+function toLocalISO(date){ const y=date.getFullYear(); const m=String(date.getMonth()+1).padStart(2,'0'); const d=String(date.getDate()).padStart(2,'0'); return `${y}-${m}-${d}`; }
+function todayLocal(){ const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+function addDays(date, days){ const d = new Date(date); d.setDate(d.getDate()+days); return d; }
+function diffDays(a,b){ return Math.round((new Date(a.getFullYear(),a.getMonth(),a.getDate()) - new Date(b.getFullYear(),b.getMonth(),b.getDate())) / MS_DAY); }
+function mod(n,m){ return ((n % m) + m) % m; }
+function startOfMonth(date){ return new Date(date.getFullYear(), date.getMonth(), 1); }
+function cap(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+function dayName(date){ return ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][date.getDay()]; }
+function formatLong(date){ return new Intl.DateTimeFormat('es-AR', { weekday:'long', day:'numeric', month:'long', year:'numeric' }).format(date); }
+function formatMonth(date){ return new Intl.DateTimeFormat('es-AR', { month:'long', year:'numeric' }).format(date); }
 
-function roomCycle(room, date){
-  if(room.type !== 'flora') return { label:'Permanente', stage:'permanente', week:null, cycleStart:null, floraStart:null, dayInCycle:null };
-  const baseTransplant = parseDate(room.transplant);
-  const baseFloraStart = parseDate(room.floraStart);
-  const cycleDays = 77;
-  let cycles = Math.floor(diffDays(date, baseTransplant) / cycleDays);
-  if (diffDays(date, baseTransplant) < 0) cycles = -1;
-  const transplant = addDays(baseTransplant, cycles * cycleDays);
-  const floraStart = addDays(baseFloraStart, cycles * cycleDays);
-  const nextTransplant = addDays(transplant, cycleDays);
-  const d = startDay(date);
-  const dayInCycle = diffDays(d, transplant);
-  if(dayInCycle < 0){ return { label:'Pendiente', stage:'pendiente', week:null, cycleStart:transplant, floraStart, dayInCycle }; }
-  if(dayInCycle >= cycleDays){ return roomCycle(room, addDays(d, -cycleDays)); }
-  if(sameDay(d, nextTransplant) || dayInCycle === cycleDays) return { label:'Trasplante', stage:'trasplante', week:1, cycleStart:transplant, floraStart, dayInCycle };
-  if(diffDays(d, floraStart) < 0){
-    const wk = Math.floor(dayInCycle / 7) + 1;
-    return { label:`Vege S${Math.min(wk,3)}`, stage:'vege', week:Math.min(wk,3), cycleStart:transplant, floraStart, dayInCycle };
+function getFloraState(room, date){
+  const ref = parseDate(room.referenceDate);
+  const delta = diffDays(date, ref);
+  const cycleDay = mod(room.referenceCycleDay + delta, CYCLE_DAYS);
+  let etapa, week, label, short;
+  if (cycleDay < 21){
+    etapa = 'vege';
+    week = Math.floor(cycleDay/7)+1;
+    label = `Vegetación - Semana ${week}`;
+    short = `V S${week}`;
+  } else {
+    etapa = 'flora';
+    week = Math.floor((cycleDay-21)/7)+1;
+    label = `Floración - Semana ${week}`;
+    short = `F S${week}`;
   }
-  const floraDay = diffDays(d, floraStart);
-  if(floraDay >= 56){
-    return { label:'Cosecha / Trasplante', stage:'cosecha', week:8, cycleStart:transplant, floraStart, dayInCycle };
-  }
-  const wk = Math.floor(floraDay / 7) + 1;
-  const prefix = floraDay % 7 === 0 ? 'Inicio Flora' : 'Flora';
-  return { label:`${prefix} S${wk}`, stage:'flora', week:wk, cycleStart:transplant, floraStart, dayInCycle };
+  const dayInWeek = cycleDay % 7;
+  return { cycleDay, etapa, week, label, short, dayInWeek, isWeekStart: dayInWeek === 0 };
 }
 
-function isStartFloraWeek(room, date, week){
-  const c = roomCycle(room, date);
-  if(c.stage !== 'flora') return false;
-  return c.week === week && diffDays(date, c.floraStart) % 7 === 0;
-}
-function isTransplantDay(room, date){
-  const c = roomCycle(room, date);
-  return room.type === 'flora' && diffDays(date, c.cycleStart) === 0;
-}
-function isHarvestDay(room, date){
-  if(room.type !== 'flora') return false;
-  const c = roomCycle(room, date);
-  return diffDays(date, c.floraStart) === 56;
+function getRoomState(room, date){
+  if (room.type === 'flora') return getFloraState(room, date);
+  if (room.type === 'vege') return { etapa:'vege', week:null, label:'Sala de vegetación', short:'Veges' };
+  if (room.type === 'madres') return { etapa:'madres', week:null, label:'Sala de madres', short:'Madres' };
+  if (room.type === 'esquejes') return { etapa:'esquejes', week:null, label:'Sala de esquejes', short:'Esquejes' };
+  return { etapa:'', week:null, label:'', short:'' };
 }
 
-function getTasksForDate(date){
-  const tasks=[];
+function makeTask(room, name, type='operativa', important=false){
+  return { id: `${dateKey(activeDate)}|${room.name}|${name}`, room: room.name, task: name, type, important };
+}
+let activeDate = todayLocal();
+
+function tasksForDate(date){
+  activeDate = date;
+  const tasks = [];
   const dow = dayName(date);
-  rooms.forEach(room => {
-    const c = roomCycle(room,date);
-    // Riego manual diario: todas salvo Flora 1, porque tiene riego automático.
-    if(!(room.name === 'Flora 1' && room.automaticIrrigation)) addTask(tasks,date,room.name,'Riego','Riego diario manual');
 
-    // Flora 1: calibrar riego en trasplante, inicio de flora e inicio Flora S7.
-    if(room.name === 'Flora 1'){
-      if(isTransplantDay(room,date)) addTask(tasks,date,room.name,'Calibrar riego','Trasplante / nuevo ciclo');
-      if(isStartFloraWeek(room,date,1)) addTask(tasks,date,room.name,'Calibrar riego','Inicio Flora S1');
-      if(isStartFloraWeek(room,date,7)) addTask(tasks,date,room.name,'Calibrar riego','Inicio Flora S7');
+  for (const room of ROOMS){
+    const state = getRoomState(room, date);
+
+    // Riego manual diario. Flora 1 tiene riego automático y no aparece como riego manual.
+    if (!room.autoWater){
+      tasks.push(makeTask(room, 'Riego', 'riego'));
     }
 
-    if(['lunes','miercoles','viernes'].includes(dow)){
-      if(room.type === 'vege' || room.type === 'madres') addTask(tasks,date,room.name,'Fumigacion','Lunes, miércoles y viernes');
-      if(room.type === 'flora' && (c.stage === 'vege' || (c.stage === 'flora' && c.week <= 3))) addTask(tasks,date,room.name,'Fumigacion','Flora hasta S3');
-    }
-    if(dow === 'jueves'){
-      if(room.type === 'vege' || room.type === 'madres') addTask(tasks,date,room.name,'KNF','Jueves');
-      if(room.type === 'flora' && (c.stage === 'vege' || (c.stage === 'flora' && c.week <= 6))) addTask(tasks,date,room.name,'KNF','Flora hasta S6');
-    }
-    if(room.type === 'flora'){
-      if(isTransplantDay(room,date)) addTask(tasks,date,room.name,'Enmienda','Trasplante / inicio Vege S1');
-      if(isStartFloraWeek(room,date,1)) addTask(tasks,date,room.name,'Enmienda','Inicio Flora S1');
-      if(isStartFloraWeek(room,date,4)) addTask(tasks,date,room.name,'Enmienda','Inicio Flora S4');
-      if(sameDay(date, addDays(c.floraStart,-1))){
-        addTask(tasks,date,room.name,'Esquejes','Martes previo a floración');
-        addTask(tasks,date,room.name,'Poda bajos','Martes previo a floración');
+    // Calibración de riego automático de Flora 1.
+    if (room.name === 'Flora 1'){
+      if ([0, 21, 63].includes(state.cycleDay)){
+        tasks.push(makeTask(room, 'Calibrar riego', 'riego', true));
       }
-      if(isStartFloraWeek(room,date,3)) addTask(tasks,date,room.name,'Schwazzing','Inicio Flora S3');
-      if(sameDay(date, addDays(c.cycleStart,1))) addTask(tasks,date,room.name,'Redes','Día siguiente al trasplante');
-      if(isTransplantDay(room,date)) addTask(tasks,date,room.name,'Trasplante','Nuevo ciclo');
-      if(isStartFloraWeek(room,date,1)) addTask(tasks,date,room.name,'Inicio flora','Inicio Flora S1');
-      if(isHarvestDay(room,date)) addTask(tasks,date,room.name,'Cosecha','Final Flora S8');
     }
-  });
+
+    // Reglas para floras.
+    if (room.type === 'flora'){
+      const s = state;
+      // Eventos de ciclo.
+      if (s.cycleDay === 0) tasks.push(makeTask(room, 'Trasplante', 'evento', true));
+      if (s.cycleDay === 21) tasks.push(makeTask(room, 'Inicio floración', 'evento', true));
+      if (s.cycleDay === 76) tasks.push(makeTask(room, 'Cosecha', 'evento', true));
+
+      // Enmiendas.
+      if ([0, 21, 42].includes(s.cycleDay)) tasks.push(makeTask(room, 'Enmienda', 'enmienda', true));
+
+      // Redes al día siguiente del trasplante.
+      if (s.cycleDay === 1) tasks.push(makeTask(room, 'Colocar redes', 'redes', true));
+
+      // Esquejes y poda bajos el martes previo al inicio de floración.
+      if (s.cycleDay === 20 && dow === 'martes'){
+        tasks.push(makeTask(room, 'Sacar esquejes', 'esquejes', true));
+        tasks.push(makeTask(room, 'Poda bajos', 'poda', true));
+      }
+
+      // Schwazzing inicio Flora S3.
+      if (s.cycleDay === 35) tasks.push(makeTask(room, 'Schwazzing', 'poda', true));
+
+      // Fumigación: lunes, miércoles, viernes hasta Flora S3.
+      if (['lunes','miercoles','viernes'].includes(dow) && s.etapa === 'flora' && s.week <= 3){
+        tasks.push(makeTask(room, 'Fumigación', 'fumigacion'));
+      }
+
+      // KNF: jueves hasta Flora S6.
+      if (dow === 'jueves' && s.etapa === 'flora' && s.week <= 6){
+        tasks.push(makeTask(room, 'KNF', 'knf'));
+      }
+    }
+
+    // Veges y Madres.
+    if (['vege','madres'].includes(room.type)){
+      if (['lunes','miercoles','viernes'].includes(dow)) tasks.push(makeTask(room, 'Fumigación', 'fumigacion'));
+      if (dow === 'jueves') tasks.push(makeTask(room, 'KNF', 'knf'));
+    }
+
+    // Esquejes: por ahora solo riego diario. La sala se completa cuando se sacan esquejes de flora.
+  }
+
   return tasks;
 }
-function addTask(tasks,date,room,task,detail){ tasks.push({ id:`${ymd(date)}|${room}|${task}`, date:ymd(date), room, task, detail }); }
 
-function loadCompletions(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } }
-function saveCompletions(data){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
-function isDone(task){ return Boolean(loadCompletions()[task.id]); }
-function getCompletion(task){ return loadCompletions()[task.id] || null; }
-
-function saveTaskCompletion(task, worker, observations=''){
-  // Punto preparado para futura conexión con Google Sheets.
-  const data = loadCompletions();
-  data[task.id] = { ...task, status:'realizada', worker, observations, completedAt:new Date().toISOString(), appVersion:APP_VERSION };
-  saveCompletions(data);
+function storageKey(taskId){ return `rainbows:${VERSION}:task:${taskId}`; }
+function getCompletion(taskId){ try { return JSON.parse(localStorage.getItem(storageKey(taskId)) || 'null'); } catch { return null; } }
+function saveTaskCompletion(task, person, observations=''){
+  const data = { taskId: task.id, fecha: dateKey(activeDate), sala: task.room, tarea: task.task, hecho_por: person, hecho_en: new Date().toISOString(), observaciones: observations };
+  localStorage.setItem(storageKey(task.id), JSON.stringify(data));
+  // Futuro: reemplazar este bloque por POST a Google Sheets / Apps Script.
+  return data;
 }
-function removeTaskCompletion(task){ const data=loadCompletions(); delete data[task.id]; saveCompletions(data); }
+function clearTaskCompletion(task){ localStorage.removeItem(storageKey(task.id)); }
 
-function tasksByRoom(tasks){ return rooms.map(r => ({ room:r, tasks:tasks.filter(t => t.room === r.name) })).filter(g => g.tasks.length); }
-function roomProgress(room,date){ const tasks = getTasksForDate(date).filter(t => t.room === room.name); const done = tasks.filter(isDone).length; return { total:tasks.length, done, pct: tasks.length ? Math.round(done/tasks.length*100) : 100 }; }
+function workers(){
+  const saved = localStorage.getItem('rainbows:workers');
+  if (!saved) return DEFAULT_WORKERS;
+  try { const arr = JSON.parse(saved); return Array.isArray(arr) && arr.length ? arr : DEFAULT_WORKERS; } catch { return DEFAULT_WORKERS; }
+}
+function saveWorkers(list){ localStorage.setItem('rainbows:workers', JSON.stringify(list)); }
+
+function progressForRoom(roomName, date){
+  const tasks = tasksForDate(date).filter(t => t.room === roomName);
+  const done = tasks.filter(t => getCompletion(t.id)).length;
+  return { total: tasks.length, done, pct: tasks.length ? Math.round(done/tasks.length*100) : 100 };
+}
 
 function render(){
-  todayLabel.textContent = niceDate(today());
-  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === state.view));
-  if(state.view === 'today') renderToday();
-  if(state.view === 'calendar') renderCalendar();
-  if(state.view === 'rooms') renderRooms();
-  if(state.view === 'settings') renderSettings();
+  $('#todayText').textContent = formatLong(todayLocal());
+  $$('.tab').forEach(btn => btn.classList.toggle('active', btn.dataset.view === currentView));
+  $$('.view').forEach(v => v.classList.remove('active'));
+  $(`#${currentView}View`).classList.add('active');
+  if (currentView === 'today') renderToday();
+  if (currentView === 'calendar') renderCalendar();
+  if (currentView === 'rooms') renderRooms();
+  if (currentView === 'settings') renderSettings();
 }
 
 function renderToday(){
-  title.textContent = 'Hoy';
-  const d = today();
-  const tasks = getTasksForDate(d);
-  const done = tasks.filter(isDone).length;
-  app.innerHTML = `
-    <div class="panel"><strong>${done}/${tasks.length}</strong> tareas realizadas hoy</div>
-    <div class="section-title">Estado de salas</div>
-    <div class="grid">${rooms.map(room => {
-      const c = roomCycle(room,d); const p = roomProgress(room,d);
-      return `<section class="room-card" data-room="${room.name}"><div class="room-head"><div><div class="room-title">${room.name}</div><div class="stage">${c.label}</div></div><span class="pill">${p.done}/${p.total}</span></div><div class="progress"><span style="width:${p.pct}%"></span></div><div class="progress-text">${p.total ? `${p.pct}% completado` : 'Sin tareas hoy'}</div></section>`;
-    }).join('')}</div>
-    <div class="section-title">Tareas de hoy</div>
-    ${renderTaskGroups(tasks)}
+  const date = todayLocal();
+  activeDate = date;
+  const tasks = tasksForDate(date);
+  const done = tasks.filter(t => getCompletion(t.id)).length;
+  const pending = tasks.length - done;
+  const byRoom = groupBy(tasks, 'room');
+  const roomCards = ROOMS.map(room => roomCard(room, date, byRoom[room.name] || [])).join('');
+  $('#todayView').innerHTML = `
+    <div class="summary">
+      <div class="panel"><div class="big">${tasks.length}</div><div class="muted">tareas</div></div>
+      <div class="panel"><div class="big">${pending}</div><div class="muted">pendientes</div></div>
+      <div class="panel"><div class="big">${done}</div><div class="muted">realizadas</div></div>
+      <div class="panel"><div class="big">${VERSION}</div><div class="muted">versión</div></div>
+    </div>
+    <div class="grid rooms">${roomCards}</div>
   `;
-  bindTaskInputs();
-  app.querySelectorAll('.room-card').forEach(el => el.addEventListener('click', () => { state.selectedRoom = el.dataset.room; state.view='rooms'; render(); }));
+  bindTaskEvents();
 }
 
-function renderTaskGroups(tasks){
-  const groups = tasksByRoom(tasks);
-  if(!groups.length) return '<div class="panel">No hay tareas para este día.</div>';
-  return groups.map(g => `<section class="task-group"><h3>${g.room.name} <span class="stage">${roomCycle(g.room, parseDate(g.tasks[0].date)).label}</span></h3>${g.tasks.map(renderTaskRow).join('')}</section>`).join('');
+function roomCard(room, date, tasks){
+  const state = getRoomState(room, date);
+  const done = tasks.filter(t => getCompletion(t.id)).length;
+  const pct = tasks.length ? Math.round(done/tasks.length*100) : 100;
+  const labels = [];
+  if (room.autoWater) labels.push('Riego automático');
+  if (room.type === 'esquejes') labels.push('Enraizamiento');
+  return `
+    <article class="room-card">
+      <div class="room-head">
+        <div>
+          <div class="room-title">${room.name}</div>
+          <div class="room-stage">${state.label}</div>
+        </div>
+        ${labels.map(l => `<span class="badge">${l}</span>`).join('')}
+      </div>
+      <div class="progress"><span style="width:${pct}%"></span></div>
+      <div class="progress-text">${done}/${tasks.length} tareas realizadas</div>
+      <div class="task-list">
+        ${tasks.length ? tasks.map(taskRow).join('') : '<p class="muted">Sin tareas operativas hoy.</p>'}
+      </div>
+    </article>
+  `;
 }
-function renderTaskRow(task){
-  const done = isDone(task); const c = getCompletion(task);
-  return `<div class="task-row ${done?'done':''}"><input type="checkbox" ${done?'checked':''} data-task-id="${task.id}"><label><strong>${task.task}</strong><div class="stage">${task.detail || ''}</div></label><div class="task-meta">${done ? `${c.worker}<br>${new Date(c.completedAt).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}` : ''}</div></div>`;
-}
-function bindTaskInputs(){
-  app.querySelectorAll('input[type="checkbox"][data-task-id]').forEach(input => input.addEventListener('change', e => {
-    const tasks = getTasksForDate(currentRenderedDate());
-    const task = tasks.find(t => t.id === input.dataset.taskId);
-    if(!task) return;
-    if(input.checked){ input.checked = false; openWorkerDialog(task); }
-    else { removeTaskCompletion(task); render(); }
-  }));
-}
-function currentRenderedDate(){ return state.view === 'calendar' && state.calendarDay ? state.calendarDay : today(); }
 
-function openWorkerDialog(task){
-  state.pendingTask = task; state.selectedWorker = null; workerOther.value = '';
-  const config = loadConfig();
-  workerOptions.innerHTML = config.employees.map(name => `<button type="button" data-worker="${name}">${name}</button>`).join('');
-  workerOptions.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { state.selectedWorker = b.dataset.worker; workerOther.value = b.dataset.worker === 'Otro' ? '' : b.dataset.worker; }));
-  workerDialog.showModal();
+function taskRow(task){
+  const completion = getCompletion(task.id);
+  return `
+    <label class="task-row ${completion ? 'done' : ''}" data-task-id="${escapeAttr(task.id)}">
+      <input type="checkbox" ${completion ? 'checked' : ''} />
+      <div class="task-main">
+        <div class="task-name">${task.important ? 'Importante: ' : ''}${task.task}</div>
+        <div class="task-meta">${task.room}${completion ? ` · Hecha por ${completion.hecho_por}` : ''}</div>
+      </div>
+    </label>
+  `;
 }
-confirmWorker.addEventListener('click', (e) => {
-  const task = state.pendingTask; if(!task) return;
-  const worker = (workerOther.value || state.selectedWorker || '').trim();
-  if(!worker){ e.preventDefault(); alert('Elegí o escribí quién realizó la tarea.'); return; }
-  saveTaskCompletion(task, worker);
-  state.pendingTask = null;
-  setTimeout(render, 0);
-});
 
 function renderCalendar(){
-  title.textContent = 'Calendario';
-  const month = state.selectedMonth;
-  const first = startOfMonth(month);
+  const first = startOfMonth(calendarCursor);
   const start = addDays(first, -((first.getDay()+6)%7)); // lunes
-  const days = Array.from({length:42},(_,i)=>addDays(start,i));
-  app.innerHTML = `<div class="toolbar"><button id="prev-month">‹</button><strong>${monthName(month)}</strong><button id="next-month">›</button></div><div class="calendar">${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d=>`<div class="dow">${d}</div>`).join('')}${days.map(renderDayCell).join('')}</div>`;
-  document.getElementById('prev-month').onclick = () => { state.selectedMonth = new Date(month.getFullYear(), month.getMonth()-1, 1); render(); };
-  document.getElementById('next-month').onclick = () => { state.selectedMonth = new Date(month.getFullYear(), month.getMonth()+1, 1); render(); };
+  const days = Array.from({length:42}, (_,i)=>addDays(start,i));
+  $('#calendarView').innerHTML = `
+    <div class="calendar-controls">
+      <button id="prevMonth">Anterior</button>
+      <h2>${cap(formatMonth(first))}</h2>
+      <button id="nextMonth">Siguiente</button>
+    </div>
+    <div class="calendar-grid">
+      ${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d=>`<div class="dow">${d}</div>`).join('')}
+      ${days.map(d => calendarDay(d, first)).join('')}
+    </div>
+  `;
+  $('#prevMonth').onclick = () => { calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth()-1, 1); renderCalendar(); };
+  $('#nextMonth').onclick = () => { calendarCursor = new Date(calendarCursor.getFullYear(), calendarCursor.getMonth()+1, 1); renderCalendar(); };
 }
-function renderDayCell(d){
-  const inMonth = d.getMonth() === state.selectedMonth.getMonth();
-  const tasks = getTasksForDate(d);
-  const summary = summarizeTasks(tasks);
-  return `<div class="day-cell ${sameDay(d,today())?'today':''} ${inMonth?'':'dim'}"><div class="day-num">${d.getDate()}</div><div class="day-state">${rooms.filter(r=>r.type==='flora').map(r=>`${shortRoom(r.name)}: ${roomCycle(r,d).label.replace('Inicio ','')}`).join('<br>')}</div><div class="day-tasks">${summary}</div></div>`;
+
+function calendarDay(date, monthRef){
+  const inMonth = date.getMonth() === monthRef.getMonth();
+  const isToday = dateKey(date) === dateKey(todayLocal());
+  const states = ROOMS.filter(r=>r.type==='flora').map(r => `${r.name.replace('Flora ','F')}: ${getRoomState(r,date).short}`).join('<br>');
+  const tasks = tasksForDate(date);
+  const important = tasks.filter(t=>t.important).map(t => `${t.task}: ${shortRoom(t.room)}`);
+  const normal = summarizeTasks(tasks.filter(t=>!t.important));
+  return `
+    <div class="calendar-day ${inMonth?'':'out'} ${isToday?'today':''}">
+      <div class="day-num">${date.getDate()}</div>
+      <div class="day-state">${states}</div>
+      <div class="day-items">
+        ${important.length ? `<b>Eventos</b><br>${important.slice(0,4).join('<br>')}<br>` : ''}
+        ${normal.length ? `<b>Tareas</b><br>${normal.join('<br>')}` : ''}
+      </div>
+    </div>`;
 }
+
 function summarizeTasks(tasks){
-  const important = ['Trasplante','Inicio flora','Cosecha','Enmienda','Schwazzing','Esquejes','Poda bajos','Redes','Calibrar riego','KNF','Fumigacion','Riego'];
-  const ordered = important.filter(t => tasks.some(x=>x.task===t));
-  return ordered.slice(0,6).join('<br>');
+  const map = {};
+  for (const t of tasks){ if (!map[t.task]) map[t.task] = []; map[t.task].push(shortRoom(t.room)); }
+  return Object.entries(map).map(([task, rooms]) => `${task}: ${rooms.join(', ')}`).slice(0,5);
 }
-function shortRoom(name){ return name.replace('Flora ','F'); }
+function shortRoom(name){ return name.replace('Flora ','F').replace('Veges','Veg').replace('Madres','Mad').replace('Esquejes','Esq'); }
 
 function renderRooms(){
-  title.textContent = 'Salas';
-  const d = today();
-  if(state.selectedRoom){
-    const room = rooms.find(r=>r.name===state.selectedRoom);
-    const c = roomCycle(room,d);
-    app.innerHTML = `<button class="secondary" id="back-rooms">← Volver</button><section class="panel"><h2 class="room-detail-title">${room.name}</h2><p class="muted">${c.label}</p>${renderRoomFacts(room,d)}</section><div class="section-title">Tareas de hoy</div>${renderTaskGroups(getTasksForDate(d).filter(t=>t.room===room.name))}`;
-    document.getElementById('back-rooms').onclick = () => { state.selectedRoom=null; render(); };
-    bindTaskInputs(); return;
+  const date = todayLocal();
+  $('#roomsView').innerHTML = `
+    <div id="roomsList" class="grid rooms">
+      ${ROOMS.map(room => {
+        const p = progressForRoom(room.name, date);
+        const state = getRoomState(room, date);
+        return `<button class="room-card room-button" data-room="${room.name}">
+          <div class="room-head"><div><div class="room-title">${room.name}</div><div class="room-stage">${state.label}</div></div></div>
+          <div class="progress"><span style="width:${p.pct}%"></span></div>
+          <div class="progress-text">${p.done}/${p.total} tareas hoy</div>
+        </button>`;
+      }).join('')}
+    </div>
+    <div id="roomDetail" class="room-detail"></div>
+  `;
+  $$('.room-button').forEach(btn => btn.onclick = () => showRoomDetail(btn.dataset.room));
+}
+
+function showRoomDetail(roomName){
+  const room = ROOMS.find(r=>r.name===roomName);
+  const date = todayLocal();
+  const state = getRoomState(room, date);
+  const next = nextImportantEvents(room, date, 5);
+  $('#roomsList').style.display = 'none';
+  $('#roomDetail').classList.add('active');
+  $('#roomDetail').innerHTML = `
+    <button class="back secondary" id="backRooms">Volver</button>
+    <article class="room-card">
+      <div class="room-title">${room.name}</div>
+      <div class="room-stage">${state.label}</div>
+      ${room.autoWater ? '<p><span class="badge">Riego automático</span></p>' : ''}
+      <div class="section-title">Tareas de hoy</div>
+      <div class="task-list">${tasksForDate(date).filter(t=>t.room===room.name).map(taskRow).join('') || '<p class="muted">Sin tareas hoy.</p>'}</div>
+      <div class="section-title">Próximos eventos</div>
+      <div class="task-list">${next.map(e=>`<div class="task-row"><div class="task-main"><div class="task-name">${e.task}</div><div class="task-meta">${formatLong(e.date)}</div></div></div>`).join('')}</div>
+    </article>
+  `;
+  $('#backRooms').onclick = () => { $('#roomDetail').classList.remove('active'); $('#roomsList').style.display = ''; };
+  bindTaskEvents();
+}
+
+function nextImportantEvents(room, fromDate, limit){
+  const events = [];
+  for (let i=0;i<180 && events.length<limit;i++){
+    const d = addDays(fromDate, i);
+    for (const t of tasksForDate(d).filter(t=>t.room===room.name && t.important)){
+      events.push({ date:d, task:t.task });
+      if (events.length>=limit) break;
+    }
   }
-  app.innerHTML = `<div class="list">${rooms.map(room => `<section class="room-card" data-room="${room.name}"><div class="room-head"><div><div class="room-title">${room.name}</div><div class="stage">${roomCycle(room,d).label}</div></div><span class="pill">Ver</span></div></section>`).join('')}</div>`;
-  app.querySelectorAll('.room-card').forEach(el => el.addEventListener('click', () => { state.selectedRoom = el.dataset.room; render(); }));
-}
-function renderRoomFacts(room,d){
-  if(room.type !== 'flora') return `<div class="kv"><span>Tipo</span><strong>${room.type}</strong></div><div class="kv"><span>Estado</span><strong>Permanente</strong></div>`;
-  const c = roomCycle(room,d);
-  const nexts = nextImportantDates(room,d).map(x=>`<div class="kv"><span>${x.name}</span><strong>${x.date.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit'})}</strong></div>`).join('');
-  return `<div class="kv"><span>Trasplante ciclo</span><strong>${c.cycleStart.toLocaleDateString('es-AR')}</strong></div><div class="kv"><span>Inicio flora</span><strong>${c.floraStart.toLocaleDateString('es-AR')}</strong></div>${nexts}`;
-}
-function nextImportantDates(room,d){
-  const c = roomCycle(room,d);
-  const candidates = [
-    {name:'Próxima enmienda', date:c.cycleStart},
-    {name:'Inicio flora / enmienda', date:c.floraStart},
-    {name:'Schwazzing', date:addDays(c.floraStart,14)},
-    {name:'Enmienda Flora S4', date:addDays(c.floraStart,21)},
-    {name:'Calibrar riego S7', date:addDays(c.floraStart,42)},
-    {name:'Cosecha', date:addDays(c.floraStart,56)}
-  ];
-  return candidates.filter(x => diffDays(x.date,d) >= 0).slice(0,4);
+  return events;
 }
 
-function loadConfig(){ try { return JSON.parse(localStorage.getItem(CONFIG_KEY)) || { employees: employeesDefault }; } catch { return { employees: employeesDefault }; } }
-function saveConfig(config){ localStorage.setItem(CONFIG_KEY, JSON.stringify(config)); }
 function renderSettings(){
-  title.textContent = 'Config';
-  const config = loadConfig();
-  app.innerHTML = `<section class="panel"><h3>Empleados V1</h3><p class="muted">Un nombre por línea. Se usa cuando se marca una tarea.</p><textarea id="employees" class="text-input" style="min-height:150px">${config.employees.join('\n')}</textarea><p><button id="save-config" class="primary">Guardar empleados</button></p></section><section class="panel"><h3>Versión</h3><p>Rainbows OS ${APP_VERSION}</p><p class="muted">Guardado local. Preparado para reemplazar saveTaskCompletion por Google Sheets.</p></section>`;
-  document.getElementById('save-config').onclick = () => { const employees = document.getElementById('employees').value.split('\n').map(x=>x.trim()).filter(Boolean); saveConfig({employees}); alert('Configuración guardada.'); render(); };
+  const list = workers();
+  $('#settingsView').innerHTML = `
+    <article class="panel">
+      <h2>Configuración</h2>
+      <p class="muted">V1 guarda datos localmente en este navegador. Más adelante esta función se reemplaza por Google Sheets.</p>
+      <div class="section-title">Empleados</div>
+      <textarea id="workersInput">${list.join('\n')}</textarea>
+      <button id="saveWorkers" class="primary">Guardar empleados</button>
+      <div class="section-title">Datos locales</div>
+      <button id="clearLocal" class="secondary">Borrar tareas marcadas en este dispositivo</button>
+    </article>
+  `;
+  $('#saveWorkers').onclick = () => { saveWorkers($('#workersInput').value.split('\n').map(x=>x.trim()).filter(Boolean)); alert('Empleados guardados.'); renderSettings(); };
+  $('#clearLocal').onclick = () => { if (confirm('¿Borrar todas las tareas marcadas en este dispositivo?')) { Object.keys(localStorage).filter(k=>k.startsWith('rainbows:')).forEach(k=>localStorage.removeItem(k)); render(); } };
 }
 
-document.querySelectorAll('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => { state.view = btn.dataset.view; state.selectedRoom=null; render(); }));
-if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.1').catch(()=>{})); }
+function bindTaskEvents(){
+  $$('.task-row input').forEach(input => {
+    input.onchange = (ev) => {
+      const row = ev.target.closest('.task-row');
+      const taskId = row.dataset.taskId;
+      const task = tasksForDate(activeDate).find(t=>t.id===taskId);
+      if (!task) return;
+      if (ev.target.checked){
+        ev.preventDefault();
+        ev.target.checked = false;
+        pendingTask = task;
+        openDoneDialog(task);
+      } else {
+        clearTaskCompletion(task);
+        render();
+      }
+    };
+  });
+}
+
+function openDoneDialog(task){
+  $('#dialogTask').textContent = `${task.task} · ${task.room}`;
+  $('#workerSelect').innerHTML = workers().map(w=>`<option value="${escapeAttr(w)}">${w}</option>`).join('');
+  $('#obsInput').value = '';
+  $('#doneDialog').showModal();
+}
+
+$('#confirmDoneBtn').addEventListener('click', (ev) => {
+  ev.preventDefault();
+  if (!pendingTask) return;
+  saveTaskCompletion(pendingTask, $('#workerSelect').value, $('#obsInput').value);
+  pendingTask = null;
+  $('#doneDialog').close();
+  render();
+});
+
+function groupBy(arr, key){ return arr.reduce((acc,x)=>{ const k=x[key]; (acc[k] ||= []).push(x); return acc; },{}); }
+function escapeAttr(s){ return String(s).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+$$('.tab').forEach(btn => btn.onclick = () => { currentView = btn.dataset.view; render(); });
+
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; $('#installBtn').classList.remove('hidden'); });
+$('#installBtn').onclick = async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); deferredPrompt = null; $('#installBtn').classList.add('hidden'); };
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.warn));
+}
+
 render();
