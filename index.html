@@ -3,90 +3,41 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#20382f" />
-  <title>Rainbows OS V1</title>
+  <title>Rainbows OS V2</title>
+  <meta name="theme-color" content="#111827" />
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="app-header">
+  <header class="topbar">
     <div>
-      <h1>Rainbows OS</h1>
-      <p id="todayLabel" class="muted"></p>
+      <div class="eyebrow">Rainbows OS</div>
+      <h1 id="screen-title">Hoy</h1>
+      <p id="today-label" class="muted"></p>
     </div>
-    <button id="installButton" class="ghost hidden">Instalar</button>
+    <div class="version">V2</div>
   </header>
 
-  <nav class="tabs" aria-label="Secciones principales">
-    <button class="tab active" data-view="today">Hoy</button>
-    <button class="tab" data-view="calendar">Calendario</button>
-    <button class="tab" data-view="rooms">Salas</button>
-    <button class="tab" data-view="settings">Config</button>
+  <main id="app"></main>
+
+  <nav class="bottom-nav" aria-label="Navegación principal">
+    <button data-view="today" class="active">Hoy</button>
+    <button data-view="calendar">Calendario</button>
+    <button data-view="rooms">Salas</button>
+    <button data-view="settings">Config</button>
   </nav>
 
-  <main>
-    <section id="view-today" class="view active-view">
-      <div class="summary-card">
-        <div>
-          <h2>Hoy</h2>
-          <p id="todaySummary" class="muted"></p>
-        </div>
-        <div class="progress-ring" id="todayProgress">0/0</div>
-      </div>
-      <div id="roomSummaryCards" class="room-grid"></div>
-      <h2>Tareas de hoy</h2>
-      <div id="todayTasks" class="task-list"></div>
-    </section>
-
-    <section id="view-calendar" class="view">
-      <div class="calendar-toolbar">
-        <button id="prevMonth" class="ghost">Anterior</button>
-        <h2 id="calendarTitle"></h2>
-        <button id="nextMonth" class="ghost">Siguiente</button>
-      </div>
-      <div class="calendar-weekdays">
-        <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
-      </div>
-      <div id="calendarGrid" class="calendar-grid"></div>
-    </section>
-
-    <section id="view-rooms" class="view">
-      <h2>Salas</h2>
-      <div id="roomsList" class="room-list"></div>
-      <div id="roomDetail" class="detail-card hidden"></div>
-    </section>
-
-    <section id="view-settings" class="view">
-      <h2>Configuración V1</h2>
-      <div class="settings-card">
-        <label for="employeeInput">Empleados / responsables</label>
-        <textarea id="employeeInput" rows="6"></textarea>
-        <button id="saveEmployees">Guardar empleados</button>
-        <p class="muted small">Un nombre por línea. Se usa cuando alguien marca una tarea como realizada.</p>
-      </div>
-      <div class="settings-card">
-        <h3>Estado de guardado</h3>
-        <p class="muted">Esta V1 guarda los tildes en este navegador usando localStorage. La función <code>saveTaskCompletion</code> quedó separada para conectar Google Sheets más adelante.</p>
-        <button id="exportData" class="ghost">Exportar historial local</button>
-        <button id="clearData" class="danger">Borrar tildes locales</button>
-      </div>
-    </section>
-  </main>
-
-  <div id="completionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-    <div class="modal-content">
-      <h3 id="modalTitle">¿Quién realizó la tarea?</h3>
-      <p id="modalTaskText" class="muted"></p>
-      <label for="employeeSelect">Responsable</label>
-      <select id="employeeSelect"></select>
-      <label for="completionNotes">Observaciones</label>
-      <textarea id="completionNotes" rows="3" placeholder="Opcional"></textarea>
-      <div class="modal-actions">
-        <button id="cancelCompletion" class="ghost">Cancelar</button>
-        <button id="confirmCompletion">Marcar realizada</button>
-      </div>
-    </div>
-  </div>
+  <dialog id="worker-dialog" class="dialog">
+    <form method="dialog">
+      <h3>¿Quién realizó esta tarea?</h3>
+      <div id="worker-options" class="worker-options"></div>
+      <input id="worker-other" class="text-input" placeholder="Otro nombre" />
+      <menu>
+        <button value="cancel" class="secondary">Cancelar</button>
+        <button id="confirm-worker" value="default" class="primary">Guardar</button>
+      </menu>
+    </form>
+  </dialog>
 
   <script src="app.js"></script>
 </body>

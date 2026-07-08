@@ -1,10 +1,1 @@
-{
-  "name": "Rainbows OS",
-  "short_name": "Rainbows OS",
-  "description": "Calendario y tareas de cultivo Rainbows.",
-  "start_url": "./",
-  "scope": "./",
-  "display": "standalone",
-  "background_color": "#f5f2eb",
-  "theme_color": "#20382f"
-}
+{"name":"Rainbows OS","short_name":"Rainbows OS","start_url":"./?v=2","display":"standalone","background_color":"#0b1120","theme_color":"#111827","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='42' fill='%23111827'/%3E%3Ccircle cx='96' cy='96' r='54' fill='%23f97316'/%3E%3Ctext x='96' y='108' text-anchor='middle' font-size='54' font-family='Arial' font-weight='700' fill='white'%3ER%3C/text%3E%3C/svg%3E","sizes":"192x192","type":"image/svg+xml"}]}

@@ -1,556 +1,167 @@
-/* Rainbows OS V1
-   - Sin frameworks.
-   - Persistencia local con localStorage.
-   - La función saveTaskCompletion queda separada para reemplazar luego por Google Sheets.
-*/
+/* Rainbows OS V2 - GitHub Pages / Vanilla JS / localStorage */
+const MS_DAY = 86400000;
+const STORAGE_KEY = 'rainbows_os_v2_completions';
+const EMPLOYEES_KEY = 'rainbows_os_v2_employees';
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const STORAGE_KEY = "rainbows_os_v1_completions";
-const EMPLOYEES_KEY = "rainbows_os_v1_employees";
+const state = { view:'today', selectedDate: todayISO(), calendarDate: new Date(), pendingTask:null };
 
-const DEFAULT_EMPLOYEES = ["Demian", "Empleado 1", "Empleado 2", "Empleado 3", "Otro"];
-
-const ROOMS = [
-  { name: "Flora 1", type: "flora", floraStart: "2026-05-20" }, // 2026-07-01 = Flora S7
-  { name: "Flora 2", type: "flora", floraStart: "2026-07-01" }, // 2026-07-01 = Flora S1
-  { name: "Flora 3", type: "flora", floraStart: "2026-05-20" }, // 2026-07-01 = Flora S7
-  { name: "Veges", type: "vege" },
-  { name: "Madres", type: "madres" }
+const rooms = [
+  { name:'Flora 1', type:'flora', transplant:'2026-04-30', autoWater:true },
+  { name:'Flora 2', type:'flora', transplant:'2026-06-10', autoWater:false },
+  { name:'Flora 3', type:'flora', transplant:'2026-05-20', autoWater:false },
+  { name:'Veges', type:'vege' },
+  { name:'Madres', type:'madres' }
 ];
 
-let state = {
-  view: "today",
-  calendarDate: startOfMonth(new Date()),
-  selectedRoom: null,
-  pendingCompletion: null
-};
-
-const els = {};
-
-document.addEventListener("DOMContentLoaded", () => {
-  cacheElements();
-  setupEvents();
-  setupPwa();
-  renderAll();
-});
-
-function cacheElements() {
-  els.todayLabel = document.getElementById("todayLabel");
-  els.todaySummary = document.getElementById("todaySummary");
-  els.todayProgress = document.getElementById("todayProgress");
-  els.roomSummaryCards = document.getElementById("roomSummaryCards");
-  els.todayTasks = document.getElementById("todayTasks");
-  els.calendarTitle = document.getElementById("calendarTitle");
-  els.calendarGrid = document.getElementById("calendarGrid");
-  els.roomsList = document.getElementById("roomsList");
-  els.roomDetail = document.getElementById("roomDetail");
-  els.employeeInput = document.getElementById("employeeInput");
-  els.employeeSelect = document.getElementById("employeeSelect");
-  els.modal = document.getElementById("completionModal");
-  els.modalTaskText = document.getElementById("modalTaskText");
-  els.completionNotes = document.getElementById("completionNotes");
-  els.installButton = document.getElementById("installButton");
+function defaultEmployees(){ return ['Demian','Empleado 1','Empleado 2','Empleado 3','Otro']; }
+function getEmployees(){ return JSON.parse(localStorage.getItem(EMPLOYEES_KEY) || JSON.stringify(defaultEmployees())); }
+function setEmployees(list){ localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(list)); }
+function getCompletions(){ return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+function setCompletions(data){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
+function taskKey(dateISO, room, task){ return `${dateISO}__${room}__${task}`; }
+function getCompletion(dateISO, room, task){ return getCompletions()[taskKey(dateISO, room, task)] || null; }
+function saveTaskCompletion({dateISO, room, task, done, worker, notes=''}){
+  // Punto preparado para reemplazar localStorage por Google Sheets más adelante.
+  const data = getCompletions();
+  const key = taskKey(dateISO, room, task);
+  if(done){ data[key] = {done:true, worker, notes, doneAt:new Date().toISOString()}; }
+  else { delete data[key]; }
+  setCompletions(data);
 }
 
-function setupEvents() {
-  document.querySelectorAll(".tab").forEach(tab => {
-    tab.addEventListener("click", () => switchView(tab.dataset.view));
-  });
+function parseISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function toISO(date){ return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`; }
+function todayISO(){ return toISO(new Date()); }
+function addDays(date, n){ const d=new Date(date); d.setDate(d.getDate()+n); return d; }
+function diffDays(a,b){ return Math.floor((parseISO(a)-parseISO(b))/MS_DAY); }
+function dayName(dateISO){ return ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][parseISO(dateISO).getDay()]; }
+function prettyDate(dateISO){ return parseISO(dateISO).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
 
-  document.getElementById("prevMonth").addEventListener("click", () => {
-    state.calendarDate = addMonths(state.calendarDate, -1);
-    renderCalendar();
-  });
-
-  document.getElementById("nextMonth").addEventListener("click", () => {
-    state.calendarDate = addMonths(state.calendarDate, 1);
-    renderCalendar();
-  });
-
-  document.getElementById("saveEmployees").addEventListener("click", () => {
-    const names = els.employeeInput.value.split("\n").map(s => s.trim()).filter(Boolean);
-    localStorage.setItem(EMPLOYEES_KEY, JSON.stringify(names.length ? names : DEFAULT_EMPLOYEES));
-    alert("Empleados guardados.");
-  });
-
-  document.getElementById("exportData").addEventListener("click", exportLocalData);
-  document.getElementById("clearData").addEventListener("click", () => {
-    if (confirm("¿Borrar todos los tildes guardados en este navegador?")) {
-      localStorage.removeItem(STORAGE_KEY);
-      renderAll();
-    }
-  });
-
-  document.getElementById("cancelCompletion").addEventListener("click", closeCompletionModal);
-  document.getElementById("confirmCompletion").addEventListener("click", confirmCompletion);
+function cycleInfo(room, dateISO){
+  if(room.type !== 'flora') return {label: room.name, stage:'permanente', week:null, dayInCycle:null};
+  const cycleLen = 77; // 11 semanas: 3 vegetación + 8 flora
+  let day = diffDays(dateISO, room.transplant);
+  day = ((day % cycleLen) + cycleLen) % cycleLen;
+  const week = Math.floor(day/7) + 1;
+  if(day < 21) return {stage:'vege', week, dayInCycle:day, label:`Vege S${week}`};
+  const floraWeek = Math.floor((day-21)/7) + 1;
+  return {stage:'flora', week:floraWeek, dayInCycle:day, label:`Flora S${floraWeek}`};
+}
+function isStartOfWeek(room, dateISO, stage, week){ const i=cycleInfo(room,dateISO); return i.stage===stage && i.week===week && i.dayInCycle % 7 === 0; }
+function isTransplantDay(room,dateISO){ const i=cycleInfo(room,dateISO); return room.type==='flora' && i.dayInCycle===0; }
+function isDayAfterTransplant(room,dateISO){ const i=cycleInfo(room,dateISO); return room.type==='flora' && i.dayInCycle===1; }
+function isStartFlora(room,dateISO){ const i=cycleInfo(room,dateISO); return room.type==='flora' && i.dayInCycle===21; }
+function isTuesdayBeforeFlora(room,dateISO){
+  if(room.type !== 'flora') return false;
+  const target = addDays(parseISO(dateISO), 1);
+  return dayName(dateISO)==='martes' && isStartFlora(room, toISO(target));
 }
 
-function setupPwa() {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").catch(err => console.warn("Service worker no registrado", err));
-  }
+function tasksForRoom(room, dateISO){
+  const tasks=[]; const dname=dayName(dateISO); const info=cycleInfo(room,dateISO);
+  const add=(name, kind='normal')=>tasks.push({room:room.name, task:name, kind});
 
-  let deferredPrompt = null;
-  window.addEventListener("beforeinstallprompt", event => {
-    event.preventDefault();
-    deferredPrompt = event;
-    els.installButton.classList.remove("hidden");
-  });
-
-  els.installButton.addEventListener("click", async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    await deferredPrompt.userChoice;
-    deferredPrompt = null;
-    els.installButton.classList.add("hidden");
-  });
-}
-
-function switchView(view) {
-  state.view = view;
-  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.view === view));
-  document.querySelectorAll(".view").forEach(v => v.classList.remove("active-view"));
-  document.getElementById(`view-${view}`).classList.add("active-view");
-  renderAll();
-}
-
-function renderAll() {
-  const today = todayLocal();
-  els.todayLabel.textContent = formatLongDate(today);
-  renderToday();
-  renderCalendar();
-  renderRooms();
-  renderSettings();
-}
-
-function renderToday() {
-  const date = todayLocal();
-  const dayData = buildDayData(date);
-  const tasks = dayData.tasks;
-  const doneCount = tasks.filter(isTaskDone).length;
-
-  els.todaySummary.textContent = `${tasks.length} tareas programadas. ${doneCount} realizadas, ${tasks.length - doneCount} pendientes.`;
-  els.todayProgress.textContent = `${doneCount}/${tasks.length}`;
-
-  els.roomSummaryCards.innerHTML = ROOMS.map(room => {
-    const roomTasks = tasks.filter(t => t.sala === room.name);
-    const roomDone = roomTasks.filter(isTaskDone).length;
-    const percent = roomTasks.length ? Math.round((roomDone / roomTasks.length) * 100) : 100;
-    const status = dayData.statuses.find(s => s.sala === room.name)?.estado || "Permanente";
-    return `
-      <article class="room-card" data-room="${escapeHtml(room.name)}">
-        <div class="room-card-header">
-          <h3>${escapeHtml(room.name)}</h3>
-          <span class="badge">${escapeHtml(status)}</span>
-        </div>
-        <p class="muted small">${roomDone}/${roomTasks.length} tareas realizadas</p>
-        <div class="progress-bar"><div style="width:${percent}%"></div></div>
-      </article>
-    `;
-  }).join("");
-
-  els.roomSummaryCards.querySelectorAll(".room-card").forEach(card => {
-    card.addEventListener("click", () => {
-      state.selectedRoom = card.dataset.room;
-      switchView("rooms");
-    });
-  });
-
-  renderTaskList(els.todayTasks, tasks);
-}
-
-function renderTaskList(container, tasks) {
-  if (!tasks.length) {
-    container.innerHTML = `<p class="muted">No hay tareas programadas.</p>`;
-    return;
-  }
-
-  container.innerHTML = tasks.map(task => {
-    const completion = getCompletion(task);
-    const checked = completion ? "checked" : "";
-    const doneClass = completion ? "done" : "";
-    const doneInfo = completion ? `<div class="done-info">Realizada por ${escapeHtml(completion.hechoPor)} · ${escapeHtml(formatTime(new Date(completion.hechoEn)))}${completion.observaciones ? ` · ${escapeHtml(completion.observaciones)}` : ""}</div>` : "";
-    return `
-      <label class="task-card ${doneClass}">
-        <input type="checkbox" data-task-id="${escapeHtml(task.id)}" ${checked} />
-        <div>
-          <strong>${escapeHtml(task.tarea)}</strong>
-          <div class="task-meta">
-            <span>${escapeHtml(task.sala)}</span>
-            <span>${escapeHtml(task.tipo)}</span>
-          </div>
-          ${doneInfo}
-        </div>
-      </label>
-    `;
-  }).join("");
-
-  container.querySelectorAll("input[type='checkbox']").forEach(input => {
-    input.addEventListener("change", () => {
-      const task = tasks.find(t => t.id === input.dataset.taskId);
-      if (!task) return;
-      if (input.checked) {
-        input.checked = false;
-        openCompletionModal(task);
-      } else {
-        removeTaskCompletion(task);
-        renderAll();
-      }
-    });
-  });
-}
-
-function renderCalendar() {
-  const month = state.calendarDate;
-  els.calendarTitle.textContent = month.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
-  const days = calendarDaysForMonth(month);
-
-  els.calendarGrid.innerHTML = days.map(date => {
-    const data = buildDayData(date);
-    const isCurrentMonth = date.getMonth() === month.getMonth();
-    const todayClass = isSameDate(date, todayLocal()) ? "today" : "";
-    const otherClass = isCurrentMonth ? "" : "other-month";
-    const floraStatuses = data.statuses.filter(s => s.tipo === "flora");
-    const events = data.events;
-    const groupedTasks = summarizeTasksForCalendar(data.tasks);
-    return `
-      <div class="day-cell ${todayClass} ${otherClass}">
-        <div class="day-number">${date.getDate()}</div>
-        <div class="day-section">
-          ${floraStatuses.map(s => `<div class="day-line">${shortRoom(s.sala)}: ${escapeHtml(s.estado)}</div>`).join("")}
-        </div>
-        ${events.length ? `<div class="day-section"><strong>Eventos</strong>${events.slice(0, 4).map(e => `<div class="day-line">${escapeHtml(e)}</div>`).join("")}</div>` : ""}
-        <div class="day-section"><strong>Tareas</strong>${groupedTasks.map(t => `<div class="day-line">${escapeHtml(t)}</div>`).join("")}</div>
-      </div>
-    `;
-  }).join("");
-}
-
-function renderRooms() {
-  const date = todayLocal();
-  const dayData = buildDayData(date);
-  const tasks = dayData.tasks;
-
-  els.roomsList.innerHTML = ROOMS.map(room => {
-    const status = dayData.statuses.find(s => s.sala === room.name)?.estado || "Permanente";
-    const roomTasks = tasks.filter(t => t.sala === room.name);
-    const done = roomTasks.filter(isTaskDone).length;
-    return `
-      <article class="room-card" data-room="${escapeHtml(room.name)}">
-        <div class="room-card-header">
-          <h3>${escapeHtml(room.name)}</h3>
-          <span class="badge">${escapeHtml(status)}</span>
-        </div>
-        <p class="muted small">Hoy: ${done}/${roomTasks.length} tareas realizadas</p>
-      </article>
-    `;
-  }).join("");
-
-  els.roomsList.querySelectorAll(".room-card").forEach(card => {
-    card.addEventListener("click", () => {
-      state.selectedRoom = card.dataset.room;
-      renderRoomDetail(state.selectedRoom);
-    });
-  });
-
-  if (state.selectedRoom) renderRoomDetail(state.selectedRoom);
-}
-
-function renderRoomDetail(roomName) {
-  const room = ROOMS.find(r => r.name === roomName);
-  if (!room) return;
-  const today = todayLocal();
-  const status = getRoomStatus(room, today);
-  const todayTasks = buildDayData(today).tasks.filter(t => t.sala === room.name);
-  const nextTasks = findNextRelevantTasks(room, today, 45);
-
-  els.roomDetail.classList.remove("hidden");
-  els.roomDetail.innerHTML = `
-    <h2>${escapeHtml(room.name)}</h2>
-    <div class="detail-grid">
-      <div class="detail-row"><span>Estado actual</span><strong>${escapeHtml(status.estado)}</strong></div>
-      <div class="detail-row"><span>Tipo</span><strong>${escapeHtml(room.type)}</strong></div>
-      <div class="detail-row"><span>Tareas de hoy</span><strong>${todayTasks.length}</strong></div>
-    </div>
-    <h3>Tareas de hoy</h3>
-    <div id="roomTodayTasks" class="task-list"></div>
-    <h3>Próximas tareas relevantes</h3>
-    <div class="detail-grid">
-      ${nextTasks.map(item => `<div class="detail-row"><span>${escapeHtml(formatShortDate(item.date))}</span><strong>${escapeHtml(item.tarea)}</strong></div>`).join("") || `<p class="muted">No se encontraron próximas tareas especiales.</p>`}
-    </div>
-  `;
-  renderTaskList(document.getElementById("roomTodayTasks"), todayTasks);
-}
-
-function renderSettings() {
-  els.employeeInput.value = getEmployees().join("\n");
-}
-
-function buildDayData(date) {
-  const statuses = ROOMS.map(room => getRoomStatus(room, date));
-  const tasks = [];
-  const events = [];
-
-  for (const room of ROOMS) {
-    const status = getRoomStatus(room, date);
-    const roomTasks = getTasksForRoom(room, status, date);
-    tasks.push(...roomTasks);
-    events.push(...getEventsForRoom(room, status, date));
-  }
-
-  return { date: toDateKey(date), statuses, tasks: dedupeTasks(tasks), events: [...new Set(events)] };
-}
-
-function getRoomStatus(room, date) {
-  if (room.type !== "flora") {
-    return { sala: room.name, tipo: room.type, etapa: room.type, semana: null, dayInCycle: null, estado: "Permanente" };
-  }
-
-  const floraStart = parseDate(room.floraStart);
-  const transplantDate = addDays(floraStart, -21);
-  const rawDay = diffDays(transplantDate, date);
-  const dayInCycle = mod(rawDay, 77);
-
-  let etapa, semana, estado;
-  if (dayInCycle < 21) {
-    etapa = "vege";
-    semana = Math.floor(dayInCycle / 7) + 1;
-    estado = `Vege S${semana}`;
+  if(room.type==='flora'){
+    if(isTransplantDay(room,dateISO)) { add('Trasplante','event'); add('Enmienda','important'); }
+    if(isDayAfterTransplant(room,dateISO)) add('Redes','important');
+    if(isTuesdayBeforeFlora(room,dateISO)) { add('Esquejes','important'); add('Poda bajos','important'); }
+    if(isStartFlora(room,dateISO)) { add('Inicio flora','event'); add('Enmienda','important'); }
+    if(isStartOfWeek(room,dateISO,'flora',3)) add('Schwazzing','important');
+    if(isStartOfWeek(room,dateISO,'flora',4)) add('Enmienda','important');
+    if(room.name==='Flora 1'){
+      if(isTransplantDay(room,dateISO) || isStartFlora(room,dateISO) || isStartOfWeek(room,dateISO,'flora',7)) add('Calibrar riego','important');
+    } else add('Riego');
+    if(['lunes','miercoles','viernes'].includes(dname) && info.stage==='flora' && info.week<=3) add('Fumigacion');
+    if(dname==='jueves' && info.stage==='flora' && info.week<=6) add('KNF');
   } else {
-    etapa = "flora";
-    semana = Math.floor((dayInCycle - 21) / 7) + 1;
-    estado = `Flora S${semana}`;
+    add('Riego');
+    if(['lunes','miercoles','viernes'].includes(dname)) add('Fumigacion');
+    if(dname==='jueves') add('KNF');
   }
-
-  const dayInWeek = dayInCycle % 7;
-  const isWeekStart = dayInWeek === 0;
-  const isTransplantDay = dayInCycle === 0;
-  const isFloraStartDay = dayInCycle === 21;
-  const isCycleLastDay = dayInCycle === 76;
-
-  return { sala: room.name, tipo: room.type, etapa, semana, dayInCycle, dayInWeek, isWeekStart, isTransplantDay, isFloraStartDay, isCycleLastDay, estado };
-}
-
-function getTasksForRoom(room, status, date) {
-  const dayName = getSpanishWeekday(date);
-  const tasks = [];
-
-  addTask(tasks, date, room.name, "Riego", "diaria");
-
-  if (room.type === "vege" || room.type === "madres") {
-    if (["lunes", "miercoles", "viernes"].includes(dayName)) addTask(tasks, date, room.name, "Fumigacion", "sanidad");
-    if (dayName === "jueves") addTask(tasks, date, room.name, "KNF", "fertirriego");
-    return tasks;
-  }
-
-  if (room.type !== "flora") return tasks;
-
-  if (["lunes", "miercoles", "viernes"].includes(dayName) && status.etapa === "flora" && status.semana <= 3) {
-    addTask(tasks, date, room.name, "Fumigacion", "sanidad");
-  }
-
-  if (dayName === "jueves" && status.etapa === "flora" && status.semana <= 6) {
-    addTask(tasks, date, room.name, "KNF", "fertirriego");
-  }
-
-  if (status.isTransplantDay) {
-    addTask(tasks, date, room.name, "Trasplante", "evento");
-    addTask(tasks, date, room.name, "Enmienda", "nutricion");
-  }
-
-  if (status.dayInCycle === 1) {
-    addTask(tasks, date, room.name, "Redes", "manejo");
-  }
-
-  if (status.isFloraStartDay) {
-    addTask(tasks, date, room.name, "Inicio Flora", "evento");
-    addTask(tasks, date, room.name, "Enmienda", "nutricion");
-  }
-
-  if (status.etapa === "flora" && status.semana === 3 && status.isWeekStart) {
-    addTask(tasks, date, room.name, "Schwazzing", "poda");
-  }
-
-  if (status.etapa === "flora" && status.semana === 4 && status.isWeekStart) {
-    addTask(tasks, date, room.name, "Enmienda", "nutricion");
-  }
-
-  // Martes previo al inicio de Flora S1: día 20 del ciclo, si cae martes según la regla definida.
-  if (status.dayInCycle === 20 && dayName === "martes") {
-    addTask(tasks, date, room.name, "Esquejes", "propagacion");
-    addTask(tasks, date, room.name, "Poda bajos", "poda");
-  }
-
-  if (status.isCycleLastDay) {
-    addTask(tasks, date, room.name, "Cosecha", "evento");
-  }
-
   return tasks;
 }
-
-function getEventsForRoom(room, status, date) {
-  if (room.type !== "flora") return [];
-  const events = [];
-  if (status.isTransplantDay) events.push(`Trasplante: ${shortRoom(room.name)}`);
-  if (status.isFloraStartDay) events.push(`Inicio Flora: ${shortRoom(room.name)}`);
-  if (status.isCycleLastDay) events.push(`Cosecha: ${shortRoom(room.name)}`);
-  return events;
+function allTasks(dateISO){ return rooms.flatMap(r => tasksForRoom(r,dateISO)); }
+function eventsForRoom(room,dateISO){ return tasksForRoom(room,dateISO).filter(t=>['event','important'].includes(t.kind)).map(t=>t.task); }
+function progressForRoom(room,dateISO){
+  const tasks=tasksForRoom(room,dateISO); const done=tasks.filter(t=>getCompletion(dateISO,t.room,t.task)?.done).length;
+  return {total:tasks.length, done, pct:tasks.length ? Math.round(done/tasks.length*100) : 100};
 }
 
-function addTask(tasks, date, sala, tarea, tipo) {
-  const id = `${toDateKey(date)}|${sala}|${tarea}`;
-  tasks.push({ id, fecha: toDateKey(date), sala, tarea, tipo });
+function render(){
+  document.querySelectorAll('.bottom-nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===state.view));
+  document.getElementById('today-label').textContent = prettyDate(state.selectedDate);
+  const title = {today:'Hoy',calendar:'Calendario',rooms:'Salas',settings:'Configuración'}[state.view];
+  document.getElementById('screen-title').textContent=title;
+  if(state.view==='today') renderToday();
+  if(state.view==='calendar') renderCalendar();
+  if(state.view==='rooms') renderRooms();
+  if(state.view==='settings') renderSettings();
 }
-
-function dedupeTasks(tasks) {
-  const map = new Map();
-  for (const task of tasks) map.set(task.id, task);
-  return [...map.values()].sort((a, b) => {
-    const roomOrder = ROOMS.findIndex(r => r.name === a.sala) - ROOMS.findIndex(r => r.name === b.sala);
-    if (roomOrder !== 0) return roomOrder;
-    return a.tarea.localeCompare(b.tarea, "es");
-  });
+function renderToday(){
+  const app=document.getElementById('app'); const dateISO=state.selectedDate; const tasks=allTasks(dateISO);
+  const done=tasks.filter(t=>getCompletion(dateISO,t.room,t.task)?.done).length;
+  app.innerHTML = `<section class="summary"><div class="card"><div class="muted">Tareas</div><div class="big">${tasks.length}</div></div><div class="card"><div class="muted">Realizadas</div><div class="big">${done}</div></div><div class="card"><div class="muted">Pendientes</div><div class="big">${tasks.length-done}</div></div><div class="card"><div class="muted">Fecha</div><div class="big">${parseISO(dateISO).getDate()}</div></div></section><section class="grid rooms">${rooms.map(r=>roomCard(r,dateISO,true)).join('')}</section>`;
+  bindTaskChecks();
 }
-
-function summarizeTasksForCalendar(tasks) {
-  const byTask = new Map();
-  for (const task of tasks) {
-    if (!byTask.has(task.tarea)) byTask.set(task.tarea, []);
-    byTask.get(task.tarea).push(shortRoom(task.sala));
+function roomCard(room,dateISO,showTasks=false){
+  const info=cycleInfo(room,dateISO); const progress=progressForRoom(room,dateISO); const tasks=tasksForRoom(room,dateISO);
+  return `<article class="card"><div class="room-head"><div><div class="room-title">${room.name}</div><div class="stage">${info.label}${room.autoWater?' · riego automático':''}</div></div><span class="pill ${progress.total-progress.done?'important':''}">${progress.done}/${progress.total}</span></div><div class="progress-wrap"><div class="progress-meta"><span>Progreso</span><span>${progress.pct}%</span></div><div class="progress"><div class="progress-bar" style="width:${progress.pct}%"></div></div></div>${showTasks?`<div class="task-list">${tasks.map(t=>taskItem(t,dateISO)).join('') || '<p class="muted">Sin tareas para hoy.</p>'}</div>`:''}</article>`;
+}
+function taskItem(t,dateISO){
+  const c=getCompletion(dateISO,t.room,t.task); const checked=c?.done?'checked':''; const done=c?.done?'done':'';
+  const sub=c?.done ? `Hecha por ${escapeHtml(c.worker || 'sin nombre')} · ${new Date(c.doneAt).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}` : t.kind==='important'?'Tarea importante':t.kind==='event'?'Evento del ciclo':'Pendiente';
+  return `<label class="task ${done}"><input type="checkbox" ${checked} data-date="${dateISO}" data-room="${escapeAttr(t.room)}" data-task="${escapeAttr(t.task)}"><div><div class="task-name">${t.task}</div><div class="task-sub">${sub}</div></div></label>`;
+}
+function renderCalendar(){
+  const app=document.getElementById('app'); const base=new Date(state.calendarDate.getFullYear(),state.calendarDate.getMonth(),1);
+  const monthLabel=base.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+  const firstDay=(base.getDay()+6)%7; const daysInMonth=new Date(base.getFullYear(),base.getMonth()+1,0).getDate();
+  let cells=[]; for(let i=0;i<firstDay;i++) cells.push('<div class="day empty"></div>');
+  for(let d=1; d<=daysInMonth; d++){
+    const iso=toISO(new Date(base.getFullYear(),base.getMonth(),d)); const today=iso===todayISO()?'today':'';
+    const roomLines=rooms.filter(r=>r.type==='flora').map(r=>`${r.name.replace('Flora ','F')}: ${cycleInfo(r,iso).label.replace('Flora ','Fl ')}`).join('<br>');
+    const taskNames=[...new Set(allTasks(iso).map(t=>t.task))].slice(0,5).join(', ');
+    cells.push(`<button class="day ${today}" data-date="${iso}"><div class="day-num">${d}</div><div class="day-lines">${roomLines}<div class="tasks">${taskNames}</div></div></button>`);
   }
-  return [...byTask.entries()].map(([name, rooms]) => `${name}: ${rooms.join(", ")}`);
+  app.innerHTML=`<div class="toolbar"><button class="secondary" id="prev-month">Anterior</button><strong>${capitalize(monthLabel)}</strong><button class="secondary" id="next-month">Siguiente</button></div><div class="calendar"><div class="dow">Lun</div><div class="dow">Mar</div><div class="dow">Mié</div><div class="dow">Jue</div><div class="dow">Vie</div><div class="dow">Sáb</div><div class="dow">Dom</div>${cells.join('')}</div>`;
+  document.getElementById('prev-month').onclick=()=>{state.calendarDate=new Date(base.getFullYear(),base.getMonth()-1,1);render();};
+  document.getElementById('next-month').onclick=()=>{state.calendarDate=new Date(base.getFullYear(),base.getMonth()+1,1);render();};
+  document.querySelectorAll('.day[data-date]').forEach(btn=>btn.onclick=()=>{state.selectedDate=btn.dataset.date; state.view='today'; render();});
 }
-
-function openCompletionModal(task) {
-  state.pendingCompletion = task;
-  els.modalTaskText.textContent = `${task.fecha} · ${task.sala} · ${task.tarea}`;
-  els.completionNotes.value = "";
-  els.employeeSelect.innerHTML = getEmployees().map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
-  els.modal.classList.remove("hidden");
+function renderRooms(){
+  const app=document.getElementById('app'); const dateISO=state.selectedDate;
+  app.innerHTML=`<section class="grid rooms">${rooms.map(r=>`<article class="card room-detail">${roomCard(r,dateISO,false)}<h3>Próximas tareas</h3><div class="task-list">${nextTasks(r,dateISO).map(x=>`<div class="task"><div><div class="task-name">${x.task}</div><div class="task-sub">${prettyDate(x.date)}</div></div></div>`).join('')}</div></article>`).join('')}</section>`;
 }
-
-function closeCompletionModal() {
-  state.pendingCompletion = null;
-  els.modal.classList.add("hidden");
+function nextTasks(room,fromISO){
+  const out=[]; for(let i=0;i<80 && out.length<5;i++){ const iso=toISO(addDays(parseISO(fromISO),i)); const tasks=tasksForRoom(room,iso).filter(t=>t.kind==='important'||t.kind==='event'||t.task==='KNF'||t.task==='Fumigacion'); tasks.forEach(t=>out.push({date:iso,task:t.task})); }
+  return out;
 }
-
-function confirmCompletion() {
-  const task = state.pendingCompletion;
-  if (!task) return;
-  const hechoPor = els.employeeSelect.value;
-  const observaciones = els.completionNotes.value.trim();
-  saveTaskCompletion(task, { hechoPor, observaciones });
-  closeCompletionModal();
-  renderAll();
+function renderSettings(){
+  const employees=getEmployees();
+  document.getElementById('app').innerHTML=`<section class="card"><h2>Empleados</h2><p class="muted">Un nombre por línea. Se usan al marcar tareas.</p><textarea id="employees-box" rows="7">${employees.join('\n')}</textarea><button class="primary" id="save-employees">Guardar empleados</button></section><section class="card"><h2>Datos locales</h2><p class="muted">Los checks de esta V1 se guardan en este navegador. Más adelante se conecta Google Sheets.</p><button class="secondary" id="clear-local">Borrar checks locales</button></section>`;
+  document.getElementById('save-employees').onclick=()=>{setEmployees(document.getElementById('employees-box').value.split('\n').map(x=>x.trim()).filter(Boolean)); alert('Empleados guardados');};
+  document.getElementById('clear-local').onclick=()=>{ if(confirm('¿Borrar todos los checks locales?')){ localStorage.removeItem(STORAGE_KEY); render(); }};
 }
-
-// Punto de reemplazo futuro: acá se conectará Google Sheets / Apps Script.
-function saveTaskCompletion(task, { hechoPor, observaciones }) {
-  const completions = loadCompletions();
-  completions[task.id] = {
-    taskId: task.id,
-    fecha: task.fecha,
-    sala: task.sala,
-    tarea: task.tarea,
-    estado: "realizada",
-    hechoPor,
-    hechoEn: new Date().toISOString(),
-    observaciones: observaciones || ""
-  };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(completions));
+function bindTaskChecks(){ document.querySelectorAll('.task input[type=checkbox]').forEach(cb=>cb.onchange=(e)=>handleTaskToggle(e.target)); }
+function handleTaskToggle(cb){
+  const data={dateISO:cb.dataset.date, room:cb.dataset.room, task:cb.dataset.task};
+  if(cb.checked){ state.pendingTask={...data, cb}; openWorkerDialog(); }
+  else { saveTaskCompletion({...data, done:false}); render(); }
 }
-
-function removeTaskCompletion(task) {
-  const completions = loadCompletions();
-  delete completions[task.id];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(completions));
+function openWorkerDialog(){
+  const dialog=document.getElementById('worker-dialog'); const box=document.getElementById('worker-options'); const employees=getEmployees();
+  box.innerHTML=employees.map((e,i)=>`<label><input type="radio" name="worker" value="${escapeAttr(e)}" ${i===0?'checked':''}> ${escapeHtml(e)}</label>`).join('');
+  document.getElementById('worker-other').value=''; dialog.showModal();
 }
-
-function isTaskDone(task) {
-  return Boolean(getCompletion(task));
-}
-
-function getCompletion(task) {
-  return loadCompletions()[task.id] || null;
-}
-
-function loadCompletions() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
-  catch { return {}; }
-}
-
-function getEmployees() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(EMPLOYEES_KEY) || "null");
-    return Array.isArray(stored) && stored.length ? stored : DEFAULT_EMPLOYEES;
-  } catch {
-    return DEFAULT_EMPLOYEES;
-  }
-}
-
-function findNextRelevantTasks(room, fromDate, maxDays) {
-  const relevant = new Set(["Enmienda", "Schwazzing", "Redes", "Esquejes", "Poda bajos", "Inicio Flora", "Trasplante", "Cosecha", "KNF", "Fumigacion"]);
-  const found = [];
-  for (let i = 1; i <= maxDays; i++) {
-    const date = addDays(fromDate, i);
-    const tasks = buildDayData(date).tasks.filter(t => t.sala === room.name && relevant.has(t.tarea));
-    for (const task of tasks) found.push({ date, tarea: task.tarea });
-    if (found.length >= 6) break;
-  }
-  return found.slice(0, 6);
-}
-
-function exportLocalData() {
-  const data = loadCompletions();
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `rainbows-os-historial-${toDateKey(todayLocal())}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function calendarDaysForMonth(monthDate) {
-  const first = startOfMonth(monthDate);
-  const firstWeekday = (first.getDay() + 6) % 7; // lunes = 0
-  const start = addDays(first, -firstWeekday);
-  return Array.from({ length: 42 }, (_, i) => addDays(start, i));
-}
-
-function parseDate(str) {
-  const [y, m, d] = str.split("-").map(Number);
-  return new Date(y, m - 1, d);
-}
-function todayLocal() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-}
-function startOfMonth(date) { return new Date(date.getFullYear(), date.getMonth(), 1); }
-function addDays(date, days) { const d = new Date(date); d.setDate(d.getDate() + days); return d; }
-function addMonths(date, months) { return new Date(date.getFullYear(), date.getMonth() + months, 1); }
-function diffDays(start, end) { return Math.floor((stripTime(end) - stripTime(start)) / DAY_MS); }
-function stripTime(date) { return new Date(date.getFullYear(), date.getMonth(), date.getDate()); }
-function mod(n, m) { return ((n % m) + m) % m; }
-function isSameDate(a, b) { return toDateKey(a) === toDateKey(b); }
-function toDateKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-}
-function getSpanishWeekday(date) {
-  return ["domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado"][date.getDay()];
-}
-function formatLongDate(date) {
-  return date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
-}
-function formatShortDate(date) {
-  return date.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit" });
-}
-function formatTime(date) {
-  return date.toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-}
-function shortRoom(name) {
-  return name.replace("Flora ", "F").replace("Veges", "Veg").replace("Madres", "Mad");
-}
-function escapeHtml(value) {
-  return String(value).replace(/[&<>'"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[c]));
-}
+document.getElementById('confirm-worker').addEventListener('click',(ev)=>{
+  ev.preventDefault(); const pending=state.pendingTask; if(!pending) return;
+  const selected=document.querySelector('input[name="worker"]:checked')?.value || ''; const other=document.getElementById('worker-other').value.trim(); const worker=other || selected;
+  saveTaskCompletion({...pending, done:true, worker}); state.pendingTask=null; document.getElementById('worker-dialog').close(); render();
+});
+document.getElementById('worker-dialog').addEventListener('close',()=>{ if(state.pendingTask){ state.pendingTask.cb.checked=false; state.pendingTask=null; render(); }});
+document.querySelectorAll('.bottom-nav button').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;render();});
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+function escapeAttr(s){ return escapeHtml(s).replace(/'/g,'&#39;'); }
+function capitalize(s){ return s.charAt(0).toUpperCase()+s.slice(1); }
+if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+render();

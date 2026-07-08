@@ -1,36 +1,24 @@
-# Rainbows OS V1
+# Rainbows OS V2
 
-App web/PWA simple para GitHub Pages.
+App web/PWA para GitHub Pages.
 
-## Qué incluye esta V1
+## Cambios V2
+- Pantalla Hoy agrupada por sala.
+- Barras de progreso naranjas.
+- Checkboxes con pregunta “¿Quién realizó esta tarea?”.
+- Guardado local en el navegador.
+- Flora 1 no tiene riego manual diario.
+- Flora 1 tiene “Calibrar riego” en: trasplante, inicio flora e inicio Flora S7.
+- Service worker con cache V2 para forzar actualización.
 
-- Pantalla Hoy.
-- Calendario mensual.
-- Pantalla de salas.
-- Configuración básica de empleados.
-- Tareas con checkbox.
-- Al marcar una tarea, pregunta quién la realizó.
-- Guarda los tildes localmente en el navegador con `localStorage`.
-- No conecta Google Sheets todavía.
-- La función `saveTaskCompletion` está separada en `app.js` para conectar Google Sheets más adelante.
+## Subida a GitHub Pages
+Subir/reemplazar en la raíz del repositorio:
+- index.html
+- styles.css
+- app.js
+- manifest.json
+- sw.js
+- README.md
 
-## Archivos
-
-- `index.html`
-- `styles.css`
-- `app.js`
-- `manifest.json`
-- `sw.js`
-- `README.md`
-
-## Cómo actualizar GitHub Pages
-
-1. Descomprimir este ZIP.
-2. Entrar a la carpeta descomprimida.
-3. Subir/reemplazar estos archivos en el repositorio de GitHub Pages.
-4. Confirmar con **Commit changes**.
-5. GitHub Pages se actualiza solo.
-
-## Importante
-
-Los tildes de tareas quedan guardados solo en el navegador/dispositivo donde se usan. En la próxima etapa se puede reemplazar esa persistencia por Google Sheets.
+Después abrir:
+https://demianstagnaro.github.io/Rainbows-Cultivo-appx/?v=2
