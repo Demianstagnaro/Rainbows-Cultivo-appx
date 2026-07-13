@@ -27,12 +27,25 @@ Subir/reemplazar en la raíz del repositorio:
 - README.md
 
 Luego abrir:
-`https://demianstagnaro.github.io/Rainbows-Cultivo-appx/?v=2.1`
+`https://demianstagnaro.github.io/Rainbows-Cultivo-appx/?v=2.4`
 
 
 ## V2.3
-- Mantiene la disposición visual de V2.1.
+- Mantiene la disposición visual de V2.3.
 - Flora 3 sincronizada con Flora 1.
 - Agrega sala Esquejes.
 - Quita cambios de layout de V2.2.
 - En tarjetas de Hoy muestra Semana N en lugar de repetir sala/etapa larga.
+
+
+## Cambios V2.4
+- Empleados: Cone, Chomi, Pata, Lua, Mar, Eric y Tortu.
+- Esquejes muestra el número de día desde el ingreso.
+- Esquejes solo tiene la tarea diaria Mantenimiento mientras está ocupada.
+- Esquejes queda vacía dos días después de la cosecha, al pasar a Veges.
+- Se quitó el indicador visible de versión de la pantalla Hoy.
+
+
+## V2.5
+- Permite seleccionar desde una persona hasta todos los empleados al completar una tarea.
+- Mantiene compatibilidad con tareas ya guardadas con un solo responsable.

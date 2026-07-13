@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Rainbows OS V2.1</title>
+  <title>Rainbows OS</title>
   <meta name="theme-color" content="#111827" />
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
@@ -15,7 +15,6 @@
       <h1 id="screen-title">Hoy</h1>
       <p id="today-label" class="muted"></p>
     </div>
-    <div class="version">V2.1</div>
   </header>
 
   <main id="app"></main>
@@ -29,9 +28,9 @@
 
   <dialog id="worker-dialog" class="dialog">
     <form method="dialog">
-      <h3>¿Quién realizó esta tarea?</h3>
+      <h3>¿Quiénes realizaron esta tarea?</h3>
       <div id="worker-options" class="worker-options"></div>
-      <input id="worker-other" class="text-input" placeholder="Otro nombre" />
+      <input id="worker-other" class="text-input" placeholder="Otro nombre (opcional)" />
       <menu>
         <button value="cancel" class="secondary">Cancelar</button>
         <button id="confirm-worker" value="default" class="primary">Guardar</button>
@@ -39,6 +38,6 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=2.1"></script>
+  <script src="app.js?v=2.4"></script>
 </body>
 </html>
