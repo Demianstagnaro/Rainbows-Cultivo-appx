@@ -49,3 +49,11 @@ Luego abrir:
 ## V2.5
 - Permite seleccionar desde una persona hasta todos los empleados al completar una tarea.
 - Mantiene compatibilidad con tareas ya guardadas con un solo responsable.
+
+
+## V2.6
+- Esquejes ingresa el día anterior al inicio de Flora S1 del grupo de destino.
+- Los lotes se identifican como destinados a Flora 1 y Flora 3, o a Flora 2.
+- Mientras la sala está ocupada muestra Día 1, Día 2, etc. y la tarea Mantenimiento.
+- El lote pasa a Veges dos días después de la siguiente cosecha del grupo opuesto.
+- El día del traslado a Veges, Esquejes vuelve a figurar como vacía.

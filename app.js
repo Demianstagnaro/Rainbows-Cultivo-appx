@@ -1,6 +1,6 @@
 'use strict';
 
-const APP_VERSION = '2.5.0';
+const APP_VERSION = '2.6.0';
 const STORAGE_KEY = 'rainbows_os_task_completions_v2_3';
 const CONFIG_KEY = 'rainbows_os_config_v2_4';
 
@@ -51,39 +51,88 @@ function niceDate(d){ return d.toLocaleDateString('es-AR',{weekday:'long',day:'n
 
 function cuttingRoomState(date){
   const d = startDay(date);
+  const cycleDays = 77;
+
+  // Los dos grupos productivos alternan el uso de Veges:
+  // Grupo A: Flora 1 y Flora 3, sincronizadas.
+  // Grupo B: Flora 2.
+  const groups = [
+    {
+      id:'flora_1_3',
+      destinations:['Flora 1','Flora 3'],
+      baseFloraStart:parseDate('2026-05-20'),
+      oppositeBaseFloraStart:parseDate('2026-07-01')
+    },
+    {
+      id:'flora_2',
+      destinations:['Flora 2'],
+      baseFloraStart:parseDate('2026-07-01'),
+      oppositeBaseFloraStart:parseDate('2026-05-20')
+    }
+  ];
+
+  function nextOppositeHarvestAfter(intake, oppositeBaseFloraStart){
+    const baseHarvest = addDays(oppositeBaseFloraStart, 56);
+    let cycle = Math.floor(diffDays(intake, baseHarvest) / cycleDays);
+    let harvest = addDays(baseHarvest, cycle * cycleDays);
+
+    while(diffDays(harvest, intake) <= 0){
+      cycle += 1;
+      harvest = addDays(baseHarvest, cycle * cycleDays);
+    }
+
+    return harvest;
+  }
+
   const activeBatches = [];
 
-  rooms.filter(room => room.type === 'flora').forEach(room => {
-    const firstHarvest = addDays(parseDate(room.floraStart), 56);
-    const approxCycle = Math.floor(diffDays(d, firstHarvest) / 77);
+  groups.forEach(group => {
+    const approxCycle = Math.floor(diffDays(d, group.baseFloraStart) / cycleDays);
 
-    for(let offset = -1; offset <= 1; offset += 1){
-      const harvest = addDays(firstHarvest, (approxCycle + offset) * 77);
-      const intake = addDays(harvest, -1);
-      const transferToVeges = addDays(harvest, 2);
+    for(let offset = -2; offset <= 2; offset += 1){
+      const floraStart = addDays(group.baseFloraStart, (approxCycle + offset) * cycleDays);
+      const intake = addDays(floraStart, -1);
+      const oppositeHarvest = nextOppositeHarvestAfter(intake, group.oppositeBaseFloraStart);
+      const transferToVeges = addDays(oppositeHarvest, 2);
 
-      if(diffDays(d, intake) >= 0 && diffDays(transferToVeges, d) >= 0){
-        activeBatches.push({ room: room.name, intake, harvest, transferToVeges });
+      // El día del traslado a Veges la sala ya queda vacía.
+      if(diffDays(d, intake) >= 0 && diffDays(d, transferToVeges) < 0){
+        activeBatches.push({
+          destinations:group.destinations,
+          intake,
+          floraStart,
+          oppositeHarvest,
+          transferToVeges
+        });
       }
     }
   });
 
   if(!activeBatches.length){
-    return { active:false, label:'Vacía', day:null, sources:[], intake:null, transferToVeges:null };
+    return {
+      active:false,
+      label:'Vacía',
+      day:null,
+      destinations:[],
+      sources:[],
+      intake:null,
+      transferToVeges:null
+    };
   }
 
-  const latestIntakeTime = Math.max(...activeBatches.map(batch => batch.intake.getTime()));
-  const currentBatches = activeBatches.filter(batch => batch.intake.getTime() === latestIntakeTime);
-  const intake = currentBatches[0].intake;
-  const transferToVeges = currentBatches[0].transferToVeges;
+  activeBatches.sort((a,b) => b.intake.getTime() - a.intake.getTime());
+  const batch = activeBatches[0];
+  const day = diffDays(d, batch.intake) + 1;
 
   return {
     active:true,
-    label:`Día ${diffDays(d, intake) + 1}`,
-    day:diffDays(d, intake) + 1,
-    sources:currentBatches.map(batch => batch.room),
-    intake,
-    transferToVeges
+    label:`Día ${day}`,
+    day,
+    destinations:batch.destinations,
+    sources:batch.destinations,
+    intake:batch.intake,
+    floraStart:batch.floraStart,
+    transferToVeges:batch.transferToVeges
   };
 }
 
@@ -365,7 +414,7 @@ function renderRoomFacts(room,d){
     if(!state.active){
       return `<div class="kv"><span>Estado</span><strong>Vacía</strong></div>`;
     }
-    return `<div class="kv"><span>Estado</span><strong>${state.label}</strong></div><div class="kv"><span>Origen</span><strong>${state.sources.join(', ')}</strong></div><div class="kv"><span>Pasa a Veges</span><strong>${state.transferToVeges.toLocaleDateString('es-AR')}</strong></div>`;
+    return `<div class="kv"><span>Estado</span><strong>${state.label}</strong></div><div class="kv"><span>Destino</span><strong>${(state.destinations || state.sources).join(', ')}</strong></div><div class="kv"><span>Pasa a Veges</span><strong>${state.transferToVeges.toLocaleDateString('es-AR')}</strong></div>`;
   }
   if(room.type !== 'flora') return `<div class="kv"><span>Tipo</span><strong>${room.type}</strong></div><div class="kv"><span>Estado</span><strong>Permanente</strong></div>`;
   const c = roomCycle(room,d);
