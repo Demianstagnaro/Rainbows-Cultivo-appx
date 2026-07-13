@@ -63,3 +63,11 @@ Luego abrir:
 - En la pestaña Hoy, cada sala reúne en una sola tarjeta su estado, progreso y tareas.
 - Se eliminaron las secciones separadas de Estado de salas y Tareas de hoy.
 - No se modificaron las reglas, fechas ni demás pantallas.
+
+
+## V2.8
+- Se puede tocar cualquier día del calendario para abrir su detalle.
+- El detalle muestra estado, progreso y tareas de cada sala para esa fecha.
+- Las tareas realizadas muestran responsables y hora.
+- También se pueden marcar o desmarcar tareas de días anteriores o futuros.
+- No se modificaron reglas, fechas ni la pantalla Hoy.

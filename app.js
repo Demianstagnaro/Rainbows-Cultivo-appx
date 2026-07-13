@@ -1,6 +1,6 @@
 'use strict';
 
-const APP_VERSION = '2.7.0';
+const APP_VERSION = '2.8.0';
 const STORAGE_KEY = 'rainbows_os_task_completions_v2_3';
 const CONFIG_KEY = 'rainbows_os_config_v2_4';
 
@@ -29,6 +29,7 @@ let state = {
   view: 'today',
   selectedMonth: startOfMonth(today()),
   selectedRoom: null,
+  calendarDay: null,
   pendingTask: null,
   selectedWorkers: []
 };
@@ -404,19 +405,112 @@ confirmWorker.addEventListener('click', (e) => {
 
 function renderCalendar(){
   title.textContent = 'Calendario';
+
+  if(state.calendarDay){
+    renderCalendarDayDetail(state.calendarDay);
+    return;
+  }
+
   const month = state.selectedMonth;
   const first = startOfMonth(month);
   const start = addDays(first, -((first.getDay()+6)%7)); // lunes
   const days = Array.from({length:42},(_,i)=>addDays(start,i));
-  app.innerHTML = `<div class="toolbar"><button id="prev-month">‹</button><strong>${monthName(month)}</strong><button id="next-month">›</button></div><div class="calendar">${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d=>`<div class="dow">${d}</div>`).join('')}${days.map(renderDayCell).join('')}</div>`;
-  document.getElementById('prev-month').onclick = () => { state.selectedMonth = new Date(month.getFullYear(), month.getMonth()-1, 1); render(); };
-  document.getElementById('next-month').onclick = () => { state.selectedMonth = new Date(month.getFullYear(), month.getMonth()+1, 1); render(); };
+
+  app.innerHTML = `
+    <div class="toolbar">
+      <button id="prev-month">‹</button>
+      <strong>${monthName(month)}</strong>
+      <button id="next-month">›</button>
+    </div>
+    <div class="calendar">
+      ${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(d=>`<div class="dow">${d}</div>`).join('')}
+      ${days.map(renderDayCell).join('')}
+    </div>
+  `;
+
+  document.getElementById('prev-month').onclick = () => {
+    state.selectedMonth = new Date(month.getFullYear(), month.getMonth()-1, 1);
+    render();
+  };
+
+  document.getElementById('next-month').onclick = () => {
+    state.selectedMonth = new Date(month.getFullYear(), month.getMonth()+1, 1);
+    render();
+  };
+
+  app.querySelectorAll('.day-cell[data-date]').forEach(cell => {
+    cell.addEventListener('click', () => {
+      state.calendarDay = parseDate(cell.dataset.date);
+      render();
+    });
+  });
 }
+
+function renderCalendarDayDetail(date){
+  const d = startDay(date);
+  const tasks = getTasksForDate(d);
+  const done = tasks.filter(isDone).length;
+
+  app.innerHTML = `
+    <button class="secondary calendar-back" id="back-calendar">← Volver al calendario</button>
+    <section class="panel calendar-day-heading">
+      <h2>${niceDate(d)}</h2>
+      <div><strong>${done}/${tasks.length}</strong> tareas realizadas</div>
+    </section>
+
+    <div class="today-room-list">
+      ${rooms.map(room => {
+        const roomTasks = tasks.filter(task => task.room === room.name);
+        const p = roomProgress(room,d);
+
+        return `
+          <section class="room-card calendar-detail-card">
+            <div class="room-head">
+              <div>
+                <div class="room-title">${room.name}</div>
+                <div class="stage">${compactStage(room,d)}</div>
+              </div>
+              <span class="pill">${p.done}/${p.total}</span>
+            </div>
+
+            <div class="progress"><span style="width:${p.pct}%"></span></div>
+            <div class="progress-text">${p.total ? `${p.pct}% completado` : 'Sin tareas ese día'}</div>
+
+            <div class="room-tasks">
+              ${roomTasks.length
+                ? roomTasks.map(renderTaskRow).join('')
+                : '<div class="empty-room-tasks">Sin tareas programadas</div>'}
+            </div>
+          </section>
+        `;
+      }).join('')}
+    </div>
+  `;
+
+  document.getElementById('back-calendar').onclick = () => {
+    state.calendarDay = null;
+    render();
+  };
+
+  bindTaskInputs();
+}
+
 function renderDayCell(d){
   const inMonth = d.getMonth() === state.selectedMonth.getMonth();
   const tasks = getTasksForDate(d);
   const summary = summarizeTasks(tasks);
-  return `<div class="day-cell ${sameDay(d,today())?'today':''} ${inMonth?'':'dim'}"><div class="day-num">${d.getDate()}</div><div class="day-state">${rooms.filter(r=>r.type==='flora').map(r=>`${shortRoom(r.name)}: ${roomCycle(r,d).label.replace('Inicio ','')}`).join('<br>')}</div><div class="day-tasks">${summary}</div></div>`;
+  const done = tasks.filter(isDone).length;
+
+  return `
+    <div class="day-cell ${sameDay(d,today())?'today':''} ${inMonth?'':'dim'}" data-date="${ymd(d)}">
+      <div class="day-num">${d.getDate()}</div>
+      <div class="day-state">
+        ${rooms.filter(r=>r.type==='flora').map(r=>`${shortRoom(r.name)}: ${roomCycle(r,d).label.replace('Inicio ','')}`).join('<br>')}
+      </div>
+      <div class="day-tasks">${summary}</div>
+      ${done ? `<div class="day-done">${done}/${tasks.length} hechas</div>` : ''}
+    </div>
+  `;
 }
 function summarizeTasks(tasks){
   const important = ['Trasplante','Inicio flora','Cosecha','Enmienda','Schwazzing','Esquejes','Poda bajos','Redes','Calibrar riego','Mantenimiento','KNF','Fumigacion','Riego'];

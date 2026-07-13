@@ -12,3 +12,11 @@
 .today-room-card .task-row{cursor:default}
 .today-room-card .task-row label{flex:1}
 .empty-room-tasks{margin-top:12px;padding:12px 0 2px;color:var(--muted);font-size:14px;border-top:1px solid rgba(255,255,255,.06)}
+
+.day-cell[data-date]{cursor:pointer}
+.day-cell[data-date]:active{transform:scale(.985)}
+.day-done{margin-top:6px;font-size:11px;font-weight:800;color:var(--accent)}
+.calendar-back{margin-bottom:12px}
+.calendar-day-heading{margin-bottom:14px}
+.calendar-day-heading h2{margin:0 0 6px;font-size:20px;text-transform:capitalize}
+.calendar-detail-card{cursor:default}
