@@ -1,6 +1,6 @@
 'use strict';
 
-const APP_VERSION = '2.6.0';
+const APP_VERSION = '2.7.0';
 const STORAGE_KEY = 'rainbows_os_task_completions_v2_3';
 const CONFIG_KEY = 'rainbows_os_config_v2_4';
 
@@ -287,18 +287,48 @@ function renderToday(){
   const d = today();
   const tasks = getTasksForDate(d);
   const done = tasks.filter(isDone).length;
+
   app.innerHTML = `
     <div class="panel"><strong>${done}/${tasks.length}</strong> tareas realizadas hoy</div>
-    <div class="section-title">Estado de salas</div>
-    <div class="grid">${rooms.map(room => {
-      const c = roomCycle(room,d); const p = roomProgress(room,d);
-      return `<section class="room-card" data-room="${room.name}"><div class="room-head"><div><div class="room-title">${room.name}</div><div class="stage">${compactStage(room,d)}</div></div><span class="pill">${p.done}/${p.total}</span></div><div class="progress"><span style="width:${p.pct}%"></span></div><div class="progress-text">${p.total ? `${p.pct}% completado` : 'Sin tareas hoy'}</div></section>`;
-    }).join('')}</div>
-    <div class="section-title">Tareas de hoy</div>
-    ${renderTaskGroups(tasks)}
+    <div class="today-room-list">
+      ${rooms.map(room => {
+        const roomTasks = tasks.filter(task => task.room === room.name);
+        const p = roomProgress(room,d);
+
+        return `
+          <section class="room-card today-room-card" data-room="${room.name}">
+            <div class="room-head room-open-area">
+              <div>
+                <div class="room-title">${room.name}</div>
+                <div class="stage">${compactStage(room,d)}</div>
+              </div>
+              <span class="pill">${p.done}/${p.total}</span>
+            </div>
+
+            <div class="progress"><span style="width:${p.pct}%"></span></div>
+            <div class="progress-text">${p.total ? `${p.pct}% completado` : 'Sin tareas hoy'}</div>
+
+            <div class="room-tasks">
+              ${roomTasks.length
+                ? roomTasks.map(renderTaskRow).join('')
+                : '<div class="empty-room-tasks">Sin tareas programadas</div>'}
+            </div>
+          </section>
+        `;
+      }).join('')}
+    </div>
   `;
+
   bindTaskInputs();
-  app.querySelectorAll('.room-card').forEach(el => el.addEventListener('click', () => { state.selectedRoom = el.dataset.room; state.view='rooms'; render(); }));
+
+  app.querySelectorAll('.today-room-card').forEach(card => {
+    card.addEventListener('click', event => {
+      if(event.target.closest('.task-row') || event.target.closest('input')) return;
+      state.selectedRoom = card.dataset.room;
+      state.view = 'rooms';
+      render();
+    });
+  });
 }
 
 function renderTaskGroups(tasks){

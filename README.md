@@ -57,3 +57,9 @@ Luego abrir:
 - Mientras la sala está ocupada muestra Día 1, Día 2, etc. y la tarea Mantenimiento.
 - El lote pasa a Veges dos días después de la siguiente cosecha del grupo opuesto.
 - El día del traslado a Veges, Esquejes vuelve a figurar como vacía.
+
+
+## V2.7
+- En la pestaña Hoy, cada sala reúne en una sola tarjeta su estado, progreso y tareas.
+- Se eliminaron las secciones separadas de Estado de salas y Tareas de hoy.
+- No se modificaron las reglas, fechas ni demás pantallas.
