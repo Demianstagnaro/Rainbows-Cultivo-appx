@@ -1,8 +1,10 @@
 'use strict';
 
-const APP_VERSION = '2.8.0';
+const APP_VERSION = '2.9.0';
 const STORAGE_KEY = 'rainbows_os_task_completions_v2_3';
 const CONFIG_KEY = 'rainbows_os_config_v2_4';
+const CUSTOM_TASKS_KEY = 'rainbows_custom_tasks_v2_9';
+const TASK_OVERRIDES_KEY = 'rainbows_task_overrides_v2_9';
 
 const employeesDefault = ['Cone', 'Chomi', 'Pata', 'Lua', 'Mar', 'Eric', 'Tortu'];
 
@@ -24,6 +26,13 @@ const workerDialog = document.getElementById('worker-dialog');
 const workerOptions = document.getElementById('worker-options');
 const workerOther = document.getElementById('worker-other');
 const confirmWorker = document.getElementById('confirm-worker');
+const taskDialog = document.getElementById('task-dialog');
+const taskDialogTitle = document.getElementById('task-dialog-title');
+const taskDateInput = document.getElementById('task-date');
+const taskRoomInput = document.getElementById('task-room');
+const taskNameInput = document.getElementById('task-name');
+const taskDetailInput = document.getElementById('task-detail');
+const saveTaskButton = document.getElementById('save-task');
 
 let state = {
   view: 'today',
@@ -31,6 +40,7 @@ let state = {
   selectedRoom: null,
   calendarDay: null,
   pendingTask: null,
+  editingTask: null,
   selectedWorkers: []
 };
 
@@ -184,7 +194,7 @@ function isHarvestDay(room, date){
   return diffDays(date, c.floraStart) === 56;
 }
 
-function getTasksForDate(date){
+function getRoutineTasksForDate(date){
   const tasks=[];
   const dow = dayName(date);
   rooms.forEach(room => {
@@ -232,7 +242,102 @@ function getTasksForDate(date){
 
   return tasks;
 }
-function addTask(tasks,date,room,task,detail){ tasks.push({ id:`${ymd(date)}|${room}|${task}`, date:ymd(date), room, task, detail }); }
+function addTask(tasks,date,room,task,detail){
+  tasks.push({
+    id:`${ymd(date)}|${room}|${task}`,
+    date:ymd(date),
+    room,
+    task,
+    detail,
+    category:'Rutina',
+    custom:false
+  });
+}
+
+function loadCustomTasks(){
+  try { return JSON.parse(localStorage.getItem(CUSTOM_TASKS_KEY)) || []; }
+  catch { return []; }
+}
+function saveCustomTasks(tasks){ localStorage.setItem(CUSTOM_TASKS_KEY, JSON.stringify(tasks)); }
+
+function loadTaskOverrides(){
+  try { return JSON.parse(localStorage.getItem(TASK_OVERRIDES_KEY)) || {}; }
+  catch { return {}; }
+}
+function saveTaskOverrides(overrides){ localStorage.setItem(TASK_OVERRIDES_KEY, JSON.stringify(overrides)); }
+
+function makeCustomTask({date, room, task, detail='', category='Extraordinaria', originTaskId=null, originDate=null}){
+  return {
+    id:`custom-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+    date,
+    room,
+    task,
+    detail,
+    category,
+    custom:true,
+    originTaskId,
+    originDate
+  };
+}
+
+function getTasksForDate(date){
+  const day = ymd(startDay(date));
+  const overrides = loadTaskOverrides();
+
+  const routineTasks = getRoutineTasksForDate(date)
+    .filter(task => !overrides[task.id]?.hidden);
+
+  const customTasks = loadCustomTasks()
+    .filter(task => task.date === day);
+
+  return [...routineTasks, ...customTasks];
+}
+
+function addCustomTask(task){
+  const tasks = loadCustomTasks();
+  tasks.push(task);
+  saveCustomTasks(tasks);
+}
+
+function updateCustomTask(taskId, changes){
+  const tasks = loadCustomTasks();
+  const index = tasks.findIndex(task => task.id === taskId);
+  if(index < 0) return null;
+
+  const previous = tasks[index];
+  const updated = {...previous, ...changes};
+
+  if(changes.date && changes.date !== previous.date){
+    updated.id = `custom-${Date.now()}-${Math.random().toString(36).slice(2,8)}`;
+    transferCompletion(previous.id, updated.id, updated);
+  }
+
+  tasks[index] = updated;
+  saveCustomTasks(tasks);
+  return updated;
+}
+
+function removeCustomTask(taskId){
+  const tasks = loadCustomTasks().filter(task => task.id !== taskId);
+  saveCustomTasks(tasks);
+  const completions = loadCompletions();
+  delete completions[taskId];
+  saveCompletions(completions);
+}
+
+function hideRoutineTask(task){
+  const overrides = loadTaskOverrides();
+  overrides[task.id] = {hidden:true, updatedAt:new Date().toISOString()};
+  saveTaskOverrides(overrides);
+}
+
+function transferCompletion(oldId, newId, newTask){
+  const completions = loadCompletions();
+  if(!completions[oldId]) return;
+  completions[newId] = {...completions[oldId], ...newTask, id:newId};
+  delete completions[oldId];
+  saveCompletions(completions);
+}
 
 function loadCompletions(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch { return {}; } }
 function saveCompletions(data){ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }
@@ -276,7 +381,7 @@ function roomProgress(room,date){ const tasks = getTasksForDate(date).filter(t =
 
 function render(){
   todayLabel.textContent = niceDate(today());
-  document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === state.view));
+  document.querySelectorAll('.top-nav button').forEach(b => b.classList.toggle('active', b.dataset.view === state.view));
   if(state.view === 'today') renderToday();
   if(state.view === 'calendar') renderCalendar();
   if(state.view === 'rooms') renderRooms();
@@ -290,7 +395,14 @@ function renderToday(){
   const done = tasks.filter(isDone).length;
 
   app.innerHTML = `
-    <div class="panel"><strong>${done}/${tasks.length}</strong> tareas realizadas hoy</div>
+    <section class="panel daily-summary">
+      <div class="daily-summary-head">
+        <div><strong>${done}/${tasks.length}</strong> tareas realizadas hoy</div>
+        <button class="primary compact-button" data-new-task="${ymd(d)}">+ Nueva tarea</button>
+      </div>
+      <div class="progress"><span style="width:${tasks.length ? Math.round(done/tasks.length*100) : 100}%"></span></div>
+      <div class="progress-text">${tasks.length ? `${Math.round(done/tasks.length*100)}% completado` : 'Sin tareas hoy'}</div>
+    </section>
     <div class="today-room-list">
       ${rooms.map(room => {
         const roomTasks = tasks.filter(task => task.room === room.name);
@@ -324,7 +436,7 @@ function renderToday(){
 
   app.querySelectorAll('.today-room-card').forEach(card => {
     card.addEventListener('click', event => {
-      if(event.target.closest('.task-row') || event.target.closest('input')) return;
+      if(event.target.closest('.task-row') || event.target.closest('input') || event.target.closest('button')) return;
       state.selectedRoom = card.dataset.room;
       state.view = 'rooms';
       render();
@@ -338,19 +450,191 @@ function renderTaskGroups(tasks){
   return groups.map(g => `<section class="task-group"><h3>${g.room.name} <span class="stage">${displayStage(g.room, parseDate(g.tasks[0].date))}</span></h3>${g.tasks.map(renderTaskRow).join('')}</section>`).join('');
 }
 function renderTaskRow(task){
-  const done = isDone(task); const c = getCompletion(task);
-  return `<div class="task-row ${done?'done':''}"><input type="checkbox" ${done?'checked':''} data-task-id="${task.id}"><label><strong>${task.task}</strong><div class="stage">${task.detail || ''}</div></label><div class="task-meta">${done ? `${(c.workers || [c.worker]).filter(Boolean).join(', ')}<br>${new Date(c.completedAt).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}` : ''}</div></div>`;
+  const done = isDone(task);
+  const c = getCompletion(task);
+  const category = task.category || (task.custom ? 'Extraordinaria' : 'Rutina');
+
+  return `
+    <div class="task-row ${done?'done':''}" data-task-row="${task.id}">
+      <input type="checkbox" ${done?'checked':''} data-task-id="${task.id}">
+      <label>
+        <strong>${task.task}</strong>
+        <div class="task-subline">
+          <span class="task-category">${category}</span>
+          ${task.detail ? `<span class="stage">${task.detail}</span>` : ''}
+        </div>
+      </label>
+      <div class="task-meta">
+        ${done ? `${(c.workers || [c.worker]).filter(Boolean).join(', ')}<br>${new Date(c.completedAt).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}` : ''}
+      </div>
+      <button type="button" class="task-menu" data-task-menu="${task.id}" aria-label="Opciones de tarea">⋮</button>
+    </div>
+  `;
 }
 function bindTaskInputs(){
-  app.querySelectorAll('input[type="checkbox"][data-task-id]').forEach(input => input.addEventListener('change', e => {
+  app.querySelectorAll('input[type="checkbox"][data-task-id]').forEach(input => input.addEventListener('change', () => {
     const tasks = getTasksForDate(currentRenderedDate());
-    const task = tasks.find(t => t.id === input.dataset.taskId);
+    const task = tasks.find(item => item.id === input.dataset.taskId);
     if(!task) return;
-    if(input.checked){ input.checked = false; openWorkerDialog(task); }
-    else { removeTaskCompletion(task); render(); }
+
+    if(input.checked){
+      input.checked = false;
+      openWorkerDialog(task);
+    } else {
+      removeTaskCompletion(task);
+      render();
+    }
   }));
+
+  app.querySelectorAll('[data-new-task]').forEach(button => {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      openTaskDialog(null, button.dataset.newTask);
+    });
+  });
+
+  app.querySelectorAll('[data-task-menu]').forEach(button => {
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      const task = getTasksForDate(currentRenderedDate()).find(item => item.id === button.dataset.taskMenu);
+      if(task) openTaskActions(task);
+    });
+  });
 }
 function currentRenderedDate(){ return state.view === 'calendar' && state.calendarDay ? state.calendarDay : today(); }
+
+function openTaskDialog(task=null, defaultDate=ymd(currentRenderedDate())){
+  state.editingTask = task;
+  taskDialogTitle.textContent = task ? 'Editar tarea' : 'Nueva tarea';
+  taskDateInput.value = task?.date || defaultDate;
+  taskRoomInput.innerHTML = rooms.map(room => `<option value="${room.name}">${room.name}</option>`).join('');
+  taskRoomInput.value = task?.room || rooms[0].name;
+  taskNameInput.value = task?.task || '';
+  taskDetailInput.value = task?.detail || '';
+  taskDialog.showModal();
+}
+
+saveTaskButton.addEventListener('click', event => {
+  const date = taskDateInput.value;
+  const room = taskRoomInput.value;
+  const taskName = taskNameInput.value.trim();
+  const detail = taskDetailInput.value.trim();
+
+  if(!date || !room || !taskName){
+    event.preventDefault();
+    alert('Completá fecha, sala y tarea.');
+    return;
+  }
+
+  const editing = state.editingTask;
+
+  if(!editing){
+    addCustomTask(makeCustomTask({
+      date,
+      room,
+      task:taskName,
+      detail,
+      category:'Extraordinaria'
+    }));
+  } else if(editing.custom){
+    updateCustomTask(editing.id, {
+      date,
+      room,
+      task:taskName,
+      detail
+    });
+  } else {
+    hideRoutineTask(editing);
+    const replacement = makeCustomTask({
+      date,
+      room,
+      task:taskName,
+      detail,
+      category:'Rutina',
+      originTaskId:editing.id,
+      originDate:editing.date
+    });
+    addCustomTask(replacement);
+    transferCompletion(editing.id, replacement.id, replacement);
+  }
+
+  state.editingTask = null;
+  setTimeout(render, 0);
+});
+
+function openTaskActions(task){
+  const action = prompt(
+    `Tarea: ${task.task}\n\nEscribí una opción:\n1 = Editar\n2 = Mover\n3 = Eliminar`
+  );
+
+  if(action === null) return;
+
+  const normalized = action.trim().toLowerCase();
+
+  if(normalized === '1' || normalized === 'editar'){
+    openTaskDialog(task, task.date);
+    return;
+  }
+
+  if(normalized === '2' || normalized === 'mover'){
+    moveTask(task);
+    return;
+  }
+
+  if(normalized === '3' || normalized === 'eliminar' || normalized === 'borrar'){
+    deleteTask(task);
+    return;
+  }
+
+  alert('Opción no reconocida.');
+}
+
+function moveTask(task){
+  const newDate = prompt('Nueva fecha (AAAA-MM-DD):', task.date);
+  if(!newDate) return;
+
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(newDate)){
+    alert('Usá el formato AAAA-MM-DD.');
+    return;
+  }
+
+  if(newDate === task.date) return;
+
+  if(task.custom){
+    updateCustomTask(task.id, {
+      date:newDate,
+      category:'Reprogramada',
+      originDate:task.originDate || task.date
+    });
+  } else {
+    hideRoutineTask(task);
+    const moved = makeCustomTask({
+      date:newDate,
+      room:task.room,
+      task:task.task,
+      detail:`Reprogramada desde ${task.date}${task.detail ? ` · ${task.detail}` : ''}`,
+      category:'Reprogramada',
+      originTaskId:task.id,
+      originDate:task.date
+    });
+    addCustomTask(moved);
+    transferCompletion(task.id, moved.id, moved);
+  }
+
+  render();
+}
+
+function deleteTask(task){
+  if(!confirm(`¿Eliminar "${task.task}" de ${task.date}?`)) return;
+
+  if(task.custom) removeCustomTask(task.id);
+  else {
+    hideRoutineTask(task);
+    removeTaskCompletion(task);
+  }
+
+  render();
+}
 
 function openWorkerDialog(task){
   state.pendingTask = task;
@@ -454,8 +738,15 @@ function renderCalendarDayDetail(date){
   app.innerHTML = `
     <button class="secondary calendar-back" id="back-calendar">← Volver al calendario</button>
     <section class="panel calendar-day-heading">
-      <h2>${niceDate(d)}</h2>
-      <div><strong>${done}/${tasks.length}</strong> tareas realizadas</div>
+      <div class="daily-summary-head">
+        <div>
+          <h2>${niceDate(d)}</h2>
+          <div><strong>${done}/${tasks.length}</strong> tareas realizadas</div>
+        </div>
+        <button class="primary compact-button" data-new-task="${ymd(d)}">+ Nueva tarea</button>
+      </div>
+      <div class="progress"><span style="width:${tasks.length ? Math.round(done/tasks.length*100) : 100}%"></span></div>
+      <div class="progress-text">${tasks.length ? `${Math.round(done/tasks.length*100)}% completado` : 'Sin tareas ese día'}</div>
     </section>
 
     <div class="today-room-list">
@@ -567,6 +858,6 @@ function renderSettings(){
   document.getElementById('save-config').onclick = () => { const employees = document.getElementById('employees').value.split('\n').map(x=>x.trim()).filter(Boolean); saveConfig({employees}); alert('Configuración guardada.'); render(); };
 }
 
-document.querySelectorAll('.bottom-nav button').forEach(btn => btn.addEventListener('click', () => { state.view = btn.dataset.view; state.selectedRoom=null; render(); }));
-if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.4').catch(()=>{})); }
+document.querySelectorAll('.top-nav button').forEach(btn => btn.addEventListener('click', () => { state.view = btn.dataset.view; state.selectedRoom=null; render(); }));
+if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.9').catch(()=>{})); }
 render();

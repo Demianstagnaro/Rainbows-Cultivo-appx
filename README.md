@@ -71,3 +71,15 @@ Luego abrir:
 - Las tareas realizadas muestran responsables y hora.
 - También se pueden marcar o desmarcar tareas de días anteriores o futuros.
 - No se modificaron reglas, fechas ni la pantalla Hoy.
+
+
+## V2.9
+- Las tareas generadas por el calendario se identifican como Rutina.
+- Se pueden crear tareas extraordinarias desde Hoy o desde cualquier día del calendario.
+- Se pueden editar, mover o eliminar tareas desde la app.
+- Al mover una tarea queda identificada como Reprogramada.
+- Las excepciones no modifican las reglas futuras del calendario.
+- La navegación pasó a la parte superior.
+- El resumen de Hoy incluye una barra de progreso general.
+- El nombre visible de la app pasó de Rainbows OS a RAINBOWS.
+- Los cambios siguen guardándose localmente en cada dispositivo.

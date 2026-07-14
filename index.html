@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Rainbows OS</title>
+  <title>RAINBOWS</title>
   <meta name="theme-color" content="#111827" />
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
@@ -11,20 +11,20 @@
 <body>
   <header class="topbar">
     <div>
-      <div class="eyebrow">Rainbows OS</div>
+      <div class="eyebrow">RAINBOWS</div>
       <h1 id="screen-title">Hoy</h1>
       <p id="today-label" class="muted"></p>
     </div>
   </header>
 
-  <main id="app"></main>
-
-  <nav class="bottom-nav" aria-label="Navegación principal">
+  <nav class="top-nav" aria-label="Navegación principal">
     <button data-view="today" class="active">Hoy</button>
     <button data-view="calendar">Calendario</button>
     <button data-view="rooms">Salas</button>
     <button data-view="settings">Config</button>
   </nav>
+
+  <main id="app"></main>
 
   <dialog id="worker-dialog" class="dialog">
     <form method="dialog">
@@ -38,6 +38,29 @@
     </form>
   </dialog>
 
-  <script src="app.js?v=2.4"></script>
+
+  <dialog id="task-dialog" class="dialog">
+    <form method="dialog" id="task-form">
+      <h3 id="task-dialog-title">Nueva tarea</h3>
+      <label class="field-label">Fecha
+        <input id="task-date" class="text-input" type="date" required />
+      </label>
+      <label class="field-label">Sala
+        <select id="task-room" class="text-input" required></select>
+      </label>
+      <label class="field-label">Tarea
+        <input id="task-name" class="text-input" required placeholder="Ej.: Reparar extractor" />
+      </label>
+      <label class="field-label">Detalle
+        <textarea id="task-detail" class="text-input" placeholder="Detalle opcional"></textarea>
+      </label>
+      <menu>
+        <button value="cancel" class="secondary">Cancelar</button>
+        <button id="save-task" value="default" class="primary">Guardar</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script src="app.js?v=2.9"></script>
 </body>
 </html>
