@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>RAINBOWS</title>
+  <title>rainbows</title>
   <meta name="theme-color" content="#111827" />
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
@@ -11,7 +11,7 @@
 <body>
   <header class="topbar">
     <div>
-      <div class="eyebrow">RAINBOWS</div>
+      <div class="eyebrow brand-wordmark">rainbows</div>
       <h1 id="screen-title">Hoy</h1>
       <p id="today-label" class="muted"></p>
     </div>
@@ -32,7 +32,7 @@
       <div id="worker-options" class="worker-options"></div>
       <input id="worker-other" class="text-input" placeholder="Otro nombre (opcional)" />
       <menu>
-        <button value="cancel" class="secondary">Cancelar</button>
+        <button type="button" id="cancel-task" class="secondary">Cancelar</button>
         <button id="confirm-worker" value="default" class="primary">Guardar</button>
       </menu>
     </form>
@@ -55,12 +55,12 @@
         <textarea id="task-detail" class="text-input" placeholder="Detalle opcional"></textarea>
       </label>
       <menu>
-        <button value="cancel" class="secondary">Cancelar</button>
+        <button type="button" id="cancel-task" class="secondary">Cancelar</button>
         <button id="save-task" value="default" class="primary">Guardar</button>
       </menu>
     </form>
   </dialog>
 
-  <script src="app.js?v=2.9"></script>
+  <script src="app.js?v=2.10"></script>
 </body>
 </html>

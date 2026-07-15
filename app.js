@@ -1,6 +1,6 @@
 'use strict';
 
-const APP_VERSION = '2.9.0';
+const APP_VERSION = '2.10.0';
 const STORAGE_KEY = 'rainbows_os_task_completions_v2_3';
 const CONFIG_KEY = 'rainbows_os_config_v2_4';
 const CUSTOM_TASKS_KEY = 'rainbows_custom_tasks_v2_9';
@@ -33,6 +33,7 @@ const taskRoomInput = document.getElementById('task-room');
 const taskNameInput = document.getElementById('task-name');
 const taskDetailInput = document.getElementById('task-detail');
 const saveTaskButton = document.getElementById('save-task');
+const cancelTaskButton = document.getElementById('cancel-task');
 
 let state = {
   view: 'today',
@@ -460,7 +461,9 @@ function renderTaskRow(task){
       <label>
         <strong>${task.task}</strong>
         <div class="task-subline">
-          <span class="task-category">${category}</span>
+          ${category === 'Extraordinaria' || category === 'Reprogramada'
+            ? `<span class="task-category">${category}</span>`
+            : ''}
           ${task.detail ? `<span class="stage">${task.detail}</span>` : ''}
         </div>
       </label>
@@ -513,6 +516,11 @@ function openTaskDialog(task=null, defaultDate=ymd(currentRenderedDate())){
   taskDetailInput.value = task?.detail || '';
   taskDialog.showModal();
 }
+
+cancelTaskButton.addEventListener('click', () => {
+  state.editingTask = null;
+  taskDialog.close();
+});
 
 saveTaskButton.addEventListener('click', event => {
   const date = taskDateInput.value;
@@ -859,5 +867,5 @@ function renderSettings(){
 }
 
 document.querySelectorAll('.top-nav button').forEach(btn => btn.addEventListener('click', () => { state.view = btn.dataset.view; state.selectedRoom=null; render(); }));
-if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.9').catch(()=>{})); }
+if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.10').catch(()=>{})); }
 render();

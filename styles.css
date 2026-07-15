@@ -40,3 +40,33 @@ select.text-input{appearance:auto}
   .task-row{align-items:flex-start}
   .task-meta{max-width:90px}
 }
+
+.brand-wordmark{
+  display:inline-block;
+  width:max-content;
+  font-family:"Arial Rounded MT Bold","Trebuchet MS","Century Gothic",Arial,sans-serif;
+  font-size:28px;
+  font-weight:900;
+  line-height:1;
+  letter-spacing:-2.2px;
+  text-transform:none;
+  background:
+    linear-gradient(
+      100deg,
+      #dffcff 0%,
+      #a8efff 12%,
+      #f8fbff 24%,
+      #b9dfff 35%,
+      #e5c8ff 46%,
+      #a9f2f2 58%,
+      #fff7dc 70%,
+      #ffc7e8 82%,
+      #fff4b8 93%,
+      #f5fbff 100%
+    );
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+  -webkit-text-fill-color:transparent;
+  filter:drop-shadow(0 0 7px rgba(190,230,255,.18));
+}

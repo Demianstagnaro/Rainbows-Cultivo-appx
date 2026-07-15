@@ -83,3 +83,12 @@ Luego abrir:
 - El resumen de Hoy incluye una barra de progreso general.
 - El nombre visible de la app pasó de Rainbows OS a RAINBOWS.
 - Los cambios siguen guardándose localmente en cada dispositivo.
+
+
+## V2.10
+- La marca del encabezado ahora aparece como "rainbows" en minúsculas.
+- Se aplicó una tipografía redondeada aproximada y un degradado iridiscente inspirado en la referencia visual proporcionada.
+- Las tareas normales ya no muestran la etiqueta Rutina.
+- Solo se muestran etiquetas para tareas Extraordinarias o Reprogramadas.
+- El botón Cancelar del formulario de tareas funciona aunque los campos estén vacíos.
+- No se modificaron reglas, fechas ni lógica del cultivo.
