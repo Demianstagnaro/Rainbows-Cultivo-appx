@@ -1,6 +1,6 @@
 'use strict';
 
-const APP_VERSION = '2.11.0';
+const APP_VERSION = '2.13.0';
 const STORAGE_KEY = 'rainbows_os_task_completions_v2_3';
 const CONFIG_KEY = 'rainbows_os_config_v2_4';
 const CUSTOM_TASKS_KEY = 'rainbows_custom_tasks_v2_9';
@@ -819,7 +819,7 @@ function renderDayCell(d){
         ${rooms.filter(r=>r.type==='flora').map(r=>`${shortRoom(r.name)}: ${roomCycle(r,d).label.replace('Inicio ','')}`).join('<br>')}
       </div>
       <div class="day-tasks">${summary}</div>
-      <div class="day-done">${done} hechas · ${Math.max(tasks.length - done, 0)} pendientes</div>
+      <div class="day-done">Tareas ${done}/${tasks.length}</div>
     </div>
   `;
 }
@@ -834,7 +834,7 @@ function shortRoom(name){ return name.replace('Flora ','F'); }
 const croquisLayouts = {
   'Flora 1': {beds:15, columns:3, rows:5, exact:true, roomWidth:'6,35 m', roomLength:'8,30 m'},
   'Flora 2': {beds:15, columns:3, rows:5, exact:true, roomWidth:'6,35 m', roomLength:'8,30 m'},
-  'Flora 3': {beds:8, columns:2, rows:4, exact:false, roomWidth:'', roomLength:''}
+  'Flora 3': {beds:8, columns:4, rows:2, exact:true, roomWidth:'8,36 m', roomLength:'3,80 m'}
 };
 
 function defaultBed(roomName, index){
@@ -870,23 +870,31 @@ function saveCroquis(data){
   localStorage.setItem(CROQUIS_KEY, JSON.stringify(data));
 }
 
-function geneticsColor(value){
-  if(!value) return 'var(--viz-empty-bed, #334155)';
-  let hash = 0;
-  for(let index = 0; index < value.length; index += 1){
-    hash = value.charCodeAt(index) + ((hash << 5) - hash);
-  }
-  const hue = Math.abs(hash) % 360;
-  return `hsl(${hue} 55% 48%)`;
+function geneticsColor(){
+  // Color neutro único por ahora. La genética se identifica por nombre.
+  return 'var(--accent)';
 }
 
 function renderPlantPositions(bed){
-  return Array.from({length:bed.capacity}, (_, index) => {
-    const occupied = index < bed.count;
+  const slotIndexes = bed.capacity === 5
+    ? [0, 2, 4, 6, 8]
+    : [0, 1, 2, 3, 4, 5, 6, 7, 8];
+
+  const occupiedSlots = new Set(slotIndexes.slice(0, bed.count));
+
+  return Array.from({length:9}, (_, gridIndex) => {
+    const isPlantPosition = slotIndexes.includes(gridIndex);
+
+    if(!isPlantPosition){
+      return '<span class="plant-position plant-spacer" aria-hidden="true"></span>';
+    }
+
+    const occupied = occupiedSlots.has(gridIndex);
+    const positionNumber = slotIndexes.indexOf(gridIndex) + 1;
     const color = occupied ? geneticsColor(bed.genetics) : 'transparent';
     const title = occupied
-      ? `${bed.genetics || 'Planta'} · posición ${index + 1}`
-      : `Posición ${index + 1} vacía`;
+      ? `${bed.genetics || 'Planta'} · posición ${positionNumber}`
+      : `Posición ${positionNumber} vacía`;
 
     return `<span class="plant-position ${occupied?'occupied':''}" style="--plant-color:${color}" title="${title}"></span>`;
   }).join('');
@@ -912,7 +920,7 @@ function renderCroquis(room){
 
   const summary = croquisSummary(room.name);
   const geneticsRows = Object.entries(summary.genetics)
-    .map(([name, count]) => `<div class="genetics-row"><span><i style="background:${geneticsColor(name)}"></i>${name}</span><strong>${count}</strong></div>`)
+    .map(([name, count]) => `<div class="genetics-row"><span>${name}</span><strong>${count}</strong></div>`)
     .join('');
 
   return `
@@ -923,8 +931,8 @@ function renderCroquis(room){
         <div><span>Camas</span><strong>${layout.beds}</strong></div>
       </div>
       ${layout.exact
-        ? `<p class="muted">Sala ${layout.roomWidth} × ${layout.roomLength}. Camas en 3 columnas × 5 filas, sin pasillos entre camas y con circulación lateral.</p>`
-        : '<p class="muted">Disposición provisional de 2 × 4 hasta cargar el croquis real de Flora 3.</p>'}
+        ? `<p class="muted">Sala ${layout.roomWidth} × ${layout.roomLength}. ${layout.columns} columnas × ${layout.rows} filas, sin pasillos entre camas y con circulación lateral.</p>`
+        : ''}
       ${geneticsRows ? `<div class="genetics-summary">${geneticsRows}</div>` : '<p class="muted">Todavía no hay plantas cargadas.</p>'}
     </section>
 
@@ -1118,5 +1126,5 @@ function renderSettings(){
 }
 
 document.querySelectorAll('.top-nav button').forEach(btn => btn.addEventListener('click', () => { state.view = btn.dataset.view; state.selectedRoom=null; render(); }));
-if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.11').catch(()=>{})); }
+if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.13').catch(()=>{})); }
 render();

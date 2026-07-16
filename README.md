@@ -101,3 +101,19 @@ Luego abrir:
 - Cada cama permite elegir capacidad de 5 o 9 plantas, cantidad actual, genética y observaciones.
 - Se muestran totales de plantas, capacidad y distribución por genética.
 - En el calendario siempre se muestran tareas hechas y pendientes, incluso cuando todavía no se realizó ninguna.
+
+
+## V2.12
+- Flora 3 usa su disposición real de 4 columnas × 2 filas.
+- Se cargaron las medidas de Flora 3: 8,36 × 3,80 m.
+- Las camas de Flora 3 se numeran 1–4 en la fila superior y 5–8 en la inferior.
+- Se quitaron los colores automáticos por genética.
+- Las genéticas siguen visibles por nombre y todas las plantas ocupadas usan un único color de acento.
+- No se modificaron reglas, fechas ni otras funciones.
+
+
+## V2.13
+- Las camas configuradas con capacidad para 5 plantas muestran las posiciones como el número 5 de un dado: cuatro esquinas y centro.
+- Las camas de 9 plantas mantienen la distribución completa de 3 × 3.
+- El calendario muestra siempre el progreso con el formato “Tareas realizadas/total”, por ejemplo “Tareas 0/10”.
+- No se modificaron fechas, reglas ni otras funciones.

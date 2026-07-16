@@ -106,3 +106,9 @@ select.text-input{appearance:auto}
   .bed-card-head span,.bed-genetics{font-size:9px}
   .side-aisle span{font-size:8px}
 }
+
+.plant-position.plant-spacer{
+  visibility:hidden;
+  border-color:transparent;
+  background:transparent;
+}
