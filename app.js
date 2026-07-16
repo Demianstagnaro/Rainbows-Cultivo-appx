@@ -1,10 +1,11 @@
 'use strict';
 
-const APP_VERSION = '2.10.0';
+const APP_VERSION = '2.11.0';
 const STORAGE_KEY = 'rainbows_os_task_completions_v2_3';
 const CONFIG_KEY = 'rainbows_os_config_v2_4';
 const CUSTOM_TASKS_KEY = 'rainbows_custom_tasks_v2_9';
 const TASK_OVERRIDES_KEY = 'rainbows_task_overrides_v2_9';
+const CROQUIS_KEY = 'rainbows_croquis_v2_11';
 
 const employeesDefault = ['Cone', 'Chomi', 'Pata', 'Lua', 'Mar', 'Eric', 'Tortu'];
 
@@ -33,12 +34,23 @@ const taskRoomInput = document.getElementById('task-room');
 const taskNameInput = document.getElementById('task-name');
 const taskDetailInput = document.getElementById('task-detail');
 const saveTaskButton = document.getElementById('save-task');
-const cancelTaskButton = document.getElementById('cancel-task');
+const cancelWorkerDialogButton = document.getElementById('cancel-worker-dialog');
+const cancelTaskButton = document.getElementById('cancel-task-dialog');
+const bedDialog = document.getElementById('bed-dialog');
+const bedDialogTitle = document.getElementById('bed-dialog-title');
+const bedCapacityInput = document.getElementById('bed-capacity');
+const bedCountInput = document.getElementById('bed-count');
+const bedGeneticsInput = document.getElementById('bed-genetics');
+const bedNotesInput = document.getElementById('bed-notes');
+const cancelBedDialogButton = document.getElementById('cancel-bed-dialog');
+const saveBedButton = document.getElementById('save-bed');
 
 let state = {
   view: 'today',
   selectedMonth: startOfMonth(today()),
   selectedRoom: null,
+  selectedRoomTab: 'summary',
+  selectedBed: null,
   calendarDay: null,
   pendingTask: null,
   editingTask: null,
@@ -807,7 +819,7 @@ function renderDayCell(d){
         ${rooms.filter(r=>r.type==='flora').map(r=>`${shortRoom(r.name)}: ${roomCycle(r,d).label.replace('Inicio ','')}`).join('<br>')}
       </div>
       <div class="day-tasks">${summary}</div>
-      ${done ? `<div class="day-done">${done}/${tasks.length} hechas</div>` : ''}
+      <div class="day-done">${done} hechas · ${Math.max(tasks.length - done, 0)} pendientes</div>
     </div>
   `;
 }
@@ -818,18 +830,257 @@ function summarizeTasks(tasks){
 }
 function shortRoom(name){ return name.replace('Flora ','F'); }
 
+
+const croquisLayouts = {
+  'Flora 1': {beds:15, columns:3, rows:5, exact:true, roomWidth:'6,35 m', roomLength:'8,30 m'},
+  'Flora 2': {beds:15, columns:3, rows:5, exact:true, roomWidth:'6,35 m', roomLength:'8,30 m'},
+  'Flora 3': {beds:8, columns:2, rows:4, exact:false, roomWidth:'', roomLength:''}
+};
+
+function defaultBed(roomName, index){
+  return {
+    id:`${roomName}-bed-${index + 1}`,
+    number:index + 1,
+    capacity:9,
+    count:0,
+    genetics:'',
+    notes:''
+  };
+}
+
+function loadCroquis(){
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem(CROQUIS_KEY)) || {}; }
+  catch { stored = {}; }
+
+  Object.entries(croquisLayouts).forEach(([roomName, layout]) => {
+    if(!Array.isArray(stored[roomName])) stored[roomName] = [];
+    for(let index = 0; index < layout.beds; index += 1){
+      if(!stored[roomName][index]){
+        stored[roomName][index] = defaultBed(roomName, index);
+      }
+    }
+    stored[roomName] = stored[roomName].slice(0, layout.beds);
+  });
+
+  return stored;
+}
+
+function saveCroquis(data){
+  localStorage.setItem(CROQUIS_KEY, JSON.stringify(data));
+}
+
+function geneticsColor(value){
+  if(!value) return 'var(--viz-empty-bed, #334155)';
+  let hash = 0;
+  for(let index = 0; index < value.length; index += 1){
+    hash = value.charCodeAt(index) + ((hash << 5) - hash);
+  }
+  const hue = Math.abs(hash) % 360;
+  return `hsl(${hue} 55% 48%)`;
+}
+
+function renderPlantPositions(bed){
+  return Array.from({length:bed.capacity}, (_, index) => {
+    const occupied = index < bed.count;
+    const color = occupied ? geneticsColor(bed.genetics) : 'transparent';
+    const title = occupied
+      ? `${bed.genetics || 'Planta'} · posición ${index + 1}`
+      : `Posición ${index + 1} vacía`;
+
+    return `<span class="plant-position ${occupied?'occupied':''}" style="--plant-color:${color}" title="${title}"></span>`;
+  }).join('');
+}
+
+function croquisSummary(roomName){
+  const beds = loadCroquis()[roomName] || [];
+  const total = beds.reduce((sum, bed) => sum + Number(bed.count || 0), 0);
+  const capacity = beds.reduce((sum, bed) => sum + Number(bed.capacity || 0), 0);
+  const genetics = {};
+
+  beds.forEach(bed => {
+    const name = bed.genetics.trim() || 'Sin identificar';
+    if(bed.count > 0) genetics[name] = (genetics[name] || 0) + Number(bed.count);
+  });
+
+  return {beds, total, capacity, genetics};
+}
+
+function renderCroquis(room){
+  const layout = croquisLayouts[room.name];
+  if(!layout) return '<section class="panel">El croquis todavía no está configurado para esta sala.</section>';
+
+  const summary = croquisSummary(room.name);
+  const geneticsRows = Object.entries(summary.genetics)
+    .map(([name, count]) => `<div class="genetics-row"><span><i style="background:${geneticsColor(name)}"></i>${name}</span><strong>${count}</strong></div>`)
+    .join('');
+
+  return `
+    <section class="panel croquis-summary">
+      <div class="croquis-metrics">
+        <div><span>Plantas</span><strong>${summary.total}</strong></div>
+        <div><span>Capacidad</span><strong>${summary.capacity}</strong></div>
+        <div><span>Camas</span><strong>${layout.beds}</strong></div>
+      </div>
+      ${layout.exact
+        ? `<p class="muted">Sala ${layout.roomWidth} × ${layout.roomLength}. Camas en 3 columnas × 5 filas, sin pasillos entre camas y con circulación lateral.</p>`
+        : '<p class="muted">Disposición provisional de 2 × 4 hasta cargar el croquis real de Flora 3.</p>'}
+      ${geneticsRows ? `<div class="genetics-summary">${geneticsRows}</div>` : '<p class="muted">Todavía no hay plantas cargadas.</p>'}
+    </section>
+
+    <section class="croquis-shell">
+      <div class="side-aisle"><span>Pasillo lateral</span></div>
+      <div class="beds-grid" style="--bed-columns:${layout.columns}">
+        ${summary.beds.map(bed => `
+          <button type="button" class="bed-card" data-bed-number="${bed.number}">
+            <div class="bed-card-head">
+              <strong>Cama ${String(bed.number).padStart(2,'0')}</strong>
+              <span>${bed.count}/${bed.capacity}</span>
+            </div>
+            <div class="plant-grid ${bed.capacity === 5 ? 'five-plants' : 'nine-plants'}">
+              ${renderPlantPositions(bed)}
+            </div>
+            <div class="bed-genetics">${bed.genetics || 'Sin genética'}</div>
+          </button>
+        `).join('')}
+      </div>
+      <div class="side-aisle"><span>Pasillo lateral</span></div>
+    </section>
+  `;
+}
+
+function openBedDialog(roomName, bedNumber){
+  const data = loadCroquis();
+  const bed = data[roomName][bedNumber - 1];
+
+  state.selectedBed = {roomName, bedNumber};
+  bedDialogTitle.textContent = `${roomName} · Cama ${String(bedNumber).padStart(2,'0')}`;
+  bedCapacityInput.value = String(bed.capacity);
+  bedCountInput.value = String(bed.count);
+  bedCountInput.max = String(bed.capacity);
+  bedGeneticsInput.value = bed.genetics;
+  bedNotesInput.value = bed.notes;
+  bedDialog.showModal();
+}
+
+bedCapacityInput.addEventListener('change', () => {
+  bedCountInput.max = bedCapacityInput.value;
+  if(Number(bedCountInput.value) > Number(bedCapacityInput.value)){
+    bedCountInput.value = bedCapacityInput.value;
+  }
+});
+
+cancelBedDialogButton.addEventListener('click', () => {
+  state.selectedBed = null;
+  bedDialog.close();
+});
+
+saveBedButton.addEventListener('click', event => {
+  if(!state.selectedBed) return;
+
+  const capacity = Number(bedCapacityInput.value);
+  const count = Number(bedCountInput.value);
+
+  if(!Number.isInteger(count) || count < 0 || count > capacity){
+    event.preventDefault();
+    alert(`La cantidad debe estar entre 0 y ${capacity}.`);
+    return;
+  }
+
+  const data = loadCroquis();
+  const {roomName, bedNumber} = state.selectedBed;
+  data[roomName][bedNumber - 1] = {
+    ...data[roomName][bedNumber - 1],
+    capacity,
+    count,
+    genetics:bedGeneticsInput.value.trim(),
+    notes:bedNotesInput.value.trim()
+  };
+
+  saveCroquis(data);
+  state.selectedBed = null;
+  setTimeout(render, 0);
+});
+
 function renderRooms(){
   title.textContent = 'Salas';
   const d = today();
+
   if(state.selectedRoom){
-    const room = rooms.find(r=>r.name===state.selectedRoom);
+    const room = rooms.find(item => item.name === state.selectedRoom);
     const c = roomCycle(room,d);
-    app.innerHTML = `<button class="secondary" id="back-rooms">← Volver</button><section class="panel"><h2 class="room-detail-title">${room.name}</h2><p class="muted">${c.label}</p>${renderRoomFacts(room,d)}</section><div class="section-title">Tareas de hoy</div>${renderTaskGroups(getTasksForDate(d).filter(t=>t.room===room.name))}`;
-    document.getElementById('back-rooms').onclick = () => { state.selectedRoom=null; render(); };
-    bindTaskInputs(); return;
+    const hasCroquis = Boolean(croquisLayouts[room.name]);
+
+    app.innerHTML = `
+      <button class="secondary" id="back-rooms">← Volver</button>
+
+      <section class="panel room-detail-header">
+        <h2 class="room-detail-title">${room.name}</h2>
+        <p class="muted">${c.label}</p>
+      </section>
+
+      ${hasCroquis ? `
+        <div class="room-tabs">
+          <button type="button" data-room-tab="summary" class="${state.selectedRoomTab === 'summary' ? 'active' : ''}">Resumen</button>
+          <button type="button" data-room-tab="croquis" class="${state.selectedRoomTab === 'croquis' ? 'active' : ''}">Croquis</button>
+        </div>
+      ` : ''}
+
+      ${state.selectedRoomTab === 'croquis' && hasCroquis
+        ? renderCroquis(room)
+        : `
+          <section class="panel">${renderRoomFacts(room,d)}</section>
+          <div class="section-title">Tareas de hoy</div>
+          ${renderTaskGroups(getTasksForDate(d).filter(task => task.room === room.name))}
+        `}
+    `;
+
+    document.getElementById('back-rooms').onclick = () => {
+      state.selectedRoom = null;
+      state.selectedRoomTab = 'summary';
+      render();
+    };
+
+    app.querySelectorAll('[data-room-tab]').forEach(button => {
+      button.addEventListener('click', () => {
+        state.selectedRoomTab = button.dataset.roomTab;
+        render();
+      });
+    });
+
+    app.querySelectorAll('[data-bed-number]').forEach(button => {
+      button.addEventListener('click', () => {
+        openBedDialog(room.name, Number(button.dataset.bedNumber));
+      });
+    });
+
+    bindTaskInputs();
+    return;
   }
-  app.innerHTML = `<div class="list">${rooms.map(room => `<section class="room-card" data-room="${room.name}"><div class="room-head"><div><div class="room-title">${room.name}</div><div class="stage">${roomCycle(room,d).label}</div></div><span class="pill">Ver</span></div></section>`).join('')}</div>`;
-  app.querySelectorAll('.room-card').forEach(el => el.addEventListener('click', () => { state.selectedRoom = el.dataset.room; render(); }));
+
+  app.innerHTML = `
+    <div class="list">
+      ${rooms.map(room => `
+        <section class="room-card" data-room="${room.name}">
+          <div class="room-head">
+            <div>
+              <div class="room-title">${room.name}</div>
+              <div class="stage">${roomCycle(room,d).label}</div>
+            </div>
+            <span class="pill">Ver</span>
+          </div>
+        </section>
+      `).join('')}
+    </div>
+  `;
+
+  app.querySelectorAll('.room-card').forEach(element => {
+    element.addEventListener('click', () => {
+      state.selectedRoom = element.dataset.room;
+      state.selectedRoomTab = 'summary';
+      render();
+    });
+  });
 }
 function renderRoomFacts(room,d){
   if(room.type === 'esquejes'){
@@ -867,5 +1118,5 @@ function renderSettings(){
 }
 
 document.querySelectorAll('.top-nav button').forEach(btn => btn.addEventListener('click', () => { state.view = btn.dataset.view; state.selectedRoom=null; render(); }));
-if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.10').catch(()=>{})); }
+if('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=2.11').catch(()=>{})); }
 render();

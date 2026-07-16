@@ -70,3 +70,39 @@ select.text-input{appearance:auto}
   -webkit-text-fill-color:transparent;
   filter:drop-shadow(0 0 7px rgba(190,230,255,.18));
 }
+
+.room-tabs{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:12px 0}
+.room-tabs button{border:1px solid var(--line);border-radius:12px;background:#1f2937;color:var(--muted);padding:10px;font-weight:800}
+.room-tabs button.active{background:rgba(249,115,22,.18);color:#fed7aa;border-color:rgba(249,115,22,.45)}
+.croquis-summary{margin-bottom:12px}
+.croquis-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.croquis-metrics>div{display:grid;gap:3px;padding:10px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.03)}
+.croquis-metrics span{font-size:12px;color:var(--muted)}
+.croquis-metrics strong{font-size:20px}
+.genetics-summary{display:grid;gap:6px;margin-top:12px}
+.genetics-row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
+.genetics-row span{display:flex;align-items:center;gap:8px}
+.genetics-row i{width:12px;height:12px;border-radius:50%;display:inline-block}
+.croquis-shell{display:grid;grid-template-columns:28px minmax(0,1fr) 28px;gap:4px;align-items:stretch}
+.side-aisle{border:1px dashed rgba(255,255,255,.15);border-radius:10px;display:flex;align-items:center;justify-content:center;min-height:100%}
+.side-aisle span{writing-mode:vertical-rl;transform:rotate(180deg);font-size:10px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase}
+.beds-grid{display:grid;grid-template-columns:repeat(var(--bed-columns),minmax(0,1fr));gap:3px}
+.bed-card{min-width:0;border:1px solid rgba(255,255,255,.17);border-radius:8px;background:rgba(17,24,39,.95);color:var(--text);padding:7px;text-align:left}
+.bed-card:active{transform:scale(.985)}
+.bed-card-head{display:flex;justify-content:space-between;align-items:center;gap:5px;font-size:11px}
+.bed-card-head strong{font-size:12px}
+.plant-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:8px 0}
+.plant-grid.five-plants{grid-template-columns:repeat(3,1fr)}
+.plant-position{aspect-ratio:1;border:1px dashed rgba(255,255,255,.2);border-radius:50%;background:transparent}
+.plant-position.occupied{border-style:solid;border-color:var(--plant-color);background:var(--plant-color)}
+.bed-genetics{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:var(--muted)}
+.room-detail-header{margin-top:12px}
+@media(max-width:520px){
+  .croquis-shell{grid-template-columns:18px minmax(0,1fr) 18px;gap:2px}
+  .beds-grid{gap:2px}
+  .bed-card{padding:5px;border-radius:6px}
+  .plant-grid{gap:2px;margin:6px 0}
+  .bed-card-head strong{font-size:10px}
+  .bed-card-head span,.bed-genetics{font-size:9px}
+  .side-aisle span{font-size:8px}
+}

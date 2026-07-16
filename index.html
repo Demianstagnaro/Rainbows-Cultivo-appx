@@ -32,7 +32,7 @@
       <div id="worker-options" class="worker-options"></div>
       <input id="worker-other" class="text-input" placeholder="Otro nombre (opcional)" />
       <menu>
-        <button type="button" id="cancel-task" class="secondary">Cancelar</button>
+        <button type="button" id="cancel-worker-dialog" class="secondary">Cancelar</button>
         <button id="confirm-worker" value="default" class="primary">Guardar</button>
       </menu>
     </form>
@@ -55,12 +55,38 @@
         <textarea id="task-detail" class="text-input" placeholder="Detalle opcional"></textarea>
       </label>
       <menu>
-        <button type="button" id="cancel-task" class="secondary">Cancelar</button>
+        <button type="button" id="cancel-task-dialog" class="secondary">Cancelar</button>
         <button id="save-task" value="default" class="primary">Guardar</button>
       </menu>
     </form>
   </dialog>
 
-  <script src="app.js?v=2.10"></script>
+
+  <dialog id="bed-dialog" class="dialog">
+    <form method="dialog" id="bed-form">
+      <h3 id="bed-dialog-title">Editar cama</h3>
+      <label class="field-label">Capacidad
+        <select id="bed-capacity" class="text-input">
+          <option value="5">5 plantas</option>
+          <option value="9">9 plantas</option>
+        </select>
+      </label>
+      <label class="field-label">Cantidad actual
+        <input id="bed-count" class="text-input" type="number" min="0" max="9" value="0" />
+      </label>
+      <label class="field-label">Genética o identificación
+        <input id="bed-genetics" class="text-input" placeholder="Ej.: Mandarin Cookies V2" />
+      </label>
+      <label class="field-label">Observaciones
+        <textarea id="bed-notes" class="text-input" placeholder="Observaciones de la cama"></textarea>
+      </label>
+      <menu>
+        <button type="button" id="cancel-bed-dialog" class="secondary">Cancelar</button>
+        <button id="save-bed" value="default" class="primary">Guardar</button>
+      </menu>
+    </form>
+  </dialog>
+
+  <script src="app.js?v=2.11"></script>
 </body>
 </html>

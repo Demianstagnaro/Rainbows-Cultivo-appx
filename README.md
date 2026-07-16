@@ -92,3 +92,12 @@ Luego abrir:
 - Solo se muestran etiquetas para tareas Extraordinarias o Reprogramadas.
 - El botón Cancelar del formulario de tareas funciona aunque los campos estén vacíos.
 - No se modificaron reglas, fechas ni lógica del cultivo.
+
+
+## V2.11
+- Se agregó un croquis editable en Flora 1, Flora 2 y Flora 3.
+- Flora 1 y 2 tienen 15 camas en 3 columnas × 5 filas, sin pasillos entre camas y con circulación lateral.
+- Flora 3 se muestra provisionalmente en 2 columnas × 4 filas hasta cargar su disposición real.
+- Cada cama permite elegir capacidad de 5 o 9 plantas, cantidad actual, genética y observaciones.
+- Se muestran totales de plantas, capacidad y distribución por genética.
+- En el calendario siempre se muestran tareas hechas y pendientes, incluso cuando todavía no se realizó ninguna.
