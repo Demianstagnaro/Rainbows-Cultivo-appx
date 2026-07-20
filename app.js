@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.0.0';
+const APP_VERSION='3.0.1';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -40,5 +40,96 @@ function menu(t){const a=prompt('1 = Editar\n2 = Mover\n3 = Eliminar');if(a==='1
 function openBed(id){const b=state.camas.find(x=>x.id===id);state.editBed=b;$('bed-dialog-title').textContent=`Cama ${b.numero}`;$('bed-capacity').value=b.capacidad;$('bed-notes').value=b.observaciones||'';$('bed-dialog').showModal()}$('cancel-bed').onclick=()=>$('bed-dialog').close();$('save-bed').onclick=async()=>{const b=state.editBed,cap=Number($('bed-capacity').value),enabled=cap===5?[1,3,5,7,9]:[1,2,3,4,5,6,7,8,9];await db.from('camas').update({capacidad:cap,observaciones:$('bed-notes').value}).eq('id',b.id);await db.from('plantas').update({habilitada:false,ocupada:false,genetica_id:null}).eq('cama_id',b.id);await db.from('plantas').update({habilitada:true}).eq('cama_id',b.id).in('posicion',enabled);$('bed-dialog').close();await refresh()}
 function openPlant(id){const p=state.plantas.find(x=>x.id===id),b=state.camas.find(x=>x.id===p.cama_id);state.editPlant=p;$('plant-dialog-title').textContent=`Cama ${b.numero} · Posición ${p.posicion}`;$('plant-status').value=p.ocupada?'occupied':'empty';$('plant-genetics').innerHTML='<option value="">Sin seleccionar</option>'+state.geneticas.map(g=>`<option value="${g.id}">${g.nombre}</option>`).join('');$('plant-genetics').value=p.genetica_id||'';$('plant-notes').value=p.observaciones||'';$('plant-dialog').showModal()}$('cancel-plant').onclick=()=>$('plant-dialog').close();$('save-plant').onclick=async()=>{const occ=$('plant-status').value==='occupied',gen=occ?$('plant-genetics').value:null;if(occ&&!gen){alert('Elegí una genética.');return}await db.from('plantas').update({ocupada:occ,genetica_id:gen,estado:occ?'activa':'vacia',observaciones:occ?$('plant-notes').value:''}).eq('id',state.editPlant.id);$('plant-dialog').close();await refresh()}
 async function saveConfig(){const emp=[...new Set($('emps').value.split('\n').map(x=>x.trim()).filter(Boolean))],gen=[...new Set($('gens').value.split('\n').map(x=>x.trim()).filter(Boolean))];for(const n of emp)await db.from('empleados').upsert({nombre:n,activo:true},{onConflict:'nombre'});for(const e of state.empleados.filter(e=>!emp.includes(e.nombre)))await db.from('empleados').update({activo:false}).eq('id',e.id);for(const n of gen)await db.from('geneticas').upsert({nombre:n,activa:true},{onConflict:'nombre'});for(const g of state.geneticas.filter(g=>!gen.includes(g.nombre)))await db.from('geneticas').update({activa:false}).eq('id',g.id);await refresh();alert('Configuración guardada.')}
-document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;state.room=null;state.day=null;render()});$('sign-out').onclick=()=>db.auth.signOut();$('sign-in').onclick=async()=>{const q=await db.auth.signInWithPassword({email:$('auth-email').value.trim(),password:$('auth-password').value});$('auth-message').textContent=q.error?q.error.message:''};$('sign-up').onclick=async()=>{const q=await db.auth.signUp({email:$('auth-email').value.trim(),password:$('auth-password').value,options:{data:{nombre:$('auth-name').value.trim()}}});$('auth-message').textContent=q.error?q.error.message:'Cuenta creada. Revisá tu correo si pide confirmación.'};
-async function start(session){state.session=session;$('auth-screen').hidden=true;$('app-shell').hidden=false;await load();subscribe();render()}db.auth.onAuthStateChange(async(_e,s)=>{if(s)await start(s);else{$('auth-screen').hidden=false;$('app-shell').hidden=true}});const{data:{session}}=await db.auth.getSession();if(session)await start(session);if('serviceWorker'in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.0').catch(console.error));
+document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;state.room=null;state.day=null;render()});$('sign-out').onclick=()=>db.auth.signOut();$('sign-in').onclick=async()=>{
+  const message=$('auth-message');
+  message.textContent='Ingresando…';
+  try{
+    const q=await db.auth.signInWithPassword({
+      email:$('auth-email').value.trim(),
+      password:$('auth-password').value
+    });
+    if(q.error) throw q.error;
+    message.textContent='Ingreso correcto. Cargando datos…';
+    if(q.data.session) scheduleStart(q.data.session);
+  }catch(error){
+    console.error(error);
+    message.textContent=error.message||'No se pudo iniciar sesión.';
+  }
+};$('sign-up').onclick=async()=>{
+  const message=$('auth-message');
+  message.textContent='Creando cuenta…';
+  try{
+    const q=await db.auth.signUp({
+      email:$('auth-email').value.trim(),
+      password:$('auth-password').value,
+      options:{
+        data:{nombre:$('auth-name').value.trim()},
+        emailRedirectTo:'https://demianstagnaro.github.io/Rainbows-Cultivo-appx/'
+      }
+    });
+    if(q.error) throw q.error;
+    message.textContent=q.data.session
+      ? 'Cuenta creada. Cargando datos…'
+      : 'Cuenta creada. Revisá el correo de confirmación.';
+    if(q.data.session) scheduleStart(q.data.session);
+  }catch(error){
+    console.error(error);
+    message.textContent=error.message||'No se pudo crear la cuenta.';
+  }
+};
+let startingSessionId=null;
+
+function scheduleStart(session){
+  if(!session?.user?.id) return;
+  if(startingSessionId===session.user.id) return;
+  startingSessionId=session.user.id;
+  setTimeout(()=>start(session),0);
+}
+
+async function start(session){
+  state.session=session;
+  $('auth-screen').hidden=true;
+  $('app-shell').hidden=false;
+  $('app').innerHTML='<section class="panel">Cargando información compartida…</section>';
+
+  try{
+    await load();
+    subscribe();
+    render();
+  }catch(error){
+    console.error(error);
+    $('app').innerHTML=`<section class="panel error-panel">
+      <strong>No se pudieron cargar los datos</strong>
+      <p>${error.message||'Error desconocido'}</p>
+      <button type="button" id="retry-load" class="primary">Reintentar</button>
+    </section>`;
+    const retry=$('retry-load');
+    if(retry) retry.onclick=()=>{startingSessionId=null;scheduleStart(session)};
+  }finally{
+    startingSessionId=null;
+  }
+}
+
+db.auth.onAuthStateChange((_event,session)=>{
+  if(session){
+    scheduleStart(session);
+  }else{
+    state.session=null;
+    startingSessionId=null;
+    $('auth-screen').hidden=false;
+    $('app-shell').hidden=true;
+  }
+});
+
+try{
+  const {data,error}=await db.auth.getSession();
+  if(error) throw error;
+  if(data.session) scheduleStart(data.session);
+}catch(error){
+  console.error(error);
+  $('auth-message').textContent=error.message||'No se pudo recuperar la sesión.';
+}
+
+if('serviceWorker'in navigator){
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.0.1').catch(console.error));
+}

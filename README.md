@@ -10,3 +10,11 @@ Primera versión compartida con Supabase.
 - Actualización con Supabase Realtime.
 
 La primera cuenta puede crearse desde la app. Si la confirmación de correo está activa en Supabase, hay que confirmar el correo antes de ingresar.
+
+
+## V3.0.1
+- Corregido el bloqueo al iniciar sesión.
+- Las consultas a Supabase ya no se ejecutan directamente dentro de onAuthStateChange.
+- Se muestran estados de ingreso, carga y errores.
+- Se agregó un botón Reintentar si falla la carga de datos.
+- El registro indica explícitamente la URL de retorno de GitHub Pages.
