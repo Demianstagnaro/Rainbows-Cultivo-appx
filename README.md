@@ -18,3 +18,9 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Se muestran estados de ingreso, carga y errores.
 - Se agregó un botón Reintentar si falla la carga de datos.
 - El registro indica explícitamente la URL de retorno de GitHub Pages.
+
+
+## V3.1
+- Login oculto después de ingresar.
+- Administración de usuarios y roles.
+- Registro del usuario que hizo cada modificación.
