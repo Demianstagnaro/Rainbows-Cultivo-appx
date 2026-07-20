@@ -20,7 +20,8 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - El registro indica explícitamente la URL de retorno de GitHub Pages.
 
 
-## V3.1
-- Login oculto después de ingresar.
-- Administración de usuarios y roles.
-- Registro del usuario que hizo cada modificación.
+## V3.1.1
+- Corregido el error de JavaScript que impedía usar el botón Ingresar.
+- La pantalla de acceso desaparece al iniciar sesión.
+- Administración de usuarios y roles desde Config.
+- Registro visible del usuario que cargó cada tarea realizada.
