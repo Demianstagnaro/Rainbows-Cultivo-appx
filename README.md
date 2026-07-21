@@ -70,3 +70,9 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Permite seleccionar varias personas y exige al menos una.
 - Restaurados los controles de nueva tarea, edición, camas y plantas.
 - Se mantuvo el diseño aprobado y se renovó el caché.
+
+## V3.4.1
+- Flora 1, Flora 2 y Flora 3 quedan correctamente identificadas como Ciclo 9.
+- El cambio a Ciclo 10 se calcula cada 77 días desde la referencia correcta de cada sala.
+- Corregido Esquejes: ya no permanece mostrando Día 64; toma la cosecha válida del ciclo correspondiente.
+- En la pantalla Hoy, cada sala de flora muestra también el número de ciclo.
