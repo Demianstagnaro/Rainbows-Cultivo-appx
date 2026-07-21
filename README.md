@@ -41,3 +41,21 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Barra principal: Hoy, Calendario y Salas.
 - Encabezado Cultivo rainbows.
 - Flora 1, Flora 2 y Flora 3 en Ciclo 9, con avance automático cada 77 días.
+
+
+## V3.2.1
+- Navegador diario de salas rediseñado como “◀ Jue 16/07/2026 ▶”.
+- Botón “Hoy” o “Volver a hoy” ubicado encima de la fecha.
+- Config muestra los permisos de cada rol.
+- El resumen de cuenta muestra los permisos del usuario conectado.
+- Los administradores pueden eliminar otras cuentas.
+- Por seguridad, un administrador no puede eliminar su propia cuenta desde la app.
+
+
+## V3.3.0
+- Identidad visual renovada tomando como referencia el modelo aprobado.
+- Logo “rainbows” recreado desde la imagen original enviada por el usuario.
+- Logo ligeramente más pequeño y acompañado por “Cultivo” en blanco.
+- Encabezado, navegación, tarjetas, formularios y botones unificados.
+- Paleta oscura con acentos azul, verde y violeta.
+- Se mantuvo intacta la lógica funcional de V3.2.1.

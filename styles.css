@@ -162,3 +162,312 @@ select.text-input{appearance:auto}
 .priority-routine .priority-badge{background:rgba(34,197,94,.14);color:#86efac}
 
 .cultivo-prefix{font-family:Arial,Helvetica,sans-serif;font-weight:500;color:#fff;letter-spacing:0;text-transform:none;margin-right:6px}.header-actions{display:flex;gap:8px;align-items:center}.day-navigator{display:grid;grid-template-columns:44px minmax(150px,auto) 44px;gap:8px;justify-content:center;align-items:center;margin-top:14px}.nav-day{font-size:27px;line-height:1;min-height:42px;padding:4px 10px}.nav-today{min-height:42px}.room-detail-header{position:sticky;top:0;z-index:4}
+
+.room-date-controls{
+  display:grid;
+  justify-items:center;
+  gap:9px;
+  margin-top:14px;
+}
+.room-back-today{
+  min-width:120px;
+  padding:7px 14px;
+}
+.room-back-today:disabled{
+  opacity:.72;
+  cursor:default;
+}
+.day-navigator{
+  display:grid;
+  grid-template-columns:52px minmax(170px,auto) 52px;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  margin-top:0;
+}
+.nav-day{
+  min-height:44px;
+  padding:7px 10px;
+  font-size:19px;
+  line-height:1;
+}
+.room-date-label{
+  min-width:170px;
+  text-align:center;
+  font-size:18px;
+  font-weight:800;
+  white-space:nowrap;
+}
+.role-permissions{
+  display:grid;
+  gap:10px;
+}
+.role-permission{
+  padding:11px 12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:rgba(255,255,255,.03);
+}
+.role-permission strong{
+  display:block;
+  text-transform:capitalize;
+  margin-bottom:4px;
+}
+.role-permission p{
+  margin:0;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.4;
+}
+.danger{
+  border:1px solid rgba(239,68,68,.55);
+  background:rgba(239,68,68,.14);
+  color:#fca5a5;
+  border-radius:10px;
+  padding:8px 10px;
+  font-weight:700;
+  cursor:pointer;
+}
+.self-account{
+  color:var(--muted);
+  font-size:12px;
+  font-weight:700;
+}
+.account-summary p{margin:8px 0}
+@media(max-width:620px){
+  .day-navigator{grid-template-columns:44px minmax(150px,1fr) 44px;width:100%}
+  .room-date-label{min-width:0;font-size:16px}
+  .user-delete{width:100%}
+}
+
+
+/* ===== RAINBOWS V3.3 visual polish ===== */
+:root{
+  --bg:#05080d;
+  --card:#0d141d;
+  --card2:#111b27;
+  --text:#f4f7fb;
+  --muted:#98a6b8;
+  --line:#263342;
+  --accent:#2488ff;
+  --accent2:#69b1ff;
+  --green:#35c653;
+  --red:#ef4444;
+  --purple:#b239ff;
+}
+body{
+  background:
+    radial-gradient(circle at 18% -10%,rgba(36,136,255,.10),transparent 28%),
+    radial-gradient(circle at 92% 5%,rgba(178,57,255,.06),transparent 22%),
+    linear-gradient(180deg,#04070b,#08101a 38%,#09121d);
+}
+#app-shell{min-height:100vh}
+.topbar{
+  padding:14px 18px 11px;
+  background:rgba(3,7,12,.96);
+  border-bottom:1px solid #202c39;
+  box-shadow:0 8px 24px rgba(0,0,0,.22);
+}
+.topbar>div:first-child{min-width:0}
+.app-brand{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-height:42px;
+}
+.cultivo-prefix{
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  color:#fff;
+  font-size:25px;
+  font-weight:750;
+  line-height:1;
+  letter-spacing:-.7px;
+  margin:0;
+  white-space:nowrap;
+}
+.rainbows-logo{
+  display:block;
+  object-fit:contain;
+  object-position:center;
+  mix-blend-mode:screen;
+}
+.header-logo{
+  width:174px;
+  height:48px;
+}
+.auth-logo-wrap{
+  display:flex;
+  justify-content:center;
+  margin-bottom:12px;
+}
+.auth-logo{
+  width:min(245px,78vw);
+  height:auto;
+}
+#screen-title{
+  font-size:22px;
+  margin:5px 0 0;
+  letter-spacing:-.3px;
+}
+.header-actions{gap:10px}
+.compact-button{
+  min-height:40px;
+  border-radius:10px;
+  padding:9px 14px;
+  background:#090e15;
+  border:1px solid #354150;
+  box-shadow:none;
+}
+.compact-button:hover{border-color:#5a6b80;background:#101823}
+
+.top-nav{
+  top:86px;
+  grid-template-columns:repeat(3,1fr);
+  gap:0;
+  padding:0 16px;
+  background:rgba(5,9,14,.97);
+  border-bottom:1px solid #273341;
+}
+.top-nav button{
+  position:relative;
+  min-height:58px;
+  border-radius:0;
+  padding:14px 8px;
+  color:#d2d9e3;
+  font-size:14px;
+  letter-spacing:.02em;
+}
+.top-nav button.active{
+  background:transparent;
+  color:#fff;
+}
+.top-nav button.active::after{
+  content:"";
+  position:absolute;
+  left:0;right:0;bottom:-1px;
+  height:3px;
+  background:var(--accent);
+  border-radius:3px 3px 0 0;
+}
+
+main{max-width:1280px;padding:14px 16px 26px}
+.room-card,.panel,.task-card,.day-cell,.task-group{
+  background:linear-gradient(145deg,rgba(15,23,33,.98),rgba(10,17,25,.98));
+  border:1px solid #283747;
+  border-radius:15px;
+  box-shadow:0 12px 30px rgba(0,0,0,.22);
+}
+.panel{padding:17px}
+.room-card{padding:16px;transition:transform .15s ease,border-color .15s ease}
+.room-card:hover{transform:translateY(-1px);border-color:#3b4f64}
+.room-title{font-size:18px}
+.section-title{
+  color:#d8e1ec;
+  font-size:13px;
+  letter-spacing:.13em;
+  margin-top:24px;
+}
+
+.primary{
+  color:#fff;
+  background:linear-gradient(180deg,#2c91ff,#1675da);
+  border:1px solid #4aa1ff;
+  box-shadow:0 7px 18px rgba(36,136,255,.18);
+}
+.secondary,.toolbar button{
+  background:#0b121b;
+  color:#eef4fb;
+  border:1px solid #344252;
+}
+.secondary:hover,.toolbar button:hover{background:#121d29;border-color:#526478}
+.text-input{
+  background:#080e16;
+  border-color:#344253;
+  border-radius:10px;
+}
+.text-input:focus{
+  outline:none;
+  border-color:#2c8cf3;
+  box-shadow:0 0 0 3px rgba(44,140,243,.15);
+}
+.task-row input{accent-color:#2c8cf3}
+.progress>span{background:linear-gradient(90deg,#2488ff,#72b9ff)}
+.day-cell.today{
+  outline:2px solid #2488ff;
+  box-shadow:0 0 0 4px rgba(36,136,255,.14);
+}
+.top-nav button:nth-child(1).active::after{background:#2488ff}
+.top-nav button:nth-child(2).active::after{background:#35c653}
+.top-nav button:nth-child(3).active::after{background:#b239ff}
+
+.user-row{
+  border-color:#2a3949;
+  background:rgba(255,255,255,.018);
+  border-radius:10px;
+}
+.role-permission{
+  border-color:#2a3949;
+  background:rgba(255,255,255,.018);
+}
+.danger{
+  background:rgba(184,24,24,.22);
+  border-color:#d52f2f;
+  color:#ffb1b1;
+}
+.account-summary{
+  border-top:1px solid #2b3847;
+}
+.dialog{
+  background:#0c141e;
+  border-color:#334253;
+  box-shadow:0 24px 80px rgba(0,0,0,.55);
+}
+
+.room-date-controls{margin-top:12px}
+.room-back-today{
+  background:#0a111a;
+  border-color:#334354;
+}
+.day-navigator{
+  grid-template-columns:46px minmax(160px,auto) 46px;
+  gap:8px;
+}
+.nav-day{
+  min-height:42px;
+  border-radius:10px;
+  font-size:17px;
+}
+.room-date-label{
+  font-size:17px;
+  letter-spacing:.01em;
+}
+
+.auth-screen{
+  background:
+    radial-gradient(circle at 50% 15%,rgba(36,136,255,.12),transparent 35%),
+    linear-gradient(180deg,#04070b,#09121d);
+}
+.auth-card{
+  border:1px solid #2b3a4a;
+  background:linear-gradient(160deg,rgba(14,22,32,.98),rgba(7,13,20,.98));
+  box-shadow:0 30px 90px rgba(0,0,0,.5);
+}
+
+@media(max-width:760px){
+  .topbar{padding:12px 12px 9px}
+  .app-brand{gap:7px}
+  .cultivo-prefix{font-size:19px}
+  .header-logo{width:128px;height:38px}
+  #screen-title{font-size:19px}
+  .compact-button{padding:8px 10px;min-height:37px}
+  .top-nav{top:76px;padding:0 8px}
+  .top-nav button{min-height:52px;font-size:13px}
+  main{padding:12px 10px 22px}
+  .panel,.room-card,.task-group{border-radius:13px}
+}
+@media(max-width:430px){
+  .cultivo-prefix{font-size:17px}
+  .header-logo{width:112px;height:34px}
+  .header-actions{gap:6px}
+  .compact-button{font-size:12px;padding:7px 8px}
+}
