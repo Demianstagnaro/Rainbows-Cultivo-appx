@@ -381,3 +381,14 @@ body{
 @media(max-width:430px){
   .worker-options{grid-template-columns:1fr}
 }
+
+/* V3.4.2 — ajuste de encabezado */
+.brand-logo,
+.header-logo,
+.app-logo,
+.logo-rainbows,
+.site-logo img,
+.brand img {
+  transform: scale(0.88);
+  transform-origin: left center;
+}

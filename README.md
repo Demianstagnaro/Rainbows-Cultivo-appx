@@ -76,3 +76,11 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - El cambio a Ciclo 10 se calcula cada 77 días desde la referencia correcta de cada sala.
 - Corregido Esquejes: ya no permanece mostrando Día 64; toma la cosecha válida del ciclo correspondiente.
 - En la pantalla Hoy, cada sala de flora muestra también el número de ciclo.
+
+## V3.4.2
+- El calendario muestra el ciclo y la etapa de cada sala:
+  F1: C9 · Flora S3
+  F2: C9 · Vege S2
+  F3: C9 · Flora S3
+- Se redujo aproximadamente un 12% el tamaño visual del logo Rainbows.
+- El cálculo de ciclo sigue usando la misma función en Hoy, Calendario y Salas.
