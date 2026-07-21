@@ -96,3 +96,10 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Las tareas históricas no inventan empleado, horario ni usuario responsable.
 - Las tareas de hoy y las futuras continúan requiriendo selección manual de empleados.
 - Las tareas históricas quedan bloqueadas para evitar que se desmarquen accidentalmente.
+
+## V3.4.5
+- El rol Empleado puede ver Hoy, Salas, Calendario e Historial.
+- Se agregó una pestaña Historial con acceso a los últimos 60 días.
+- Desde Historial se puede abrir cada fecha y consultar tareas, responsables y estados.
+- El rol Lectura también puede consultar las cuatro pantallas, sin modificar datos.
+- Incluye `Rainbows_V3.4.5_permisos_empleados.sql` para actualizar las políticas de Supabase.
