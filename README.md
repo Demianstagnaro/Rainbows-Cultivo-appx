@@ -52,10 +52,8 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Por seguridad, un administrador no puede eliminar su propia cuenta desde la app.
 
 
-## V3.3.0
-- Identidad visual renovada tomando como referencia el modelo aprobado.
-- Logo “rainbows” recreado desde la imagen original enviada por el usuario.
-- Logo ligeramente más pequeño y acompañado por “Cultivo” en blanco.
-- Encabezado, navegación, tarjetas, formularios y botones unificados.
-- Paleta oscura con acentos azul, verde y violeta.
-- Se mantuvo intacta la lógica funcional de V3.2.1.
+## V3.3.1
+- Reconstruida directamente sobre la V3.2.1 estable.
+- No se modificó la lógica de autenticación, navegación ni Supabase.
+- Se aplicó únicamente el nuevo diseño y el logo aprobado.
+- Recursos visuales con versión propia para evitar caché anterior.
