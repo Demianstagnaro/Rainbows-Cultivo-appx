@@ -392,3 +392,17 @@ body{
   transform: scale(0.88);
   transform-origin: left center;
 }
+
+/* V3.4.3 — acceso rápido a la fecha actual */
+.calendar-today-action {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 12px;
+}
+.calendar-today-action button {
+  min-width: 140px;
+}
+.calendar-today-action button:disabled {
+  opacity: .45;
+  cursor: default;
+}

@@ -84,3 +84,9 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
   F3: C9 · Flora S3
 - Se redujo aproximadamente un 12% el tamaño visual del logo Rainbows.
 - El cálculo de ciclo sigue usando la misma función en Hoy, Calendario y Salas.
+
+## V3.4.3
+- Se agregó el botón «Volver a hoy» arriba del selector de mes del calendario.
+- Al pulsarlo, el calendario vuelve al mes actual.
+- El botón queda deshabilitado cuando ya se está viendo el mes actual.
+- Se mantuvieron las abreviaciones completas de los días: Lun, Mar, Mié, Jue, Vie, Sáb y Dom.
