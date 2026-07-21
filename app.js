@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.3.2';
+const APP_VERSION='3.4.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -30,6 +30,290 @@ function taskPriority(t){const critical=['Cosecha','Trasplante','Esquejes','Inic
 function orderedTasks(list){return [...list].sort((a,b)=>taskPriority(a).rank-taskPriority(b).rank||a.task.localeCompare(b.task,'es'))}
 function row(t){const r=real(t),label=t.type==='extraordinaria'?'Extraordinaria':t.type==='reprogramada'?'Reprogramada':'',priority=taskPriority(t);return`<div class="task-row ${priority.cls} ${done(t)?'done':''}"><input type="checkbox" data-task-id="${t.id}" ${done(t)?'checked':''}><label><strong>${t.task}</strong><div class="task-subline"><span class="priority-badge">${priority.label}</span>${label?`<span class="task-category">${label}</span>`:''}${t.detail?`<span class="stage">${t.detail}</span>`:''}</div></label><div class="task-meta">${done(t)?`${names(t).join(', ')}<br>${new Date(r.realizada_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}<div class="actor-line">Registrado por: ${actor(t)}</div>`:''}</div><button class="task-menu" data-menu="${t.id}">⋮</button></div>`}
 function findTask(id,d){return tasks(d).find(t=>String(t.id)===String(id))}
+
+function canModify(){
+  return ['administrador','encargado','empleado'].includes(state.profile?.rol||'empleado');
+}
+
+function closeDialog(id){
+  const dialog=$(id);
+  if(dialog?.open) dialog.close();
+}
+
+function openWorker(t){
+  if(!canModify()){
+    alert('Tu usuario tiene permiso de solo lectura.');
+    render();
+    return;
+  }
+
+  state.pending=t;
+  state.selected=new Set();
+  const container=$('worker-options');
+  container.innerHTML='';
+
+  if(!state.empleados.length){
+    const empty=document.createElement('p');
+    empty.className='worker-empty';
+    empty.textContent='No hay empleados activos. Agregalos desde Configuración y guardá los cambios.';
+    container.appendChild(empty);
+  }else{
+    state.empleados.forEach(employee=>{
+      const button=document.createElement('button');
+      button.type='button';
+      button.dataset.employeeId=employee.id;
+      button.textContent=employee.nombre;
+      button.onclick=()=>{
+        if(state.selected.has(employee.id)){
+          state.selected.delete(employee.id);
+          button.classList.remove('selected');
+        }else{
+          state.selected.add(employee.id);
+          button.classList.add('selected');
+        }
+      };
+      container.appendChild(button);
+    });
+  }
+
+  const dialog=$('worker-dialog');
+  if(typeof dialog.showModal==='function') dialog.showModal();
+  else dialog.setAttribute('open','');
+}
+
+function bind(d){
+  app.querySelectorAll('input[data-task-id]').forEach(input=>{
+    const task=findTask(input.dataset.taskId,d);
+    if(!task) return;
+
+    if(!canModify()) input.disabled=true;
+
+    input.onchange=async()=>{
+      if(!canModify()){
+        input.checked=done(task);
+        return;
+      }
+
+      if(done(task)){
+        input.disabled=true;
+        try{
+          await undo(task);
+        }catch(error){
+          console.error(error);
+          alert(error.message||'No se pudo desmarcar la tarea.');
+          input.checked=true;
+        }finally{
+          input.disabled=false;
+        }
+      }else{
+        input.checked=false;
+        openWorker(task);
+      }
+    };
+  });
+
+  app.querySelectorAll('[data-new]').forEach(button=>{
+    button.onclick=()=>openTask(button.dataset.new,null);
+  });
+
+  app.querySelectorAll('[data-menu]').forEach(button=>{
+    button.onclick=()=>{
+      const task=findTask(button.dataset.menu,d);
+      if(task) openTask(ymd(d),task);
+    };
+  });
+}
+
+function fillRoomSelect(selectedRoom=''){
+  const select=$('task-room');
+  select.innerHTML='';
+  rules.forEach(room=>{
+    const option=document.createElement('option');
+    option.value=room.name;
+    option.textContent=room.name;
+    option.selected=room.name===selectedRoom;
+    select.appendChild(option);
+  });
+}
+
+function openTask(dateString,t){
+  if(!canModify()){
+    alert('Tu usuario tiene permiso de solo lectura.');
+    return;
+  }
+
+  state.editTask=t||null;
+  $('task-dialog-title').textContent=t?'Editar tarea':'Nueva tarea';
+  $('task-date').value=t?.date||dateString||ymd(today());
+  fillRoomSelect(t?.room||'Flora 1');
+  $('task-name').value=t?.task||'';
+  $('task-detail').value=t?.detail||'';
+
+  const dialog=$('task-dialog');
+  if(typeof dialog.showModal==='function') dialog.showModal();
+  else dialog.setAttribute('open','');
+}
+
+async function saveTaskDialog(){
+  const date=$('task-date').value;
+  const room=$('task-room').value;
+  const name=$('task-name').value.trim();
+  const detail=$('task-detail').value.trim();
+
+  if(!date||!room||!name){
+    alert('Completá fecha, sala y tarea.');
+    return;
+  }
+
+  const button=$('save-task');
+  button.disabled=true;
+  try{
+    let row=null;
+    if(state.editTask){
+      row=state.editTask.db||await ensure(state.editTask);
+      const q=await db.from('tareas').update({
+        sala_id:sr(room)?.id||null,
+        fecha:date,
+        nombre:name,
+        detalle:detail,
+        tipo:state.editTask.custom?(state.editTask.type||'extraordinaria'):'reprogramada',
+        estado:done(state.editTask)?'realizada':'pendiente'
+      }).eq('id',row.id);
+      if(q.error) throw q.error;
+    }else{
+      const q=await db.from('tareas').insert({
+        sala_id:sr(room)?.id||null,
+        fecha:date,
+        nombre:name,
+        detalle:detail,
+        tipo:'extraordinaria',
+        estado:'pendiente'
+      });
+      if(q.error) throw q.error;
+    }
+    closeDialog('task-dialog');
+    state.editTask=null;
+    await refresh();
+  }catch(error){
+    console.error(error);
+    alert(error.message||'No se pudo guardar la tarea.');
+  }finally{
+    button.disabled=false;
+  }
+}
+
+function openBed(id){
+  const bed=state.camas.find(x=>String(x.id)===String(id));
+  if(!bed) return;
+  state.editBed=bed;
+  $('bed-dialog-title').textContent=`Editar cama ${bed.numero}`;
+  $('bed-capacity').value=String(bed.capacidad||9);
+  $('bed-notes').value=bed.observaciones||bed.notas||'';
+  $('bed-dialog').showModal();
+}
+
+async function saveBedDialog(){
+  if(!state.editBed) return;
+  const payload={capacidad:Number($('bed-capacity').value)};
+  if(Object.prototype.hasOwnProperty.call(state.editBed,'observaciones')) payload.observaciones=$('bed-notes').value.trim();
+  else if(Object.prototype.hasOwnProperty.call(state.editBed,'notas')) payload.notas=$('bed-notes').value.trim();
+
+  const q=await db.from('camas').update(payload).eq('id',state.editBed.id);
+  if(q.error) throw q.error;
+  closeDialog('bed-dialog');
+  state.editBed=null;
+  await refresh();
+}
+
+function openPlant(id){
+  const plant=state.plantas.find(x=>String(x.id)===String(id));
+  if(!plant) return;
+  state.editPlant=plant;
+  $('plant-dialog-title').textContent=`Editar planta ${plant.posicion}`;
+  $('plant-status').value=plant.ocupada?'occupied':'empty';
+
+  const select=$('plant-genetics');
+  select.innerHTML='<option value="">Sin genética</option>';
+  state.geneticas.forEach(genetic=>{
+    const option=document.createElement('option');
+    option.value=genetic.id;
+    option.textContent=genetic.nombre;
+    option.selected=String(genetic.id)===String(plant.genetica_id||'');
+    select.appendChild(option);
+  });
+  $('plant-notes').value=plant.observaciones||plant.notas||'';
+  $('plant-dialog').showModal();
+}
+
+async function savePlantDialog(){
+  if(!state.editPlant) return;
+  const occupied=$('plant-status').value==='occupied';
+  const payload={
+    ocupada:occupied,
+    genetica_id:occupied&&$('plant-genetics').value?$('plant-genetics').value:null
+  };
+  if(Object.prototype.hasOwnProperty.call(state.editPlant,'observaciones')) payload.observaciones=$('plant-notes').value.trim();
+  else if(Object.prototype.hasOwnProperty.call(state.editPlant,'notas')) payload.notas=$('plant-notes').value.trim();
+
+  const q=await db.from('plantas').update(payload).eq('id',state.editPlant.id);
+  if(q.error) throw q.error;
+  closeDialog('plant-dialog');
+  state.editPlant=null;
+  await refresh();
+}
+
+$('cancel-worker').onclick=()=>{
+  state.pending=null;
+  state.selected.clear();
+  closeDialog('worker-dialog');
+  render();
+};
+
+$('confirm-worker').onclick=async()=>{
+  if(!state.pending) return;
+  if(!state.selected.size){
+    alert('Elegí al menos una persona que realizó la tarea.');
+    return;
+  }
+
+  const button=$('confirm-worker');
+  button.disabled=true;
+  try{
+    await complete(state.pending,[...state.selected]);
+    state.pending=null;
+    state.selected.clear();
+    closeDialog('worker-dialog');
+  }catch(error){
+    console.error(error);
+    alert(error.message||'No se pudo completar la tarea.');
+  }finally{
+    button.disabled=false;
+  }
+};
+
+$('cancel-task').onclick=()=>{
+  state.editTask=null;
+  closeDialog('task-dialog');
+};
+$('save-task').onclick=saveTaskDialog;
+
+$('cancel-bed').onclick=()=>{
+  state.editBed=null;
+  closeDialog('bed-dialog');
+};
+$('save-bed').onclick=async()=>{
+  try{await saveBedDialog()}catch(error){console.error(error);alert(error.message||'No se pudo guardar la cama.')}
+};
+
+$('cancel-plant').onclick=()=>{
+  state.editPlant=null;
+  closeDialog('plant-dialog');
+};
+$('save-plant').onclick=async()=>{
+  try{await savePlantDialog()}catch(error){console.error(error);alert(error.message||'No se pudo guardar la planta.')}
+};
+
+
 function render(){const cb=$('header-config');if(cb){const ok=state.profile?.rol==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';render()}} $('today-label').textContent=nice(today());document.querySelectorAll('.top-nav button').forEach(b=>b.classList.toggle('active',b.dataset.view===state.view));if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='settings')renderSettings()}
 function renderToday(){ $('screen-title').textContent='Hoy';const d=today(),ts=tasks(d),n=ts.filter(done).length,p=ts.length?Math.round(n/ts.length*100):100;app.innerHTML=`<section class="panel daily-summary"><div class="daily-summary-head"><div>${taskCounter(n,ts.length)}</div><button class="primary compact-button" data-new="${ymd(d)}">+ Nueva tarea</button></div><div class="progress"><span style="width:${p}%"></span></div></section><div class="today-room-list">${rules.map(r=>{const rt=orderedTasks(ts.filter(t=>t.room===r.name)),pr=progress(r,d);return`<section class="room-card"><div class="room-head"><div><div class="room-title">${r.name}</div><div class="stage">${stage(r,d)}</div></div>${taskCounter(pr.done,pr.total)}</div><div class="progress"><span style="width:${pr.pct}%"></span></div><div class="room-tasks">${rt.length?rt.map(row).join(''):'<div class="empty-room-tasks">Sin tareas programadas</div>'}</div></section>`}).join('')}</div>`;bind(d)}
 function renderCalendar(){ $('screen-title').textContent='Calendario';if(state.day){renderDay(state.day);return}const m=state.month,first=new Date(m.getFullYear(),m.getMonth(),1),start=add(first,-((first.getDay()+6)%7)),days=Array.from({length:42},(_,i)=>add(start,i));app.innerHTML=`<div class="toolbar"><button id="prev">‹</button><strong>${monthName(m)}</strong><button id="next">›</button></div><div class="calendar">${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(x=>`<div class="dow">${x}</div>`).join('')}${days.map(d=>{const x=tasks(d),n=x.filter(done).length;return`<div class="day-cell ${same(d,today())?'today':''} ${d.getMonth()===m.getMonth()?'':'dim'}" data-date="${ymd(d)}"><div class="day-num">${d.getDate()}</div><div class="day-state">${rules.filter(r=>r.type==='flora').map(r=>`${r.name.replace('Flora ','F')}: ${cycle(r,d).label}`).join('<br>')}</div><div class="day-done">${taskCounter(n,x.length)}</div></div>`}).join('')}</div>`;$('prev').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()-1,1);render()};$('next').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()+1,1);render()};app.querySelectorAll('[data-date]').forEach(x=>x.onclick=()=>{state.day=parse(x.dataset.date);render()})}
@@ -37,7 +321,7 @@ function renderDay(d){const ts=tasks(d),n=ts.filter(done).length;app.innerHTML=`
 function beds(name){const s=sr(name);return state.camas.filter(c=>c.sala_id===s?.id).sort((a,b)=>a.numero-b.numero)}function plants(b){return state.plantas.filter(p=>p.cama_id===b.id&&p.habilitada).sort((a,b)=>a.posicion-b.posicion)}
 function renderRooms(){ $('screen-title').textContent='Salas';if(!state.room){app.innerHTML=`<div class="list">${rules.map(r=>{const pr=progress(r,today());return`<section class="room-card" data-room="${r.name}"><div class="room-head"><div><div class="room-title">${r.name}</div><div class="stage">${roomStatus(r,today())}</div></div>${taskCounter(pr.done,pr.total)}</div></section>`}).join('')}</div>`;app.querySelectorAll('[data-room]').forEach(x=>x.onclick=()=>{state.room=x.dataset.room;state.roomDay=today();render()});return}const r=rr(state.room),cro=r.type==='flora',d=state.roomDay||today(),rt=orderedTasks(tasks(d).filter(t=>t.room===r.name)),pr=progress(r,d);app.innerHTML=`<button id="back-room" class="secondary">← Volver</button><section class="panel room-detail-header"><div class="room-head"><div><h2>${r.name}</h2><p class="muted">${roomStatus(r,d)}</p></div>${taskCounter(pr.done,pr.total)}</div><div class="room-date-controls"><button id="room-today" class="secondary room-back-today" ${same(d,today())?'disabled':''}>${same(d,today())?'Hoy':'Volver a hoy'}</button><div class="day-navigator"><button id="room-prev" class="secondary nav-day" aria-label="Día anterior">◀</button><div class="room-date-label">${shortRoomDate(d)}</div><button id="room-next" class="secondary nav-day" aria-label="Día siguiente">▶</button></div></div></section>${cro?`<div class="room-tabs"><button data-tab="summary" class="${state.tab==='summary'?'active':''}">Resumen</button><button data-tab="croquis" class="${state.tab==='croquis'?'active':''}">Croquis</button></div>`:''}${state.tab==='croquis'&&cro?renderCroquis(r):`<div class="section-title">Tareas del ${nice(d)}</div>${rt.length?rt.map(row).join(''):'<div class="empty-room-tasks">Sin tareas programadas</div>'}`}`;$('back-room').onclick=()=>{state.room=null;state.roomDay=null;state.tab='summary';render()};$('room-prev').onclick=()=>{state.roomDay=add(d,-1);render()};$('room-next').onclick=()=>{state.roomDay=add(d,1);render()};$('room-today').onclick=()=>{state.roomDay=today();render()};app.querySelectorAll('[data-tab]').forEach(x=>x.onclick=()=>{state.tab=x.dataset.tab;render()});app.querySelectorAll('[data-bed]').forEach(x=>x.onclick=()=>openBed(x.dataset.bed));app.querySelectorAll('[data-plant]').forEach(x=>x.onclick=()=>openPlant(x.dataset.plant));bind(d)}
 function renderCroquis(r){const bs=beds(r.name),ps=bs.flatMap(plants),occ=ps.filter(p=>p.ocupada),cols=r.name==='Flora 3'?4:3;return`<section class="panel"><div class="croquis-metrics"><div><span>Plantas</span><strong>${occ.length}</strong></div><div><span>Capacidad</span><strong>${ps.length}</strong></div><div><span>Camas</span><strong>${bs.length}</strong></div></div></section><section class="croquis-shell"><div class="side-aisle"><span>Pasillo lateral</span></div><div class="beds-grid" style="--bed-columns:${cols}">${bs.map(b=>{const pp=plants(b),n=pp.filter(p=>p.ocupada).length;return`<article class="bed-card"><button class="bed-edit-button" data-bed="${b.id}"><div class="bed-card-head"><strong>Cama ${String(b.numero).padStart(2,'0')}</strong><span>${n}/${b.capacidad}</span></div></button><div class="plant-grid">${Array.from({length:9},(_,i)=>{const p=pp.find(x=>x.posicion===i+1);if(!p)return'<span class="plant-position plant-spacer"></span>';const g=state.geneticas.find(x=>x.id===p.genetica_id)?.nombre||'';return`<button class="plant-position ${p.ocupada?'occupied':''}" data-plant="${p.id}" title="${p.ocupada?g:'Vacía'}"></button>`}).join('')}</div></article>`}).join('')}</div><div class="side-aisle"><span>Pasillo lateral</span></div></section>`}
-function renderSettings(){if(state.profile?.rol!=='administrador'){state.view='today';render();return} $('screen-title').textContent='Config';const permissions={administrador:'Acceso total: puede gestionar usuarios, roles, empleados, genéticas, tareas y configuración.',encargado:'Puede crear, editar, completar y reprogramar tareas, además de consultar salas, calendario e historial.',empleado:'Puede consultar el cultivo y completar tareas indicando quiénes las realizaron.',lectura:'Solo puede consultar Hoy, Calendario y Salas; no puede modificar información.'};app.innerHTML=`<section class="panel"><h3>Empleados compartidos</h3><textarea id="emps" class="text-input" style="min-height:150px">${state.empleados.map(e=>e.nombre).join('\\n')}</textarea></section><section class="panel"><h3>Genéticas compartidas</h3><textarea id="gens" class="text-input" style="min-height:180px">${state.geneticas.map(g=>g.nombre).join('\\n')}</textarea></section><button id="save-conf" class="primary">Guardar configuración</button><section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>`<div class="user-row"><div><strong>${p.nombre||'Sin nombre'}</strong><div class="user-email">${p.email||''}</div></div><select class="text-input user-role" data-role="${p.id}">${['administrador','encargado','empleado','lectura'].map(r=>`<option value="${r}" ${p.rol===r?'selected':''}>${r}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${p.id}" ${p.activo?'checked':''}> Activo</label>${p.id!==state.session.user.id?`<button class="danger user-delete" data-delete-user="${p.id}" data-delete-name="${p.nombre||p.email||'este usuario'}">Eliminar cuenta</button>`:'<span class="self-account">Tu cuenta</span>'}</div>`).join('')}</div><p><button id="save-users" class="primary">Guardar usuarios</button></p></section><section class="panel"><h3>Permisos por rol</h3><div class="role-permissions">${Object.entries(permissions).map(([role,text])=>`<div class="role-permission"><strong>${role}</strong><p>${text}</p></div>`).join('')}</div></section><section class="panel account-summary"><p><strong>Usuario:</strong> ${state.session.user.email}</p><p><strong>Rol:</strong> ${state.profile?.rol||'empleado'}</p><p><strong>Tus permisos:</strong> ${permissions[state.profile?.rol||'empleado']}</p><p><strong>Versión:</strong> ${APP_VERSION}</p></section>`;$('save-conf').onclick=saveConfig;$('save-users').onclick=async()=>{try{for(const p of state.perfiles){const q=await db.rpc('admin_actualizar_perfil',{objetivo_id:p.id,nuevo_rol:document.querySelector(`[data-role="${p.id}"]`).value,nuevo_activo:document.querySelector(`[data-active="${p.id}"]`).checked});if(q.error)throw q.error}await refresh();alert('Usuarios actualizados.')}catch(e){console.error(e);alert(e.message||'No se pudieron actualizar los usuarios.')}};app.querySelectorAll('[data-delete-user]').forEach(btn=>btn.onclick=async()=>{const name=btn.dataset.deleteName;if(!confirm(`¿Eliminar definitivamente la cuenta de ${name}? Esta acción no se puede deshacer.`))return;btn.disabled=true;try{const q=await db.rpc('admin_eliminar_usuario',{objetivo_id:btn.dataset.deleteUser});if(q.error)throw q.error;await refresh();alert('Cuenta eliminada.')}catch(e){console.error(e);btn.disabled=false;alert(e.message||'No se pudo eliminar la cuenta. Verificá que hayas ejecutado el SQL de V3.2.1.')}})}
+function renderSettings(){if(state.profile?.rol!=='administrador'){state.view='today';render();return} $('screen-title').textContent='Config';const permissions={administrador:'Acceso total: puede gestionar usuarios, roles, empleados, genéticas, tareas y configuración.',encargado:'Puede crear, editar, completar y reprogramar tareas, además de consultar salas, calendario e historial.',empleado:'Puede consultar el cultivo y completar tareas indicando quiénes las realizaron.',lectura:'Solo puede consultar Hoy, Calendario y Salas; no puede modificar información.'};app.innerHTML=`<section class="panel"><h3>Empleados compartidos</h3><textarea id="emps" class="text-input" style="min-height:150px">${state.empleados.map(e=>e.nombre).join('\n')}</textarea></section><section class="panel"><h3>Genéticas compartidas</h3><textarea id="gens" class="text-input" style="min-height:180px">${state.geneticas.map(g=>g.nombre).join('\n')}</textarea></section><button id="save-conf" class="primary">Guardar configuración</button><section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>`<div class="user-row"><div><strong>${p.nombre||'Sin nombre'}</strong><div class="user-email">${p.email||''}</div></div><select class="text-input user-role" data-role="${p.id}">${['administrador','encargado','empleado','lectura'].map(r=>`<option value="${r}" ${p.rol===r?'selected':''}>${r}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${p.id}" ${p.activo?'checked':''}> Activo</label>${p.id!==state.session.user.id?`<button class="danger user-delete" data-delete-user="${p.id}" data-delete-name="${p.nombre||p.email||'este usuario'}">Eliminar cuenta</button>`:'<span class="self-account">Tu cuenta</span>'}</div>`).join('')}</div><p><button id="save-users" class="primary">Guardar usuarios</button></p></section><section class="panel"><h3>Permisos por rol</h3><div class="role-permissions">${Object.entries(permissions).map(([role,text])=>`<div class="role-permission"><strong>${role}</strong><p>${text}</p></div>`).join('')}</div></section><section class="panel account-summary"><p><strong>Usuario:</strong> ${state.session.user.email}</p><p><strong>Rol:</strong> ${state.profile?.rol||'empleado'}</p><p><strong>Tus permisos:</strong> ${permissions[state.profile?.rol||'empleado']}</p><p><strong>Versión:</strong> ${APP_VERSION}</p></section>`;$('save-conf').onclick=saveConfig;$('save-users').onclick=async()=>{try{for(const p of state.perfiles){const q=await db.rpc('admin_actualizar_perfil',{objetivo_id:p.id,nuevo_rol:document.querySelector(`[data-role="${p.id}"]`).value,nuevo_activo:document.querySelector(`[data-active="${p.id}"]`).checked});if(q.error)throw q.error}await refresh();alert('Usuarios actualizados.')}catch(e){console.error(e);alert(e.message||'No se pudieron actualizar los usuarios.')}};app.querySelectorAll('[data-delete-user]').forEach(btn=>btn.onclick=async()=>{const name=btn.dataset.deleteName;if(!confirm(`¿Eliminar definitivamente la cuenta de ${name}? Esta acción no se puede deshacer.`))return;btn.disabled=true;try{const q=await db.rpc('admin_eliminar_usuario',{objetivo_id:btn.dataset.deleteUser});if(q.error)throw q.error;await refresh();alert('Cuenta eliminada.')}catch(e){console.error(e);btn.disabled=false;alert(e.message||'No se pudo eliminar la cuenta. Verificá que hayas ejecutado el SQL de V3.2.1.')}})}
 async function saveConfig(){const emp=[...new Set($('emps').value.split('\n').map(x=>x.trim()).filter(Boolean))],gen=[...new Set($('gens').value.split('\n').map(x=>x.trim()).filter(Boolean))];for(const n of emp)await db.from('empleados').upsert({nombre:n,activo:true},{onConflict:'nombre'});for(const e of state.empleados.filter(e=>!emp.includes(e.nombre)))await db.from('empleados').update({activo:false}).eq('id',e.id);for(const n of gen)await db.from('geneticas').upsert({nombre:n,activa:true},{onConflict:'nombre'});for(const g of state.geneticas.filter(g=>!gen.includes(g.nombre)))await db.from('geneticas').update({activa:false}).eq('id',g.id);await refresh();alert('Configuración guardada.')}
 document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;state.room=null;state.roomDay=null;state.day=null;render()});$('sign-out').onclick=()=>db.auth.signOut();$('sign-in').onclick=async()=>{
   const message=$('auth-message');
@@ -131,5 +415,5 @@ try{
 }
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.3.2').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.4.0').catch(console.error));
 }

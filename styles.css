@@ -351,3 +351,33 @@ body{
   .header-actions{gap:6px}
   .compact-button{font-size:12px;padding:7px 8px}
 }
+
+/* V3.4.0 — empleados y selector de realizadores */
+.worker-options{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.worker-options button{
+  text-align:left;
+  min-height:46px;
+}
+.worker-options button.selected{
+  background:linear-gradient(180deg,#3295ff,#1d78d7);
+  color:#fff;
+  border-color:#69b2ff;
+  box-shadow:0 0 0 2px rgba(50,149,255,.16);
+}
+.worker-empty{
+  grid-column:1/-1;
+  margin:4px 0;
+  padding:12px;
+  border:1px dashed var(--line);
+  border-radius:10px;
+  color:var(--muted);
+}
+#emps,#gens{
+  white-space:pre-wrap;
+  line-height:1.55;
+}
+@media(max-width:430px){
+  .worker-options{grid-template-columns:1fr}
+}

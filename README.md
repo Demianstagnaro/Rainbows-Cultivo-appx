@@ -62,3 +62,11 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Corregido el error de sintaxis de Chrome en `renderSettings`.
 - Los separadores de empleados y genéticas ahora usan `\n` escapado correctamente.
 - Se renovó el caché para evitar que siga cargándose `app.js?v=3.3.1`.
+
+## V3.4.0
+- Restaurada la capa de interacción que faltaba en versiones anteriores.
+- La lista de empleados vuelve a mostrarse uno por línea.
+- Al marcar una tarea se abre nuevamente el selector de empleados.
+- Permite seleccionar varias personas y exige al menos una.
+- Restaurados los controles de nueva tarea, edición, camas y plantas.
+- Se mantuvo el diseño aprobado y se renovó el caché.
