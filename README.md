@@ -57,3 +57,8 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - No se modificó la lógica de autenticación, navegación ni Supabase.
 - Se aplicó únicamente el nuevo diseño y el logo aprobado.
 - Recursos visuales con versión propia para evitar caché anterior.
+
+## V3.3.2
+- Corregido el error de sintaxis de Chrome en `renderSettings`.
+- Los separadores de empleados y genéticas ahora usan `\n` escapado correctamente.
+- Se renovó el caché para evitar que siga cargándose `app.js?v=3.3.1`.
