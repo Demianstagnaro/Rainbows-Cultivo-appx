@@ -25,3 +25,11 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - La pantalla de acceso desaparece al iniciar sesión.
 - Administración de usuarios y roles desde Config.
 - Registro visible del usuario que cargó cada tarea realizada.
+
+
+## V3.1.2
+- Corregido el contador de Esquejes: Día 1 es siempre el día anterior al inicio de Flora S1 de la sala correspondiente.
+- Los contadores “Tareas X/Y” se vuelven verdes cuando todas las tareas están completas.
+- El estado verde aparece en Hoy, salas, calendario y detalle diario.
+- Las tareas se ordenan por prioridad: críticas, importantes y de rutina.
+- No se modificaron las fechas ni las reglas operativas del calendario.
