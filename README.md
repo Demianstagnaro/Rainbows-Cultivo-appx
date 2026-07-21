@@ -90,3 +90,9 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Al pulsarlo, el calendario vuelve al mes actual.
 - El botón queda deshabilitado cuando ya se está viendo el mes actual.
 - Se mantuvieron las abreviaciones completas de los días: Lun, Mar, Mié, Jue, Vie, Sáb y Dom.
+
+## V3.4.4
+- Todas las tareas con fecha anterior al día actual aparecen como completadas.
+- Las tareas históricas no inventan empleado, horario ni usuario responsable.
+- Las tareas de hoy y las futuras continúan requiriendo selección manual de empleados.
+- Las tareas históricas quedan bloqueadas para evitar que se desmarquen accidentalmente.

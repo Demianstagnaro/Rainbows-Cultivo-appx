@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.4.3';
+const APP_VERSION='3.4.4';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -18,7 +18,7 @@ function stage(r,d){return r.type==='esquejes'?cut(d).label:(cycle(r,d).week?`Se
 function routine(date){const out=[],day=dow(date),push=(room,name,detail)=>out.push({id:`${ymd(date)}|${room}|${name}`,key:`${ymd(date)}|${room}|${name}`,date:ymd(date),room,task:name,detail,type:'rutina',custom:false});for(const r of rules){const c=r.type==='esquejes'?{cut:cut(date)}:cycle(r,date);if(r.type!=='esquejes'&&!(r.name==='Flora 1'&&r.automaticIrrigation))push(r.name,'Riego','Riego diario manual');if(r.type==='esquejes'&&c.cut.active)push(r.name,'Mantenimiento',c.cut.label);if(r.name==='Flora 1'){if(transplant(r,date))push(r.name,'Calibrar riego','Trasplante / nuevo ciclo');if(startWeek(r,date,1))push(r.name,'Calibrar riego','Inicio Flora S1');if(startWeek(r,date,7))push(r.name,'Calibrar riego','Inicio Flora S7')}if(['lunes','miercoles','viernes'].includes(day)){if(['vege','madres'].includes(r.type))push(r.name,'Fumigacion','Lunes, miércoles y viernes');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=3)))push(r.name,'Fumigacion','Flora hasta S3')}if(day==='jueves'){if(['vege','madres'].includes(r.type))push(r.name,'KNF','Jueves');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=6)))push(r.name,'KNF','Flora hasta S6')}if(r.type==='flora'){if(transplant(r,date)){push(r.name,'Enmienda','Trasplante / inicio Vege S1');push(r.name,'Trasplante','Nuevo ciclo')}if(startWeek(r,date,1)){push(r.name,'Enmienda','Inicio Flora S1');push(r.name,'Inicio flora','Inicio Flora S1')}if(startWeek(r,date,4))push(r.name,'Enmienda','Inicio Flora S4');if(same(date,add(c.fl,-1))){push(r.name,'Esquejes','Día previo a floración');push(r.name,'Poda bajos','Día previo a floración')}if(startWeek(r,date,3))push(r.name,'Schwazzing','Inicio Flora S3');if(same(date,add(c.tr,1)))push(r.name,'Redes','Día siguiente al trasplante');if(harvest(r,date))push(r.name,'Cosecha','Final Flora S8')}}return out}
 function uiTask(t){const s=state.salas.find(x=>x.id===t.sala_id);return{id:t.id,date:t.fecha,room:s?.nombre||'',task:t.nombre,detail:t.detalle||'',type:t.tipo,custom:true,db:t}}
 function tasks(date){const day=ymd(date),rows=state.tareas.filter(t=>t.fecha===day),map=new Map(rows.filter(t=>t.clave_externa).map(t=>[t.clave_externa,t]));const rt=routine(date).filter(t=>map.get(t.key)?.estado!=='cancelada').map(t=>map.get(t.key)?{...t,id:map.get(t.key).id,db:map.get(t.key)}:t);const custom=rows.filter(t=>!t.clave_externa||t.tipo!=='rutina').filter(t=>t.estado!=='cancelada').map(uiTask);return[...rt,...custom]}
-function real(t){const id=t.db?.id||t.id;return state.realizaciones.find(r=>r.tarea_id===id)}function done(t){return!!real(t)}function names(t){const r=real(t);if(!r)return[];const ids=state.joins.filter(j=>j.realizacion_id===r.id).map(j=>j.empleado_id);return state.empleados.filter(e=>ids.includes(e.id)).map(e=>e.nombre)}function actor(t){const r=real(t);if(!r?.registrada_por)return'';const p=state.perfiles.find(x=>x.id===r.registrada_por);return p?.nombre||p?.email||'Usuario'}
+function real(t){const id=t.db?.id||t.id;return state.realizaciones.find(r=>r.tarea_id===id)}function historicalDone(t){return!!t.date&&diff(parse(t.date),today())<0}function done(t){return historicalDone(t)||!!real(t)}function names(t){const r=real(t);if(!r)return[];const ids=state.joins.filter(j=>j.realizacion_id===r.id).map(j=>j.empleado_id);return state.empleados.filter(e=>ids.includes(e.id)).map(e=>e.nombre)}function actor(t){const r=real(t);if(!r?.registrada_por)return'';const p=state.perfiles.find(x=>x.id===r.registrada_por);return p?.nombre||p?.email||'Usuario'}
 async function ensure(t){if(t.db?.id)return t.db;const payload={clave_externa:t.key,sala_id:sr(t.room)?.id||null,fecha:t.date,nombre:t.task,detalle:t.detail||'',tipo:'rutina',estado:'pendiente'};const q=await db.from('tareas').upsert(payload,{onConflict:'clave_externa'}).select().single();if(q.error)throw q.error;return q.data}
 async function complete(t,ids){const row=t.custom?t.db:await ensure(t);await db.from('tareas').update({estado:'realizada'}).eq('id',row.id);const q=await db.from('realizaciones_tarea').upsert({tarea_id:row.id,realizada_at:new Date().toISOString(),registrada_por:state.session.user.id},{onConflict:'tarea_id'}).select().single();if(q.error)throw q.error;await db.from('realizacion_empleados').delete().eq('realizacion_id',q.data.id);if(ids.length)await db.from('realizacion_empleados').insert(ids.map(id=>({realizacion_id:q.data.id,empleado_id:id})));await refresh()}
 async function undo(t){const r=real(t);if(r)await db.from('realizaciones_tarea').delete().eq('id',r.id);if(t.db?.id)await db.from('tareas').update({estado:'pendiente'}).eq('id',t.db.id);await refresh()}
@@ -28,7 +28,7 @@ function progress(r,d){const x=tasks(d).filter(t=>t.room===r.name),n=x.filter(do
 function taskCounter(doneCount,totalCount){const complete=totalCount>0&&doneCount===totalCount;return `<span class="task-counter ${complete?'is-complete':''}">Tareas ${doneCount}/${totalCount}</span>`}
 function taskPriority(t){const critical=['Cosecha','Trasplante','Esquejes','Inicio flora'];const important=['Enmienda','Schwazzing','Calibrar riego','Poda bajos','Redes'];if(critical.includes(t.task))return{rank:0,cls:'priority-critical',label:'Crítica'};if(important.includes(t.task))return{rank:1,cls:'priority-important',label:'Importante'};return{rank:2,cls:'priority-routine',label:'Rutina'}}
 function orderedTasks(list){return [...list].sort((a,b)=>taskPriority(a).rank-taskPriority(b).rank||a.task.localeCompare(b.task,'es'))}
-function row(t){const r=real(t),label=t.type==='extraordinaria'?'Extraordinaria':t.type==='reprogramada'?'Reprogramada':'',priority=taskPriority(t);return`<div class="task-row ${priority.cls} ${done(t)?'done':''}"><input type="checkbox" data-task-id="${t.id}" ${done(t)?'checked':''}><label><strong>${t.task}</strong><div class="task-subline"><span class="priority-badge">${priority.label}</span>${label?`<span class="task-category">${label}</span>`:''}${t.detail?`<span class="stage">${t.detail}</span>`:''}</div></label><div class="task-meta">${done(t)?`${names(t).join(', ')}<br>${new Date(r.realizada_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}<div class="actor-line">Registrado por: ${actor(t)}</div>`:''}</div><button class="task-menu" data-menu="${t.id}">⋮</button></div>`}
+function row(t){const r=real(t),historic=historicalDone(t)&&!r,label=t.type==='extraordinaria'?'Extraordinaria':t.type==='reprogramada'?'Reprogramada':'',priority=taskPriority(t),meta=historic?'<span class="historical-complete">Completada (histórico)</span>':r?`${names(t).join(', ')}<br>${new Date(r.realizada_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}<div class="actor-line">Registrado por: ${actor(t)}</div>`:'';return`<div class="task-row ${priority.cls} ${done(t)?'done':''}"><input type="checkbox" data-task-id="${t.id}" ${done(t)?'checked':''} ${historic?'disabled':''}><label><strong>${t.task}</strong><div class="task-subline"><span class="priority-badge">${priority.label}</span>${label?`<span class="task-category">${label}</span>`:''}${t.detail?`<span class="stage">${t.detail}</span>`:''}</div></label><div class="task-meta">${meta}</div><button class="task-menu" data-menu="${t.id}">⋮</button></div>`}
 function findTask(id,d){return tasks(d).find(t=>String(t.id)===String(id))}
 
 function canModify(){
@@ -86,9 +86,13 @@ function bind(d){
     const task=findTask(input.dataset.taskId,d);
     if(!task) return;
 
-    if(!canModify()) input.disabled=true;
+    if(!canModify()||historicalDone(task)) input.disabled=true;
 
     input.onchange=async()=>{
+      if(historicalDone(task)){
+        input.checked=true;
+        return;
+      }
       if(!canModify()){
         input.checked=done(task);
         return;
@@ -415,5 +419,5 @@ try{
 }
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.4.3').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.4.4').catch(console.error));
 }

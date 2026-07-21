@@ -406,3 +406,9 @@ body{
   opacity: .45;
   cursor: default;
 }
+
+/* V3.4.4 — tareas históricas cerradas */
+.historical-complete {
+  opacity: .72;
+  font-size: .86rem;
+}
