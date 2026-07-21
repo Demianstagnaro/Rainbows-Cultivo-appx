@@ -23,8 +23,8 @@
   </section>
 
   <div id="app-shell" hidden>
-    <header class="topbar"><div><div class="eyebrow brand-wordmark">rainbows</div><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><button id="sign-out" class="secondary compact-button">Salir</button></header>
-    <nav class="top-nav"><button data-view="today" class="active">Hoy</button><button data-view="calendar">Calendario</button><button data-view="rooms">Salas</button><button data-view="settings">Config</button></nav>
+    <header class="topbar"><div><div class="eyebrow brand-wordmark"><span class="cultivo-prefix">Cultivo</span> rainbows</div><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><div class="header-actions"><button id="header-config" class="secondary compact-button" hidden>Config</button><button id="sign-out" class="secondary compact-button">Salir</button></div></header>
+    <nav class="top-nav"><button data-view="today" class="active">Hoy</button><button data-view="calendar">Calendario</button><button data-view="rooms">Salas</button></nav>
     <main id="app"><div class="panel">Cargando…</div></main>
   </div>
 
@@ -36,6 +36,6 @@
 
   <dialog id="plant-dialog" class="dialog"><form method="dialog"><h3 id="plant-dialog-title">Editar planta</h3><label class="field-label">Estado<select id="plant-status" class="text-input"><option value="occupied">Ocupada</option><option value="empty">Vacía</option></select></label><label class="field-label">Genética<select id="plant-genetics" class="text-input"></select></label><label class="field-label">Observaciones<textarea id="plant-notes" class="text-input"></textarea></label><menu><button type="button" id="cancel-plant" class="secondary">Cancelar</button><button type="button" id="save-plant" class="primary">Guardar</button></menu></form></dialog>
 
-  <script type="module" src="app.js?v=3.1.2"></script>
+  <script type="module" src="app.js?v=3.2.0"></script>
 </body>
 </html>

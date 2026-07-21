@@ -33,3 +33,11 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - El estado verde aparece en Hoy, salas, calendario y detalle diario.
 - Las tareas se ordenan por prioridad: críticas, importantes y de rutina.
 - No se modificaron las fechas ni las reglas operativas del calendario.
+
+
+## V3.2.0
+- Navegación por días dentro del detalle de cada sala.
+- Config junto a Salir y visible solo para administradores.
+- Barra principal: Hoy, Calendario y Salas.
+- Encabezado Cultivo rainbows.
+- Flora 1, Flora 2 y Flora 3 en Ciclo 9, con avance automático cada 77 días.
