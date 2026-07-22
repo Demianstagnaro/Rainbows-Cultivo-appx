@@ -131,3 +131,11 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - El script elimina políticas antiguas conocidas y crea una configuración limpia.
 - Esta versión no cambia la interfaz respecto de V3.5.1.
 - Ejecutar solamente `Rainbows_V3.6.0_SQL_UNIFICADO.sql`.
+
+## V3.6.1
+- El detalle de la Enmienda de Flora Semana 4 ahora muestra solamente “Semana 4”.
+- Editar una tarea sin cambiar su fecha modifica la tarea existente y no crea una copia.
+- Una tarea rutinaria editada en el mismo día conserva el tipo “rutina” y no aparece como “Reprogramada”.
+- Si una tarea rutinaria se mueve a otra fecha, la original se cancela y se crea una sola tarea “Reprogramada” en la nueva fecha.
+- Se corrigió el filtro que podía mostrar dos veces una tarea rutinaria editada.
+- No requiere ejecutar un SQL nuevo.

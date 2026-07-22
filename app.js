@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.6.0';
+const APP_VERSION='3.6.1';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -15,9 +15,9 @@ function cycle(r,date){if(r.type!=='flora')return{label:'Permanente',stage:'perm
 function cut(date){const groups=[{dest:['Flora 1','Flora 3'],start:parse('2026-05-20'),opp:parse('2026-07-01')},{dest:['Flora 2'],start:parse('2026-07-01'),opp:parse('2026-05-20')}],active=[];for(const g of groups){const approx=Math.floor(diff(date,g.start)/77);for(let o=-2;o<=2;o++){const fl=add(g.start,(approx+o)*77),intake=add(fl,-1);/* Esquejes: Día 1 = día anterior a Flora S1 */const harvestBase=add(g.opp,56);const harvestOffset=Math.ceil(diff(intake,harvestBase)/77);let h=add(harvestBase,harvestOffset*77);while(diff(h,intake)<=0)h=add(h,77);const exit=add(h,2);if(diff(date,intake)>=0&&diff(date,exit)<0)active.push({dest:g.dest,intake,exit})}}if(!active.length)return{active:false,label:'Vacía'};active.sort((a,b)=>b.intake-a.intake);const x=active[0];return{active:true,label:`Día ${diff(date,x.intake)+1}`,dest:x.dest,exit:x.exit}}
 function cycleNumber(r,d){if(r.type!=='flora')return null;const cycle9Start=r.name==='Flora 1'||r.name==='Flora 3'?parse('2026-07-16'):parse('2026-06-10');return 9+Math.floor(diff(d,cycle9Start)/77)}function roomStatus(r,d){const n=cycleNumber(r,d);return n?`Ciclo ${n} · ${stage(r,d)}`:stage(r,d)}
 function stage(r,d){return r.type==='esquejes'?cut(d).label:(cycle(r,d).week?`Semana ${cycle(r,d).week}`:cycle(r,d).label)}function startWeek(r,d,w){const c=cycle(r,d);return c.stage==='flora'&&c.week===w&&diff(d,c.fl)%7===0}function transplant(r,d){const c=cycle(r,d);return r.type==='flora'&&diff(d,c.tr)===0}function harvest(r,d){const c=cycle(r,d);return r.type==='flora'&&diff(d,c.fl)===56}
-function routine(date){const out=[],day=dow(date),push=(room,name,detail)=>out.push({id:`${ymd(date)}|${room}|${name}`,key:`${ymd(date)}|${room}|${name}`,date:ymd(date),room,task:name,detail,type:'rutina',custom:false});for(const r of rules){const c=r.type==='esquejes'?{cut:cut(date)}:cycle(r,date);if(r.type!=='esquejes'&&!(r.name==='Flora 1'&&r.automaticIrrigation))push(r.name,'Riego','Riego diario manual');if(r.type==='esquejes'&&c.cut.active)push(r.name,'Mantenimiento',c.cut.label);if(r.name==='Flora 1'){if(transplant(r,date))push(r.name,'Calibrar riego','Trasplante / nuevo ciclo');if(startWeek(r,date,1))push(r.name,'Calibrar riego','Inicio Flora S1');if(startWeek(r,date,7))push(r.name,'Calibrar riego','Inicio Flora S7')}if(['lunes','miercoles','viernes'].includes(day)){if(['vege','madres'].includes(r.type))push(r.name,'Fumigacion','Lunes, miércoles y viernes');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=3)))push(r.name,'Fumigacion','Flora hasta S3')}if(day==='jueves'){if(['vege','madres'].includes(r.type))push(r.name,'KNF','Jueves');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=6)))push(r.name,'KNF','Flora hasta S6')}if(r.type==='flora'){if(transplant(r,date)){push(r.name,'Enmienda','Trasplante / inicio Vege S1');push(r.name,'Trasplante','Nuevo ciclo')}if(startWeek(r,date,1)){push(r.name,'Enmienda','Inicio Flora S1');push(r.name,'Inicio flora','Inicio Flora S1')}if(startWeek(r,date,4))push(r.name,'Enmienda','Inicio Flora S4');if(same(date,add(c.fl,-1))){push(r.name,'Esquejes','Día previo a floración');push(r.name,'Poda bajos','Día previo a floración')}if(startWeek(r,date,3))push(r.name,'Schwazzing','Inicio Flora S3');if(same(date,add(c.tr,1)))push(r.name,'Redes','Día siguiente al trasplante');if(harvest(r,date))push(r.name,'Cosecha','Final Flora S8')}}return out}
+function routine(date){const out=[],day=dow(date),push=(room,name,detail)=>out.push({id:`${ymd(date)}|${room}|${name}`,key:`${ymd(date)}|${room}|${name}`,date:ymd(date),room,task:name,detail,type:'rutina',custom:false});for(const r of rules){const c=r.type==='esquejes'?{cut:cut(date)}:cycle(r,date);if(r.type!=='esquejes'&&!(r.name==='Flora 1'&&r.automaticIrrigation))push(r.name,'Riego','Riego diario manual');if(r.type==='esquejes'&&c.cut.active)push(r.name,'Mantenimiento',c.cut.label);if(r.name==='Flora 1'){if(transplant(r,date))push(r.name,'Calibrar riego','Trasplante / nuevo ciclo');if(startWeek(r,date,1))push(r.name,'Calibrar riego','Inicio Flora S1');if(startWeek(r,date,7))push(r.name,'Calibrar riego','Inicio Flora S7')}if(['lunes','miercoles','viernes'].includes(day)){if(['vege','madres'].includes(r.type))push(r.name,'Fumigacion','Lunes, miércoles y viernes');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=3)))push(r.name,'Fumigacion','Flora hasta S3')}if(day==='jueves'){if(['vege','madres'].includes(r.type))push(r.name,'KNF','Jueves');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=6)))push(r.name,'KNF','Flora hasta S6')}if(r.type==='flora'){if(transplant(r,date)){push(r.name,'Enmienda','Trasplante / inicio Vege S1');push(r.name,'Trasplante','Nuevo ciclo')}if(startWeek(r,date,1)){push(r.name,'Enmienda','Inicio Flora S1');push(r.name,'Inicio flora','Inicio Flora S1')}if(startWeek(r,date,4))push(r.name,'Enmienda','Semana 4');if(same(date,add(c.fl,-1))){push(r.name,'Esquejes','Día previo a floración');push(r.name,'Poda bajos','Día previo a floración')}if(startWeek(r,date,3))push(r.name,'Schwazzing','Inicio Flora S3');if(same(date,add(c.tr,1)))push(r.name,'Redes','Día siguiente al trasplante');if(harvest(r,date))push(r.name,'Cosecha','Final Flora S8')}}return out}
 function uiTask(t){const s=state.salas.find(x=>x.id===t.sala_id);return{id:t.id,date:t.fecha,room:s?.nombre||'',task:t.nombre,detail:t.detalle||'',type:t.tipo,custom:true,db:t}}
-function tasks(date){const day=ymd(date),rows=state.tareas.filter(t=>t.fecha===day),map=new Map(rows.filter(t=>t.clave_externa).map(t=>[t.clave_externa,t]));const rt=routine(date).filter(t=>map.get(t.key)?.estado!=='cancelada').map(t=>map.get(t.key)?{...t,id:map.get(t.key).id,db:map.get(t.key)}:t);const custom=rows.filter(t=>!t.clave_externa||t.tipo!=='rutina').filter(t=>t.estado!=='cancelada').map(uiTask);return[...rt,...custom]}
+function tasks(date){const day=ymd(date),rows=state.tareas.filter(t=>t.fecha===day),map=new Map(rows.filter(t=>t.clave_externa).map(t=>[t.clave_externa,t]));const rt=routine(date).filter(t=>map.get(t.key)?.estado!=='cancelada').map(t=>map.get(t.key)?{...t,id:map.get(t.key).id,db:map.get(t.key)}:t);const custom=rows.filter(t=>!t.clave_externa).filter(t=>t.estado!=='cancelada').map(uiTask);return[...rt,...custom]}
 function real(t){const id=t.db?.id||t.id;return state.realizaciones.find(r=>r.tarea_id===id)}function historicalDone(t){return!!t.date&&diff(parse(t.date),today())<0}function done(t){return historicalDone(t)||!!real(t)}function names(t){const r=real(t);if(!r)return[];const ids=state.joins.filter(j=>j.realizacion_id===r.id).map(j=>j.empleado_id);return state.empleados.filter(e=>ids.includes(e.id)).map(e=>e.nombre)}function actor(t){const r=real(t);if(!r?.registrada_por)return'';const p=state.perfiles.find(x=>x.id===r.registrada_por);return p?.nombre||p?.email||'Usuario'}
 async function ensure(t){if(t.db?.id)return t.db;const payload={clave_externa:t.key,sala_id:sr(t.room)?.id||null,fecha:t.date,nombre:t.task,detalle:t.detail||'',tipo:'rutina',estado:'pendiente'};const q=await db.from('tareas').upsert(payload,{onConflict:'clave_externa'}).select().single();if(q.error)throw q.error;return q.data}
 async function complete(t,ids){const row=t.custom?t.db:await ensure(t);await db.from('tareas').update({estado:'realizada'}).eq('id',row.id);const q=await db.from('realizaciones_tarea').upsert({tarea_id:row.id,realizada_at:new Date().toISOString(),registrada_por:state.session.user.id},{onConflict:'tarea_id'}).select().single();if(q.error)throw q.error;await db.from('realizacion_empleados').delete().eq('realizacion_id',q.data.id);if(ids.length)await db.from('realizacion_empleados').insert(ids.map(id=>({realizacion_id:q.data.id,empleado_id:id})));await refresh()}
@@ -384,16 +384,42 @@ async function saveTaskDialog(){
   try{
     let row=null;
     if(state.editTask){
-      row=state.editTask.db||await ensure(state.editTask);
-      const q=await db.from('tareas').update({
-        sala_id:sr(room)?.id||null,
-        fecha:date,
-        nombre:name,
-        detalle:detail,
-        tipo:state.editTask.custom?(state.editTask.type||'extraordinaria'):'reprogramada',
-        estado:done(state.editTask)?'realizada':'pendiente'
-      }).eq('id',row.id);
-      if(q.error) throw q.error;
+      const originalDate=state.editTask.date;
+      const moved=date!==originalDate;
+
+      if(!state.editTask.custom&&moved){
+        row=state.editTask.db||await ensure(state.editTask);
+
+        const cancelOriginal=await db.from('tareas')
+          .update({estado:'cancelada'})
+          .eq('id',row.id);
+        if(cancelOriginal.error) throw cancelOriginal.error;
+
+        const createMoved=await db.from('tareas').insert({
+          sala_id:sr(room)?.id||null,
+          fecha:date,
+          nombre:name,
+          detalle:detail,
+          tipo:'reprogramada',
+          estado:done(state.editTask)?'realizada':'pendiente'
+        });
+        if(createMoved.error) throw createMoved.error;
+      }else{
+        row=state.editTask.db||await ensure(state.editTask);
+        const preservedType=state.editTask.custom
+          ? (state.editTask.type||'extraordinaria')
+          : 'rutina';
+
+        const q=await db.from('tareas').update({
+          sala_id:sr(room)?.id||null,
+          fecha:date,
+          nombre:name,
+          detalle:detail,
+          tipo:preservedType,
+          estado:done(state.editTask)?'realizada':'pendiente'
+        }).eq('id',row.id);
+        if(q.error) throw q.error;
+      }
     }else{
       const q=await db.from('tareas').insert({
         sala_id:sr(room)?.id||null,
@@ -670,5 +696,5 @@ try{
 }
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.6.0').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.6.1').catch(console.error));
 }
