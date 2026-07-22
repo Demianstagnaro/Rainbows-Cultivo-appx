@@ -439,3 +439,22 @@ body{
     flex-direction: column;
   }
 }
+
+/* V3.5.0 */
+.today-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,380px);gap:14px;align-items:start}
+.general-tasks-panel{position:sticky;top:145px;max-height:calc(100vh - 165px);overflow:auto}
+.general-tasks-head,.room-head-actions{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.general-tasks-head h2{margin:0}
+.general-task-section{margin-top:12px}
+.general-completed{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+.general-completed summary{cursor:pointer;font-weight:800;color:var(--muted)}
+.general-task-row label{min-width:0}
+.dialog-action-list{display:grid;gap:10px}
+.dialog-action-list button{width:100%;text-align:left}
+.action-dialog{width:min(92vw,380px)}
+.room-head-actions{margin-left:auto}
+.task-menu[hidden]{display:none!important}
+@media(max-width:900px){
+  .today-layout{grid-template-columns:1fr}
+  .general-tasks-panel{position:static;max-height:none;order:-1}
+}

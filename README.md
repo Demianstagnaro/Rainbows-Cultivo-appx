@@ -103,3 +103,15 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Desde Historial se puede abrir cada fecha y consultar tareas, responsables y estados.
 - El rol Lectura también puede consultar las cuatro pantallas, sin modificar datos.
 - Incluye `Rainbows_V3.4.5_permisos_empleados.sql` para actualizar las políticas de Supabase.
+
+## V3.5.0
+- En el menú de tres puntos de cada sala se puede agregar una tarea para esa sala y fecha.
+- Crear y editar tareas queda limitado a Administrador y Encargado.
+- Se agregó en Hoy una lista lateral de tareas generales del edificio, sin sala ni fecha.
+- Todos los usuarios pueden ver las tareas generales.
+- Administradores y encargados pueden crearlas, editarlas y eliminarlas.
+- Administradores, encargados y empleados pueden marcarlas como realizadas indicando responsables.
+- Las tareas realmente realizadas pueden desmarcarse, incluso si son de una fecha pasada.
+- Se agregó “Corregir responsables” al menú de una tarea realizada.
+- Las tareas históricas automáticas que nunca tuvieron una realización real siguen cerradas para evitar reabrir todo el historial.
+- Requiere ejecutar `Rainbows_V3.5.0_tareas_generales_y_permisos.sql`.
