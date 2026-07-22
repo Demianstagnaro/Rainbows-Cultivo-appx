@@ -458,3 +458,20 @@ body{
   .today-layout{grid-template-columns:1fr}
   .general-tasks-panel{position:static;max-height:none;order:-1}
 }
+
+/* V3.5.1 — corrección de permisos y botones */
+.general-tasks-head {
+  align-items: center;
+}
+.general-tasks-head h2 {
+  margin: 0;
+}
+.room-options-button {
+  min-width: 40px;
+  min-height: 38px;
+  font-size: 1.35rem;
+  line-height: 1;
+}
+#add-general-task {
+  white-space: nowrap;
+}

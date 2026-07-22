@@ -115,3 +115,19 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Se agregó “Corregir responsables” al menú de una tarea realizada.
 - Las tareas históricas automáticas que nunca tuvieron una realización real siguen cerradas para evitar reabrir todo el historial.
 - Requiere ejecutar `Rainbows_V3.5.0_tareas_generales_y_permisos.sql`.
+
+## V3.5.1
+- Corrige la detección del rol actual aunque tenga mayúsculas, espacios o la consulta individual del perfil falle.
+- Recupera Editar tarea para administradores y encargados.
+- Recupera Agregar tarea desde los tres puntos de cada sala.
+- Recupera Agregar y Editar en Tareas generales.
+- Elimina el subtítulo “Pendientes extraordinarios de todo el edificio”.
+- Refuerza los enlaces de los botones después de cada renderizado.
+- Incluye SQL de corrección de roles y políticas.
+
+## V3.6.0
+- Incluye un único SQL consolidado para permisos, tareas fechadas y tareas generales.
+- No requiere borrar queries anteriores del SQL Editor.
+- El script elimina políticas antiguas conocidas y crea una configuración limpia.
+- Esta versión no cambia la interfaz respecto de V3.5.1.
+- Ejecutar solamente `Rainbows_V3.6.0_SQL_UNIFICADO.sql`.
