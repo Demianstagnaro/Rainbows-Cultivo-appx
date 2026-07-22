@@ -139,3 +139,9 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Si una tarea rutinaria se mueve a otra fecha, la original se cancela y se crea una sola tarea “Reprogramada” en la nueva fecha.
 - Se corrigió el filtro que podía mostrar dos veces una tarea rutinaria editada.
 - No requiere ejecutar un SQL nuevo.
+
+## V3.6.2
+- Se eliminaron los detalles automáticos de todas las tareas programadas.
+- Fumigación de lunes y viernes: “ABA + OIL”.
+- Fumigación de miércoles: “ABA + OIL + Nissorun”.
+- No requiere ejecutar SQL.
