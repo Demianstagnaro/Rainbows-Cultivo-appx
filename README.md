@@ -185,3 +185,6 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Una continuación se cancela únicamente en ese día, sin eliminar toda la cadena.
 - Si la tarea estaba completada, se advierte que también se eliminarán la realización y los responsables.
 - No requiere ejecutar SQL.
+
+## V3.6.4.3
+- El texto de 'Tareas X/Y' también se muestra en rojo cuando hay pendientes.
