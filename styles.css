@@ -476,18 +476,13 @@ body{
   white-space: nowrap;
 }
 
-/* V3.6.4: días pasados con tareas pendientes */
+/* V3.6.4.1: solo el cartel "Tareas" se muestra en rojo */
 .day-cell.past-pending{
-  background:rgba(127,29,29,.78);
-  border-color:rgba(248,113,113,.9);
-  box-shadow:0 10px 30px rgba(127,29,29,.28);
+  background:inherit;
+  border-color:inherit;
+  box-shadow:inherit;
 }
-.day-cell.past-pending .day-num,
-.day-cell.past-pending .day-state,
-.day-cell.past-pending .day-done{
-  color:#fee2e2;
-}
-.day-cell.past-pending.today{
-  background:rgba(17,24,39,.9);
-  border-color:var(--line);
+.day-cell.past-pending .day-state{
+  color:#ef4444;
+  font-weight:800;
 }

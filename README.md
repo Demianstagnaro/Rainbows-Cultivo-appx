@@ -169,3 +169,9 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Hoy y los días futuros conservan el color azul habitual.
 - El cierre histórico fijo hasta el 21/07/2026 se mantiene.
 - No requiere ejecutar SQL.
+
+## V3.6.4.1 — Solo “Tareas” en rojo
+- En días pasados con tareas pendientes ya no se pinta todo el recuadro.
+- El cuadro mantiene su apariencia normal.
+- Solamente el cartel “Tareas” se muestra en rojo.
+- No requiere ejecutar SQL.
