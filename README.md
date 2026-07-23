@@ -175,3 +175,13 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - El cuadro mantiene su apariencia normal.
 - Solamente el cartel “Tareas” se muestra en rojo.
 - No requiere ejecutar SQL.
+
+## V3.6.4.2 — Cartel de tareas rojo y eliminación
+- En días pasados con pendientes, únicamente el cartel “Tareas X/Y” se muestra en rojo.
+- Los nombres y estados de las salas mantienen su color blanco habitual.
+- Se agregó “Eliminar tarea” al menú de opciones.
+- Las tareas manuales se eliminan definitivamente.
+- Las tareas automáticas se cancelan solamente para la fecha seleccionada.
+- Una continuación se cancela únicamente en ese día, sin eliminar toda la cadena.
+- Si la tarea estaba completada, se advierte que también se eliminarán la realización y los responsables.
+- No requiere ejecutar SQL.

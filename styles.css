@@ -476,13 +476,19 @@ body{
   white-space: nowrap;
 }
 
-/* V3.6.4.1: solo el cartel "Tareas" se muestra en rojo */
+/* V3.6.4.2: solo el cartel real "Tareas X/Y" se muestra en rojo */
 .day-cell.past-pending{
   background:inherit;
   border-color:inherit;
   box-shadow:inherit;
 }
 .day-cell.past-pending .day-state{
-  color:#ef4444;
-  font-weight:800;
+  color:#dbe5f0;
+  font-weight:inherit;
+}
+.day-cell.past-pending .task-counter{
+  color:#fecaca;
+  background:rgba(239,68,68,.18);
+  border-color:rgba(248,113,113,.82);
+  box-shadow:0 0 0 1px rgba(239,68,68,.08) inset;
 }

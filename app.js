@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.6.4.1';
+const APP_VERSION='3.6.4.2';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -289,6 +289,47 @@ function showDialog(id){
   else dialog.setAttribute('open','');
 }
 
+async function deleteTask(task){
+  const hasCompletion=!!real(task);
+  const message=hasCompletion
+    ? `Esta tarea ya fue completada.\n\nSi la eliminás, también se eliminará el registro de realización y los responsables asignados.\n\n¿Querés continuar?`
+    : `¿Eliminar esta tarea?\n\nEsta acción no se puede deshacer.`;
+  if(!confirm(message))return false;
+
+  let row=task.db||null;
+
+  // Las tareas automáticas y las continuaciones se cancelan solo en esa fecha.
+  if(!task.custom){
+    row=row||await ensure(task);
+    const realization=directRealByTaskId(row.id);
+    if(realization){
+      const joinsDelete=await db.from('realizacion_empleados').delete().eq('realizacion_id',realization.id);
+      if(joinsDelete.error)throw joinsDelete.error;
+      const realizationDelete=await db.from('realizaciones_tarea').delete().eq('id',realization.id);
+      if(realizationDelete.error)throw realizationDelete.error;
+    }
+    const cancel=await db.from('tareas').update({estado:'cancelada'}).eq('id',row.id);
+    if(cancel.error)throw cancel.error;
+    await refresh();
+    return true;
+  }
+
+  // Las tareas creadas manualmente se eliminan definitivamente.
+  if(row?.id){
+    const realization=directRealByTaskId(row.id);
+    if(realization){
+      const joinsDelete=await db.from('realizacion_empleados').delete().eq('realizacion_id',realization.id);
+      if(joinsDelete.error)throw joinsDelete.error;
+      const realizationDelete=await db.from('realizaciones_tarea').delete().eq('id',realization.id);
+      if(realizationDelete.error)throw realizationDelete.error;
+    }
+    const remove=await db.from('tareas').delete().eq('id',row.id);
+    if(remove.error)throw remove.error;
+  }
+  await refresh();
+  return true;
+}
+
 function openTaskMenu(task,d){
   state.menuTask=task;
   const canEdit=canEditTasks();
@@ -302,6 +343,8 @@ function openTaskMenu(task,d){
   $('menu-correct-workers').style.display=hasReal&&canComplete()?'block':'none';
   $('menu-undo-task').hidden=!hasReal||!canComplete();
   $('menu-undo-task').style.display=hasReal&&canComplete()?'block':'none';
+  $('menu-delete-task').hidden=!canEdit;
+  $('menu-delete-task').style.display=canEdit?'block':'none';
   $('menu-add-room-task').textContent=`Agregar tarea en ${task.room}`;
   $('menu-edit-task').onclick=()=>{closeDialog('task-menu-dialog');openTask(task.date||ymd(d),task)};
   $('menu-add-room-task').onclick=()=>{closeDialog('task-menu-dialog');openTask(task.date||ymd(d),null,task.room)};
@@ -319,6 +362,15 @@ function openTaskMenu(task,d){
     }catch(error){
       console.error(error);
       alert(error.message||'No se pudo desmarcar la tarea.');
+    }
+  };
+  $('menu-delete-task').onclick=async()=>{
+    try{
+      const deleted=await deleteTask(task);
+      if(deleted)closeDialog('task-menu-dialog');
+    }catch(error){
+      console.error(error);
+      alert(error.message||'No se pudo eliminar la tarea.');
     }
   };
   showDialog('task-menu-dialog');
@@ -823,5 +875,5 @@ try{
 }
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.6.4.1').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.6.4.2').catch(console.error));
 }
