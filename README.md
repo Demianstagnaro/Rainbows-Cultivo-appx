@@ -154,3 +154,18 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Se agregó “Desmarcar como realizada” al menú de la tarea.
 - Al desmarcar, se elimina la realización y la tarea vuelve a estado pendiente.
 - No requiere ejecutar SQL.
+
+## V3.6.4 — Tareas continuadas y días pendientes
+- Se continúan automáticamente hasta el día actual las tareas pendientes de:
+  - Trasplante Veges → Flora.
+  - Trasplante Esquejes → Veges.
+  - Esquejes.
+  - Poda de bajos.
+  - Schwazzing.
+- Cada aparición posterior muestra “Día 2”, “Día 3”, etc.
+- Al completar cualquier día de la cadena, todos los días vinculados aparecen completados con la misma realización y responsables.
+- Al desmarcarla, se reabre la cadena completa.
+- Los días pasados que conservan alguna tarea pendiente se muestran en rojo en el calendario.
+- Hoy y los días futuros conservan el color azul habitual.
+- El cierre histórico fijo hasta el 21/07/2026 se mantiene.
+- No requiere ejecutar SQL.

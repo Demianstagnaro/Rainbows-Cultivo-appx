@@ -475,3 +475,19 @@ body{
 #add-general-task {
   white-space: nowrap;
 }
+
+/* V3.6.4: días pasados con tareas pendientes */
+.day-cell.past-pending{
+  background:rgba(127,29,29,.78);
+  border-color:rgba(248,113,113,.9);
+  box-shadow:0 10px 30px rgba(127,29,29,.28);
+}
+.day-cell.past-pending .day-num,
+.day-cell.past-pending .day-state,
+.day-cell.past-pending .day-done{
+  color:#fee2e2;
+}
+.day-cell.past-pending.today{
+  background:rgba(17,24,39,.9);
+  border-color:var(--line);
+}
