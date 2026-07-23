@@ -6,12 +6,12 @@
   <title>rainbows</title>
   <meta name="theme-color" content="#111827">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=3.6.2">
+  <link rel="stylesheet" href="styles.css?v=3.6.3">
 </head>
 <body>
   <section id="auth-screen" class="auth-screen">
     <div class="auth-card">
-      <div class="auth-logo-wrap"><img src="rainbows-logo.webp?v=3.6.2" class="rainbows-logo auth-logo" alt="rainbows"></div>
+      <div class="auth-logo-wrap"><img src="rainbows-logo.webp?v=3.6.3" class="rainbows-logo auth-logo" alt="rainbows"></div>
       <h1>Acceso compartido</h1>
       <p class="muted">Ingresá con correo y contraseña.</p>
       <label class="field-label">Nombre<input id="auth-name" class="text-input" autocomplete="name"></label>
@@ -23,7 +23,7 @@
   </section>
 
   <div id="app-shell" hidden>
-    <header class="topbar"><div><div class="app-brand"><span class="cultivo-prefix">Cultivo</span><img src="rainbows-logo.webp?v=3.6.2" class="rainbows-logo header-logo" alt="rainbows"></div><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><div class="header-actions"><button id="header-config" class="secondary compact-button" hidden>Config</button><button id="sign-out" class="secondary compact-button">Salir</button></div></header>
+    <header class="topbar"><div><div class="app-brand"><span class="cultivo-prefix">Cultivo</span><img src="rainbows-logo.webp?v=3.6.3" class="rainbows-logo header-logo" alt="rainbows"></div><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><div class="header-actions"><button id="header-config" class="secondary compact-button" hidden>Config</button><button id="sign-out" class="secondary compact-button">Salir</button></div></header>
     <nav class="top-nav"><button data-view="today" class="active">Hoy</button><button data-view="calendar">Calendario</button><button data-view="rooms">Salas</button><button data-view="history">Historial</button></nav>
     <main id="app"><div class="panel">Cargando…</div></main>
   </div>
@@ -33,7 +33,7 @@
   <dialog id="task-dialog" class="dialog"><form method="dialog"><h3 id="task-dialog-title">Nueva tarea</h3><label class="field-label">Fecha<input id="task-date" class="text-input" type="date"></label><label class="field-label">Sala<select id="task-room" class="text-input"></select></label><label class="field-label">Tarea<input id="task-name" class="text-input"></label><label class="field-label">Detalle<textarea id="task-detail" class="text-input"></textarea></label><menu><button type="button" id="cancel-task" class="secondary">Cancelar</button><button type="button" id="save-task" class="primary">Guardar</button></menu></form></dialog>
 
 
-  <dialog id="task-menu-dialog" class="dialog action-dialog"><form method="dialog"><h3 id="task-menu-title">Tarea</h3><div class="dialog-action-list"><button type="button" id="menu-edit-task" class="secondary">Editar tarea</button><button type="button" id="menu-add-room-task" class="secondary">Agregar tarea en esta sala</button><button type="button" id="menu-correct-workers" class="secondary">Corregir responsables</button></div><menu><button type="button" class="secondary" onclick="this.closest('dialog').close()">Cerrar</button></menu></form></dialog>
+  <dialog id="task-menu-dialog" class="dialog action-dialog"><form method="dialog"><h3 id="task-menu-title">Tarea</h3><div class="dialog-action-list"><button type="button" id="menu-edit-task" class="secondary">Editar tarea</button><button type="button" id="menu-add-room-task" class="secondary">Agregar tarea en esta sala</button><button type="button" id="menu-correct-workers" class="secondary">Corregir responsables</button><button type="button" id="menu-undo-task" class="danger">Desmarcar como realizada</button></div><menu><button type="button" class="secondary" onclick="this.closest('dialog').close()">Cerrar</button></menu></form></dialog>
 
   <dialog id="room-menu-dialog" class="dialog action-dialog"><form method="dialog"><h3 id="room-menu-title">Sala</h3><div class="dialog-action-list"><button type="button" id="room-add-task" class="primary">+ Agregar tarea</button></div><menu><button type="button" class="secondary" onclick="this.closest('dialog').close()">Cerrar</button></menu></form></dialog>
 
@@ -43,6 +43,6 @@
 
   <dialog id="plant-dialog" class="dialog"><form method="dialog"><h3 id="plant-dialog-title">Editar planta</h3><label class="field-label">Estado<select id="plant-status" class="text-input"><option value="occupied">Ocupada</option><option value="empty">Vacía</option></select></label><label class="field-label">Genética<select id="plant-genetics" class="text-input"></select></label><label class="field-label">Observaciones<textarea id="plant-notes" class="text-input"></textarea></label><menu><button type="button" id="cancel-plant" class="secondary">Cancelar</button><button type="button" id="save-plant" class="primary">Guardar</button></menu></form></dialog>
 
-  <script type="module" src="app.js?v=3.6.2"></script>
+  <script type="module" src="app.js?v=3.6.3"></script>
 </body>
 </html>
