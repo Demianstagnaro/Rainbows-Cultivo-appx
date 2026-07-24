@@ -188,3 +188,10 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 
 ## V3.6.4.3
 - El texto de 'Tareas X/Y' también se muestra en rojo cuando hay pendientes.
+
+## V3.6.4.4 — Enmienda en Madres y calendario sin recuadro
+- Se agregó la tarea automática “Enmienda” en la sala Madres.
+- Se repite cada dos semanas, los martes, comenzando el 28/07/2026.
+- En días pasados con pendientes, el texto “Tareas X/Y” continúa en rojo.
+- Se eliminó el fondo, borde y recuadro especial del cartel.
+- No requiere ejecutar SQL.
