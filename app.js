@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.6.4.4';
+const APP_VERSION='3.6.4.5';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -35,7 +35,7 @@ function cycleNumber(r,d){if(r.type!=='flora')return null;const cycle9Start=r.na
 function stage(r,d){return r.type==='esquejes'?cut(d).label:(cycle(r,d).week?`Semana ${cycle(r,d).week}`:cycle(r,d).label)}function startWeek(r,d,w){const c=cycle(r,d);return c.stage==='flora'&&c.week===w&&diff(d,c.fl)%7===0}function transplant(r,d){const c=cycle(r,d);return r.type==='flora'&&diff(d,c.tr)===0}function harvest(r,d){const c=cycle(r,d);return r.type==='flora'&&diff(d,c.fl)===56}
 function routine(date){const out=[],day=dow(date),push=(room,name,detail)=>out.push({id:`${ymd(date)}|${room}|${name}`,key:`${ymd(date)}|${room}|${name}`,date:ymd(date),room,task:name,detail,type:'rutina',custom:false});for(const r of rules){const c=r.type==='esquejes'?{cut:cut(date)}:cycle(r,date);if(r.type!=='esquejes'&&!(r.name==='Flora 1'&&r.automaticIrrigation))push(r.name,'Riego','');if(r.type==='esquejes'&&c.cut.active)push(r.name,'Mantenimiento',c.cut.label);if(r.name==='Flora 1'){if(transplant(r,date))push(r.name,'Calibrar riego','');if(startWeek(r,date,1))push(r.name,'Calibrar riego','');if(startWeek(r,date,7))push(r.name,'Calibrar riego','')}if(['lunes','miercoles','viernes'].includes(day)){if(['vege','madres'].includes(r.type))push(r.name,'Fumigacion',day==='miercoles'?'ABA + OIL + Nissorun':'ABA + OIL');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=3)))push(r.name,'Fumigacion',day==='miercoles'?'ABA + OIL + Nissorun':'ABA + OIL')}if(day==='jueves'){if(['vege','madres'].includes(r.type))push(r.name,'KNF','');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=6)))push(r.name,'KNF','')}if(r.type==='flora'){if(transplant(r,date)){push(r.name,'Enmienda','');push(r.name,'Trasplante','')}if(startWeek(r,date,1)){push(r.name,'Enmienda','');push(r.name,'Inicio flora','')}if(startWeek(r,date,4))push(r.name,'Enmienda','');if(same(date,add(c.fl,-1))){push(r.name,'Esquejes','');push(r.name,'Poda bajos','')}if(startWeek(r,date,3))push(r.name,'Schwazzing','');if(same(date,add(c.tr,1)))push(r.name,'Redes','');if(harvest(r,date))push(r.name,'Cosecha','')}
 if(r.type==='vege'&&cloneTransfer(date))push(r.name,'Trasplante','Esquejes → Veges')
-if(r.type==='mother'){
+if(r.type==='madres'){
   const motherAmendmentStart=parse('2026-07-28');
   const daysSinceStart=diff(date,motherAmendmentStart);
   if(daysSinceStart>=0&&daysSinceStart%14===0&&date.getDay()===2)push(r.name,'Enmienda','');
@@ -882,5 +882,5 @@ try{
 }
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.6.4.4').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.6.4.5').catch(console.error));
 }

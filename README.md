@@ -195,3 +195,8 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - En días pasados con pendientes, el texto “Tareas X/Y” continúa en rojo.
 - Se eliminó el fondo, borde y recuadro especial del cartel.
 - No requiere ejecutar SQL.
+
+## V3.6.4.5 — Corrección Enmienda en Madres
+- Se corrigió el identificador interno de la sala Madres.
+- La tarea “Enmienda” ahora aparece desde el martes 28/07/2026 y se repite cada 14 días.
+- No requiere ejecutar SQL.
