@@ -207,3 +207,9 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Se genera una sola vez por cada pase a Veges.
 - La fecha queda vinculada al trasplante y se ajusta automáticamente si cambia el ciclo.
 - No requiere ejecutar SQL.
+
+## V3.6.4.7 — Cartel rojo sin recuadro del día
+- El cartel “Tareas X/Y” vuelve a tener fondo rojo suave, borde rojo y texto rojo.
+- Se eliminó cualquier borde, sombra, contorno o resaltado especial del día completo.
+- Las salas y el resto del calendario mantienen su apariencia habitual.
+- No requiere ejecutar SQL.

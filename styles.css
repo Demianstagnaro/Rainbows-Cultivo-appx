@@ -476,11 +476,12 @@ body{
   white-space: nowrap;
 }
 
-/* V3.6.4.4: solo el texto "Tareas X/Y" se muestra en rojo */
+/* V3.6.4.7: el día no se resalta; solo el cartel "Tareas X/Y" */
 .day-cell.past-pending{
-  background:inherit;
-  border-color:inherit;
-  box-shadow:inherit;
+  background:inherit !important;
+  border-color:inherit !important;
+  box-shadow:none !important;
+  outline:none !important;
 }
 .day-cell.past-pending .day-state{
   color:#dbe5f0;
@@ -488,7 +489,16 @@ body{
 }
 .day-cell.past-pending .task-counter{
   color:#ef4444;
-  background:transparent;
-  border-color:transparent;
-  box-shadow:none;
+  background:rgba(239,68,68,.18);
+  border-color:rgba(248,113,113,.82);
+  box-shadow:0 0 0 1px rgba(239,68,68,.08) inset;
+}
+
+/* Garantía final: ningún recuadro especial sobre el día completo */
+.calendar .day-cell.past-pending,
+.calendar-grid .day-cell.past-pending,
+#calendar .day-cell.past-pending{
+  box-shadow:none !important;
+  outline:none !important;
+  filter:none !important;
 }
