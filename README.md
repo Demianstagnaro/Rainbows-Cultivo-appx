@@ -200,3 +200,10 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Se corrigió el identificador interno de la sala Madres.
 - La tarea “Enmienda” ahora aparece desde el martes 28/07/2026 y se repite cada 14 días.
 - No requiere ejecutar SQL.
+
+## V3.6.4.6 — Enmienda en Veges
+- Se agregó una tarea automática “Enmienda” en la sala Veges.
+- Aparece exactamente 14 días después de cada trasplante Esquejes → Veges.
+- Se genera una sola vez por cada pase a Veges.
+- La fecha queda vinculada al trasplante y se ajusta automáticamente si cambia el ciclo.
+- No requiere ejecutar SQL.
