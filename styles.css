@@ -478,9 +478,9 @@ body{
 
 /* V3.6.4.7: el día no se resalta; solo el cartel "Tareas X/Y" */
 .day-cell.past-pending{
-  background:inherit !important;
-  border-color:inherit !important;
-  box-shadow:none !important;
+  background:linear-gradient(145deg,rgba(15,23,33,.98),rgba(9,16,24,.98)) !important;
+  border:1px solid #2a3949 !important;
+  box-shadow:0 12px 30px rgba(0,0,0,.21) !important;
   outline:none !important;
 }
 .day-cell.past-pending .day-state{
@@ -501,4 +501,12 @@ body{
   box-shadow:none !important;
   outline:none !important;
   filter:none !important;
+}
+
+/* El día actual conserva únicamente su borde azul habitual */
+.day-cell.today,
+.day-cell.today.past-pending{
+  border:1px solid #2a3949 !important;
+  outline:3px solid #2b8df4 !important;
+  box-shadow:0 0 0 4px rgba(43,141,244,.14) !important;
 }

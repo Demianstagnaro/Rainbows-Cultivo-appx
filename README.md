@@ -213,3 +213,11 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Se eliminó cualquier borde, sombra, contorno o resaltado especial del día completo.
 - Las salas y el resto del calendario mantienen su apariencia habitual.
 - No requiere ejecutar SQL.
+
+## V3.6.4.8 — Corrección del borde blanco
+- Se corrigió el borde blanco grueso de los días pasados con tareas pendientes.
+- La causa era `border-color: inherit`, que heredaba el color blanco del texto.
+- Los días pendientes vuelven a usar el mismo borde gris normal que el resto.
+- El cartel “Tareas X/Y” conserva fondo, borde y texto rojos.
+- El día actual mantiene su contorno azul.
+- No requiere ejecutar SQL.
