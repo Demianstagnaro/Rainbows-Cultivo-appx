@@ -241,3 +241,9 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Si no se completa, pasa automáticamente al día siguiente.
 - Al completarla, se cierra toda la continuidad y queda registrada en Historial.
 - No requiere ejecutar SQL para la tarea automática.
+
+## V3.6.5.1 — Corrección del ciclo cosechado en Trimming
+- Se corrigió el número de ciclo mostrado en las tareas de Trimming.
+- Flora 1 y Flora 3 están actualmente en ciclo 10.
+- Por lo tanto, la cosecha que se está trimmeando corresponde correctamente al ciclo 9.
+- No requiere ejecutar SQL.

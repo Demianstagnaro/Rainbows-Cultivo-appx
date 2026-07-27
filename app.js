@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.6.5.0';
+const APP_VERSION='3.6.5.1';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -50,7 +50,7 @@ if(date.getDay()===1){
   const harvestDate=add(date,-12);
   for(const flora of rules.filter(x=>x.type==='flora')){
     if(harvest(flora,harvestDate)){
-      const harvestedCycle=cycleNumber(flora,harvestDate);
+      const harvestedCycle=cycleNumber(flora,harvestDate)+1;
       push(
         'Sala de trabajo',
         `Trimming - ${flora.name}`,
@@ -912,5 +912,5 @@ try{
 }
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.6.5.0').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.6.5.1').catch(console.error));
 }
