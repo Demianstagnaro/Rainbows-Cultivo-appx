@@ -230,3 +230,14 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Se conservan responsables y usuario que registró la realización.
 - El resumen del Historial indica cuando hubo tareas generales terminadas.
 - No requiere ejecutar SQL.
+
+## V3.6.5.0 — Sala de trabajo y Trimming
+- Se agregó “Sala de trabajo” como sala operativa permanente.
+- No recibe tareas automáticas de riego.
+- Cada cosecha genera automáticamente Trimming el segundo lunes posterior.
+- Ejemplo: cosecha miércoles 15/07 → Trimming lunes 27/07.
+- La tarea se llama “Trimming - Flora X”.
+- El detalle muestra fecha de cosecha, ciclo cosechado y, desde el segundo día, el número de día de continuidad.
+- Si no se completa, pasa automáticamente al día siguiente.
+- Al completarla, se cierra toda la continuidad y queda registrada en Historial.
+- No requiere ejecutar SQL para la tarea automática.
