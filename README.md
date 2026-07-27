@@ -221,3 +221,12 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - El cartel “Tareas X/Y” conserva fondo, borde y texto rojos.
 - El día actual mantiene su contorno azul.
 - No requiere ejecutar SQL.
+
+## V3.6.4.9 — Tareas generales registradas por fecha
+- Al completar una tarea general, desaparece de la lista de pendientes.
+- Se eliminó la lista acumulativa de tareas generales realizadas en Hoy.
+- La tarea queda asociada a la fecha y hora exactas en que se completó.
+- Al abrir esa fecha desde Calendario o Historial aparece en “Tareas generales realizadas”.
+- Se conservan responsables y usuario que registró la realización.
+- El resumen del Historial indica cuando hubo tareas generales terminadas.
+- No requiere ejecutar SQL.
