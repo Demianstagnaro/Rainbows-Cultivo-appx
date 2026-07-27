@@ -247,3 +247,12 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Flora 1 y Flora 3 están actualmente en ciclo 10.
 - Por lo tanto, la cosecha que se está trimmeando corresponde correctamente al ciclo 9.
 - No requiere ejecutar SQL.
+
+## V3.6.5.2 — Ciclos corregidos y unificados
+- Flora 1 y Flora 3 toman el 16/07/2026 como inicio del ciclo 10.
+- Por eso, la cosecha del 15/07/2026 pertenece correctamente al ciclo 9.
+- Hoy, Calendario, Salas, Historial y Trimming usan la misma función para calcular el ciclo.
+- Se eliminó el ajuste independiente que tenía Trimming.
+- El detalle ahora muestra “Cosecha: 15/07/2026 · Ciclo 9”.
+- Flora 2 conserva su referencia de ciclo independiente.
+- No requiere ejecutar SQL.
