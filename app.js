@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.6.5.2';
+const APP_VERSION='3.6.6.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -79,18 +79,17 @@ function chainRows(chain){
   return state.tareas.filter(x=>x.clave_externa===chain||x.clave_externa?.startsWith(prefix)||(chain.startsWith('CUSTOM:')&&String(x.id)===chain.slice(7)));
 }
 function directRealByTaskId(id){return state.realizaciones.find(r=>String(r.tarea_id)===String(id))}
-function real(t){
-  const direct=directRealByTaskId(t.db?.id||t.id);
-  if(direct)return direct;
-  const chain=taskChain(t);
-  if(!chain)return null;
-  const found=chainRows(chain).map(x=>directRealByTaskId(x.id)).filter(Boolean).sort((a,b)=>new Date(a.realizada_at)-new Date(b.realizada_at));
-  return found[0]||null;
+function real(t){return directRealByTaskId(t.db?.id||t.id)}
+function chainFinishedDate(chain){
+  const finals=chainRows(chain)
+    .filter(x=>x.estado==='realizada'&&directRealByTaskId(x.id))
+    .sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
+  return finals.length?finals[0].fecha:null;
 }
-function chainCompletionDate(chain){
-  const found=chainRows(chain).map(x=>directRealByTaskId(x.id)).filter(Boolean).sort((a,b)=>new Date(a.realizada_at)-new Date(b.realizada_at));
-  if(!found.length)return null;
-  return ymd(new Date(found[0].realizada_at));
+function withContinuationDay(t,dayNumber){
+  const parts=String(t.detail||'').split(' · ').filter(Boolean).filter(x=>!/^Día \d+$/.test(x));
+  parts.push(`Día ${dayNumber}`);
+  return{...t,detail:parts.join(' · '),continuationDay:dayNumber};
 }
 function baseTasks(date){
   const day=ymd(date),rows=state.tareas.filter(t=>t.fecha===day),map=new Map(rows.filter(t=>t.clave_externa).map(t=>[t.clave_externa,t]));
@@ -109,27 +108,23 @@ function continuationOrigins(untilDate){
   return origins;
 }
 function tasks(date){
-  const result=baseTasks(date);
+  let result=baseTasks(date).map(t=>isContinuable(t)?withContinuationDay({...t,chain:taskChain(t),originDate:t.date},1):t);
   const day=ymd(date);
   if(day<CONTINUABLE_FROM||diff(date,today())>0)return result;
   for(const origin of continuationOrigins(add(date,-1))){
     const chain=origin.chain;
-    const completed=chainCompletionDate(chain);
-    if(completed&&day>completed)continue;
-    if(real(origin)&&(!completed||day>completed))continue;
+    const finished=chainFinishedDate(chain);
+    if(finished&&day>finished)continue;
     const dayNumber=diff(date,parse(origin.originDate))+1;
     if(dayNumber<2)continue;
     const key=`${continuationPrefix(chain)}${day}`;
     const stored=state.tareas.find(x=>x.clave_externa===key);
     if(stored?.estado==='cancelada')continue;
-    const detailParts=[];
-    if(origin.detail)detailParts.push(origin.detail);
-    detailParts.push(`Día ${dayNumber}`);
-    const task={
+    const task=withContinuationDay({
       id:stored?.id||key,key,date:day,room:origin.room,task:origin.task,
-      detail:detailParts.join(' · '),type:'rutina',custom:false,db:stored||null,
+      detail:origin.detail||'',type:'rutina',custom:false,db:stored||null,
       chain,originDate:origin.originDate
-    };
+    },dayNumber);
     if(!result.some(x=>x.key===key||String(x.id)===String(task.id)))result.push(task);
   }
   return result;
@@ -145,12 +140,11 @@ async function ensure(t){
   if(q.error)throw q.error;
   return q.data;
 }
-async function complete(t,ids){
+async function complete(t,ids,continueTomorrow=false){
   const row=t.custom&&!t.chain?t.db:await ensure(t);
-  const chain=taskChain(t);
-  const related=chain?chainRows(chain):[];
-  const relatedIds=[...new Set([...related.map(x=>x.id),row.id])];
-  if(relatedIds.length)await db.from('tareas').update({estado:'realizada'}).in('id',relatedIds);
+  const nextState=isContinuable(t)&&continueTomorrow?'continua':'realizada';
+  const update=await db.from('tareas').update({estado:nextState}).eq('id',row.id);
+  if(update.error)throw update.error;
   const q=await db.from('realizaciones_tarea').upsert({tarea_id:row.id,realizada_at:new Date().toISOString(),registrada_por:state.session.user.id},{onConflict:'tarea_id'}).select().single();
   if(q.error)throw q.error;
   await db.from('realizacion_empleados').delete().eq('realizacion_id',q.data.id);
@@ -161,12 +155,11 @@ async function complete(t,ids){
   await refresh();
 }
 async function undo(t){
-  const chain=taskChain(t);
-  const rows=chain?chainRows(chain):(t.db?.id?[t.db]:[]);
-  const ids=[...new Set(rows.map(x=>x.id).filter(Boolean))];
-  const realizations=state.realizaciones.filter(r=>ids.includes(r.tarea_id)||(real(t)&&r.id===real(t).id));
-  for(const r of realizations)await db.from('realizaciones_tarea').delete().eq('id',r.id);
-  if(ids.length)await db.from('tareas').update({estado:'pendiente'}).in('id',ids);
+  const row=t.db||await ensure(t);
+  const realization=directRealByTaskId(row.id);
+  if(realization)await db.from('realizaciones_tarea').delete().eq('id',realization.id);
+  const update=await db.from('tareas').update({estado:'pendiente'}).eq('id',row.id);
+  if(update.error)throw update.error;
   await refresh();
 }
 async function load(){const qs=await Promise.all([db.from('salas').select('*'),db.from('camas').select('*'),db.from('plantas').select('*'),db.from('geneticas').select('*').eq('activa',true).order('nombre'),db.from('empleados').select('*').eq('activo',true).order('nombre'),db.from('tareas').select('*'),db.from('realizaciones_tarea').select('*'),db.from('realizacion_empleados').select('*'),db.from('perfiles').select('*').order('nombre'),db.from('perfiles').select('*').eq('id',state.session.user.id).maybeSingle(),db.from('tareas_generales').select('*').order('created_at',{ascending:false}),db.from('tarea_general_empleados').select('*')]);for(const q of qs)if(q.error)throw q.error;[state.salas,state.camas,state.plantas,state.geneticas,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,9).map(q=>q.data||[]);state.profile=qs[9].data||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;state.generalTasks=qs[10].data||[];state.generalJoins=qs[11].data||[]}async function refresh(){try{await load();render()}catch(e){console.error(e);app.innerHTML=`<section class="panel error-panel"><strong>Error</strong><p>${e.message}</p></section>`}}
@@ -253,6 +246,13 @@ function openWorker(t,kind='dated',preselected=[]){
     });
   }
 
+  const isContinuation=isContinuable(t);
+  const dayNo=t.continuationDay||1;
+  const normalButton=$('confirm-worker');
+  const continueButton=$('continue-worker');
+  normalButton.textContent=isContinuation?'Finalizar tarea':'Guardar';
+  continueButton.hidden=!isContinuation;
+  continueButton.textContent=`Completar Día ${dayNo} y continuar mañana`;
   const dialog=$('worker-dialog');
   if(typeof dialog.showModal==='function') dialog.showModal();
   else dialog.setAttribute('open','');
@@ -726,28 +726,27 @@ $('cancel-worker').onclick=()=>{
   render();
 };
 
-$('confirm-worker').onclick=async()=>{
-  if(!state.pending) return;
+async function saveWorkerCompletion(continueTomorrow=false){
+  if(!state.pending)return;
   if(!state.selected.size){
     alert('Elegí al menos una persona que realizó la tarea.');
     return;
   }
-
-  const button=$('confirm-worker');
+  const button=continueTomorrow?$('continue-worker'):$('confirm-worker');
   button.disabled=true;
   try{
-    if(state.pendingKind==='general') await completeGeneralTask(state.pending,[...state.selected]);
-    else await complete(state.pending,[...state.selected]);
+    if(state.pendingKind==='general')await completeGeneralTask(state.pending,[...state.selected]);
+    else await complete(state.pending,[...state.selected],continueTomorrow);
     state.pending=null;
     state.selected.clear();
     closeDialog('worker-dialog');
   }catch(error){
     console.error(error);
     alert(error.message||'No se pudo completar la tarea.');
-  }finally{
-    button.disabled=false;
-  }
-};
+  }finally{button.disabled=false;}
+}
+$('confirm-worker').onclick=()=>saveWorkerCompletion(false);
+$('continue-worker').onclick=()=>saveWorkerCompletion(true);
 
 $('cancel-task').onclick=()=>{
   state.editTask=null;
@@ -918,5 +917,5 @@ try{
 }
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.6.5.2').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.6.6.0').catch(console.error));
 }

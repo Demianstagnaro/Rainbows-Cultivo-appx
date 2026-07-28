@@ -510,3 +510,6 @@ body{
   outline:3px solid #2b8df4 !important;
   box-shadow:0 0 0 4px rgba(43,141,244,.14) !important;
 }
+
+#worker-dialog menu{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
+#continue-worker:not([hidden]){display:inline-flex}

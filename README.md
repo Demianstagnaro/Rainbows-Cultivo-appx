@@ -256,3 +256,12 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - El detalle ahora muestra “Cosecha: 15/07/2026 · Ciclo 9”.
 - Flora 2 conserva su referencia de ciclo independiente.
 - No requiere ejecutar SQL.
+
+## V3.6.6.0 — Continuaciones registradas por jornada
+- Trasplante, Esquejes, Poda bajos, Schwazzing y Trimming muestran “Día X”.
+- Al completar una jornada se puede elegir “Finalizar tarea” o “Completar Día X y continuar mañana”.
+- Cada día trabajado queda marcado como realizado con sus responsables y hora.
+- Si se elige continuar, la tarea aparece al día siguiente con el número de día incrementado.
+- Si se elige finalizar, deja de generarse desde el día siguiente.
+- Ya no se completan juntas todas las jornadas anteriores.
+- No requiere ejecutar SQL.
