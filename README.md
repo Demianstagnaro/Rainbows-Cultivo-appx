@@ -265,3 +265,11 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Si se elige finalizar, deja de generarse desde el día siguiente.
 - Ya no se completan juntas todas las jornadas anteriores.
 - No requiere ejecutar SQL.
+
+
+## V3.6.6.1 — Etiquetas exclusivas
+- Las tareas creadas manualmente muestran únicamente “Extraordinaria”.
+- Las tareas reprogramadas muestran únicamente “Reprogramada”.
+- En esos casos ya no aparece también la etiqueta de prioridad “Rutina”.
+- Las tareas automáticas conservan su etiqueta de prioridad normal.
+- No requiere ejecutar SQL.
