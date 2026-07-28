@@ -66,7 +66,10 @@ if(date.getDay()===1){
   }
 }
 return out}
-function uiTask(t){const s=state.salas.find(x=>x.id===t.sala_id);return{id:t.id,date:t.fecha,room:s?.nombre||'',task:t.nombre,detail:t.detalle||'',type:t.tipo,custom:true,db:t,chain:t.clave_externa?.startsWith('CONT|')?decodeURIComponent(t.clave_externa.split('|')[1]):null}}
+const CONTINUE_MARKER='__RAINBOWS_CONTINUA__';
+function cleanContinuationDetail(value){return String(value||'').replace(CONTINUE_MARKER,'').replace(/\s*·\s*$/,'').trim()}
+function rowContinues(t){return String(t?.detalle||'').includes(CONTINUE_MARKER)}
+function uiTask(t){const s=state.salas.find(x=>x.id===t.sala_id);return{id:t.id,date:t.fecha,room:s?.nombre||'',task:t.nombre,detail:cleanContinuationDetail(t.detalle),type:t.tipo,custom:true,db:t,chain:t.clave_externa?.startsWith('CONT|')?decodeURIComponent(t.clave_externa.split('|')[1]):null}}
 const HISTORICAL_COMPLETION_CUTOFF='2026-07-21';
 const CONTINUABLE_FROM='2026-07-22';
 const CONTINUABLE_TASKS=new Set(['Trasplante','Esquejes','Poda bajos','Schwazzing']);
@@ -82,7 +85,7 @@ function directRealByTaskId(id){return state.realizaciones.find(r=>String(r.tare
 function real(t){return directRealByTaskId(t.db?.id||t.id)}
 function chainFinishedDate(chain){
   const finals=chainRows(chain)
-    .filter(x=>x.estado==='realizada'&&directRealByTaskId(x.id))
+    .filter(x=>x.estado==='realizada'&&directRealByTaskId(x.id)&&!rowContinues(x))
     .sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
   return finals.length?finals[0].fecha:null;
 }
@@ -93,7 +96,7 @@ function withContinuationDay(t,dayNumber){
 }
 function baseTasks(date){
   const day=ymd(date),rows=state.tareas.filter(t=>t.fecha===day),map=new Map(rows.filter(t=>t.clave_externa).map(t=>[t.clave_externa,t]));
-  const rt=routine(date).filter(t=>map.get(t.key)?.estado!=='cancelada').map(t=>map.get(t.key)?{...t,id:map.get(t.key).id,db:map.get(t.key)}:t);
+  const rt=routine(date).filter(t=>map.get(t.key)?.estado!=='cancelada').map(t=>map.get(t.key)?{...t,id:map.get(t.key).id,detail:cleanContinuationDetail(map.get(t.key).detalle||t.detail),db:map.get(t.key)}:t);
   const custom=rows.filter(t=>!t.clave_externa).filter(t=>t.estado!=='cancelada').map(uiTask);
   return[...rt,...custom];
 }
@@ -135,15 +138,18 @@ function names(t){const r=real(t);if(!r)return[];const ids=state.joins.filter(j=
 function actor(t){const r=real(t);if(!r?.registrada_por)return'';const p=state.perfiles.find(x=>x.id===r.registrada_por);return p?.nombre||p?.email||'Usuario'}
 async function ensure(t){
   if(t.db?.id)return t.db;
-  const payload={clave_externa:t.key,sala_id:sr(t.room)?.id||null,fecha:t.date,nombre:t.task,detalle:t.detail||'',tipo:'rutina',estado:'pendiente'};
+  const payload={clave_externa:t.key,sala_id:sr(t.room)?.id||null,fecha:t.date,nombre:t.task,detalle:cleanContinuationDetail(t.detail),tipo:'rutina',estado:'pendiente'};
   const q=await db.from('tareas').upsert(payload,{onConflict:'clave_externa'}).select().single();
   if(q.error)throw q.error;
   return q.data;
 }
 async function complete(t,ids,continueTomorrow=false){
   const row=t.custom&&!t.chain?t.db:await ensure(t);
-  const nextState=isContinuable(t)&&continueTomorrow?'continua':'realizada';
-  const update=await db.from('tareas').update({estado:nextState}).eq('id',row.id);
+  const baseDetail=cleanContinuationDetail(row.detalle||t.detail);
+  const storedDetail=isContinuable(t)&&continueTomorrow
+    ? `${baseDetail}${baseDetail?' · ':''}${CONTINUE_MARKER}`
+    : baseDetail;
+  const update=await db.from('tareas').update({estado:'realizada',detalle:storedDetail}).eq('id',row.id);
   if(update.error)throw update.error;
   const q=await db.from('realizaciones_tarea').upsert({tarea_id:row.id,realizada_at:new Date().toISOString(),registrada_por:state.session.user.id},{onConflict:'tarea_id'}).select().single();
   if(q.error)throw q.error;
@@ -158,7 +164,7 @@ async function undo(t){
   const row=t.db||await ensure(t);
   const realization=directRealByTaskId(row.id);
   if(realization)await db.from('realizaciones_tarea').delete().eq('id',realization.id);
-  const update=await db.from('tareas').update({estado:'pendiente'}).eq('id',row.id);
+  const update=await db.from('tareas').update({estado:'pendiente',detalle:cleanContinuationDetail(row.detalle||t.detail)}).eq('id',row.id);
   if(update.error)throw update.error;
   await refresh();
 }

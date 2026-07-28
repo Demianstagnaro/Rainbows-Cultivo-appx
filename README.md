@@ -273,3 +273,12 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - En esos casos ya no aparece también la etiqueta de prioridad “Rutina”.
 - Las tareas automáticas conservan su etiqueta de prioridad normal.
 - No requiere ejecutar SQL.
+
+
+## V3.6.6.2 — Continuaciones compatibles con Supabase
+
+- Corrige el error `tareas_estado_check` al continuar una tarea.
+- Cada jornada se guarda con estado `realizada`, que ya está permitido por la base.
+- La decisión de continuar se guarda internamente sin mostrar etiquetas técnicas.
+- Una jornada marcada como ‘continuar mañana’ no cierra la cadena; ‘Finalizar tarea’ sí la cierra.
+- No requiere ejecutar SQL.
