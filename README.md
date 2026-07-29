@@ -282,3 +282,11 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - La decisión de continuar se guarda internamente sin mostrar etiquetas técnicas.
 - Una jornada marcada como ‘continuar mañana’ no cierra la cadena; ‘Finalizar tarea’ sí la cierra.
 - No requiere ejecutar SQL.
+
+## V3.7.0 — Backups administrados
+- Agrega en Config, solo para Administradores: Crear backup manual, Descargar backup y Restaurar backup.
+- Integra una Edge Function segura que valida nuevamente el rol administrador.
+- Los botones controlan un repositorio privado de GitHub Actions sin exponer claves en el navegador.
+- El backup diario conserva las copias durante 30 días.
+- La restauración se dirige primero a un proyecto vacío de recuperación para evitar sobrescribir accidentalmente la base activa.
+- Incluye `INSTALACION_BACKUPS.md` y el código de la función `supabase/functions/rainbows-backups`.

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.6.6.0';
+const APP_VERSION='3.7.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Veges',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,channel:null};
+const state={view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,channel:null,backups:[],backupRuns:[],backupLoading:false};
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
 function cycle(r,date){if(r.type!=='flora')return{label:'Permanente',stage:'permanente'};const days=77,bt=parse(r.transplant),bf=parse(r.floraStart);let c=Math.floor(diff(date,bt)/days);if(diff(date,bt)<0)c=-1;const tr=add(bt,c*days),fl=add(bf,c*days),day=diff(date,tr);if(day<0)return{label:'Pendiente',stage:'pendiente',tr,fl};if(diff(date,fl)<0){const w=Math.min(Math.floor(day/7)+1,3);return{label:`Vege S${w}`,stage:'vege',week:w,tr,fl}}const fd=diff(date,fl),w=Math.min(Math.floor(fd/7)+1,8);return{label:`Flora S${w}`,stage:'flora',week:w,tr,fl}}
@@ -829,7 +829,152 @@ function renderHistory(){
   });
 }
 
-function renderSettings(){if(currentRole()!=='administrador'){state.view='today';render();return} $('screen-title').textContent='Config';const permissions={administrador:'Acceso total: puede gestionar usuarios, roles, empleados, genéticas, tareas y configuración.',encargado:'Puede crear, editar, completar y reprogramar tareas, además de consultar Hoy, Salas, Calendario e Historial.',empleado:'Puede consultar Hoy, Salas, Calendario e Historial, y completar tareas indicando quiénes las realizaron.',lectura:'Puede consultar Hoy, Salas, Calendario e Historial; no puede modificar información.'};app.innerHTML=`<section class="panel"><h3>Empleados compartidos</h3><textarea id="emps" class="text-input" style="min-height:150px">${state.empleados.map(e=>e.nombre).join('\n')}</textarea></section><section class="panel"><h3>Genéticas compartidas</h3><textarea id="gens" class="text-input" style="min-height:180px">${state.geneticas.map(g=>g.nombre).join('\n')}</textarea></section><button id="save-conf" class="primary">Guardar configuración</button><section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>`<div class="user-row"><div><strong>${p.nombre||'Sin nombre'}</strong><div class="user-email">${p.email||''}</div></div><select class="text-input user-role" data-role="${p.id}">${['administrador','encargado','empleado','lectura'].map(r=>`<option value="${r}" ${p.rol===r?'selected':''}>${r}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${p.id}" ${p.activo?'checked':''}> Activo</label>${p.id!==state.session.user.id?`<button class="danger user-delete" data-delete-user="${p.id}" data-delete-name="${p.nombre||p.email||'este usuario'}">Eliminar cuenta</button>`:'<span class="self-account">Tu cuenta</span>'}</div>`).join('')}</div><p><button id="save-users" class="primary">Guardar usuarios</button></p></section><section class="panel"><h3>Permisos por rol</h3><div class="role-permissions">${Object.entries(permissions).map(([role,text])=>`<div class="role-permission"><strong>${role}</strong><p>${text}</p></div>`).join('')}</div></section><section class="panel account-summary"><p><strong>Usuario:</strong> ${state.session.user.email}</p><p><strong>Rol:</strong> ${state.profile?.rol||'empleado'}</p><p><strong>Tus permisos:</strong> ${permissions[state.profile?.rol||'empleado']}</p><p><strong>Versión:</strong> ${APP_VERSION}</p></section>`;$('save-conf').onclick=saveConfig;$('save-users').onclick=async()=>{try{for(const p of state.perfiles){const q=await db.rpc('admin_actualizar_perfil',{objetivo_id:p.id,nuevo_rol:document.querySelector(`[data-role="${p.id}"]`).value,nuevo_activo:document.querySelector(`[data-active="${p.id}"]`).checked});if(q.error)throw q.error}await refresh();alert('Usuarios actualizados.')}catch(e){console.error(e);alert(e.message||'No se pudieron actualizar los usuarios.')}};app.querySelectorAll('[data-delete-user]').forEach(btn=>btn.onclick=async()=>{const name=btn.dataset.deleteName;if(!confirm(`¿Eliminar definitivamente la cuenta de ${name}? Esta acción no se puede deshacer.`))return;btn.disabled=true;try{const q=await db.rpc('admin_eliminar_usuario',{objetivo_id:btn.dataset.deleteUser});if(q.error)throw q.error;await refresh();alert('Cuenta eliminada.')}catch(e){console.error(e);btn.disabled=false;alert(e.message||'No se pudo eliminar la cuenta. Verificá que hayas ejecutado el SQL de V3.2.1.')}})}
+
+const BACKUP_FUNCTION='rainbows-backups';
+function backupDate(value){
+  if(!value)return'—';
+  return new Date(value).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'});
+}
+function backupSize(bytes){
+  const n=Number(bytes||0);
+  if(n<1024)return`${n} B`;
+  if(n<1024*1024)return`${(n/1024).toFixed(1)} KB`;
+  return`${(n/1024/1024).toFixed(1)} MB`;
+}
+async function backupApi(action,payload={}){
+  const {data,error}=await db.functions.invoke(BACKUP_FUNCTION,{body:{action,...payload}});
+  if(error){
+    let message=error.message||'No se pudo conectar con el sistema de backups.';
+    try{
+      const body=await error.context?.json?.();
+      if(body?.error)message=body.error;
+    }catch(_){/* respuesta no JSON */}
+    throw new Error(message);
+  }
+  if(data?.error)throw new Error(data.error);
+  return data||{};
+}
+function setBackupStatus(message,kind=''){
+  const el=$('backup-status');
+  if(!el)return;
+  el.textContent=message;
+  el.className=`backup-status ${kind}`.trim();
+}
+function selectedBackupId(){
+  return $('backup-select')?.value||state.backups[0]?.id||'';
+}
+async function loadBackups(){
+  if(currentRole()!=='administrador'||state.backupLoading)return;
+  state.backupLoading=true;
+  setBackupStatus('Consultando copias guardadas…');
+  try{
+    const data=await backupApi('list');
+    state.backups=data.backups||[];
+    state.backupRuns=data.runs||[];
+    const select=$('backup-select');
+    if(select){
+      select.innerHTML=state.backups.length
+        ?state.backups.map(b=>`<option value="${b.id}">${backupDate(b.created_at)} · ${backupSize(b.size_in_bytes)}</option>`).join('')
+        :'<option value="">Todavía no hay backups disponibles</option>';
+      select.disabled=!state.backups.length;
+    }
+    const latest=state.backups[0];
+    const running=state.backupRuns.find(r=>['queued','in_progress','waiting','pending','requested'].includes(r.status));
+    if(running)setBackupStatus(`Proceso en curso: ${running.name||'backup'} (${running.status}).`,'working');
+    else if(latest)setBackupStatus(`Último backup: ${backupDate(latest.created_at)} · vence ${backupDate(latest.expires_at)}.`,'ok');
+    else setBackupStatus('No hay copias todavía. Podés crear la primera ahora.');
+    const download=$('download-backup'),restore=$('restore-backup');
+    if(download)download.disabled=!latest;
+    if(restore)restore.disabled=!latest;
+  }catch(error){
+    console.error(error);
+    setBackupStatus(error.message,'error');
+  }finally{
+    state.backupLoading=false;
+  }
+}
+async function createManualBackup(){
+  if(!confirm('¿Crear ahora una copia completa de Rainbows?'))return;
+  const btn=$('create-backup');
+  if(btn)btn.disabled=true;
+  setBackupStatus('Solicitando backup manual…','working');
+  try{
+    await backupApi('create');
+    setBackupStatus('Backup solicitado. GitHub lo está generando; puede tardar unos minutos.','working');
+    setTimeout(loadBackups,12000);
+    setTimeout(loadBackups,30000);
+  }catch(error){
+    console.error(error);
+    setBackupStatus(error.message,'error');
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+async function downloadBackup(){
+  const artifactId=selectedBackupId();
+  if(!artifactId)return;
+  const btn=$('download-backup');
+  if(btn)btn.disabled=true;
+  setBackupStatus('Preparando descarga…','working');
+  try{
+    const data=await backupApi('download',{artifact_id:artifactId});
+    if(!data.url)throw new Error('GitHub no devolvió un enlace de descarga.');
+    window.location.assign(data.url);
+    setBackupStatus('Descarga iniciada.','ok');
+  }catch(error){
+    console.error(error);
+    setBackupStatus(error.message,'error');
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+async function restoreBackup(){
+  const artifactId=selectedBackupId();
+  if(!artifactId)return;
+  const text=prompt('La restauración reemplazará la información del proyecto de recuperación configurado. Escribí RESTAURAR para continuar.');
+  if(text!=='RESTAURAR')return;
+  if(!confirm('Última confirmación: ¿iniciar la restauración del backup seleccionado?'))return;
+  const btn=$('restore-backup');
+  if(btn)btn.disabled=true;
+  setBackupStatus('Solicitando restauración…','working');
+  try{
+    await backupApi('restore',{artifact_id:artifactId,confirmation:'RESTAURAR'});
+    setBackupStatus('Restauración solicitada. El proceso se ejecuta de forma segura en GitHub Actions.','working');
+    setTimeout(loadBackups,12000);
+  }catch(error){
+    console.error(error);
+    setBackupStatus(error.message,'error');
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+function renderSettings(){
+  if(currentRole()!=='administrador'){state.view='today';render();return}
+  $('screen-title').textContent='Config';
+  const permissions={administrador:'Acceso total: puede gestionar usuarios, roles, empleados, genéticas, tareas, configuración y backups.',encargado:'Puede crear, editar, completar y reprogramar tareas, además de consultar Hoy, Salas, Calendario e Historial.',empleado:'Puede consultar Hoy, Salas, Calendario e Historial, y completar tareas indicando quiénes las realizaron.',lectura:'Puede consultar Hoy, Salas, Calendario e Historial; no puede modificar información.'};
+  app.innerHTML=`
+    <section class="panel backup-panel">
+      <div class="backup-panel-head"><div><h3>Copias de seguridad</h3><p class="muted">Backup completo diario, conservación por 30 días y descarga local.</p></div><button id="refresh-backups" class="secondary compact-button">Actualizar</button></div>
+      <label class="field-label">Copia guardada<select id="backup-select" class="text-input"><option>Consultando…</option></select></label>
+      <div class="backup-actions"><button id="create-backup" class="primary">Crear backup manual</button><button id="download-backup" class="secondary" disabled>Descargar backup</button><button id="restore-backup" class="danger" disabled>Restaurar backup</button></div>
+      <p id="backup-status" class="backup-status" aria-live="polite">Consultando copias guardadas…</p>
+      <p class="backup-warning">La restauración requiere doble confirmación y se ejecuta del lado del servidor. Ninguna clave privada queda dentro de la app.</p>
+    </section>
+    <section class="panel"><h3>Empleados compartidos</h3><textarea id="emps" class="text-input" style="min-height:150px">${state.empleados.map(e=>e.nombre).join('\n')}</textarea></section>
+    <section class="panel"><h3>Genéticas compartidas</h3><textarea id="gens" class="text-input" style="min-height:180px">${state.geneticas.map(g=>g.nombre).join('\n')}</textarea></section>
+    <button id="save-conf" class="primary">Guardar configuración</button>
+    <section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>`<div class="user-row"><div><strong>${p.nombre||'Sin nombre'}</strong><div class="user-email">${p.email||''}</div></div><select class="text-input user-role" data-role="${p.id}">${['administrador','encargado','empleado','lectura'].map(r=>`<option value="${r}" ${p.rol===r?'selected':''}>${r}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${p.id}" ${p.activo?'checked':''}> Activo</label>${p.id!==state.session.user.id?`<button class="danger user-delete" data-delete-user="${p.id}" data-delete-name="${p.nombre||p.email||'este usuario'}">Eliminar cuenta</button>`:'<span class="self-account">Tu cuenta</span>'}</div>`).join('')}</div><p><button id="save-users" class="primary">Guardar usuarios</button></p></section>
+    <section class="panel"><h3>Permisos por rol</h3><div class="role-permissions">${Object.entries(permissions).map(([role,text])=>`<div class="role-permission"><strong>${role}</strong><p>${text}</p></div>`).join('')}</div></section>
+    <section class="panel account-summary"><p><strong>Usuario:</strong> ${state.session.user.email}</p><p><strong>Rol:</strong> ${state.profile?.rol||'empleado'}</p><p><strong>Tus permisos:</strong> ${permissions[state.profile?.rol||'empleado']}</p><p><strong>Versión:</strong> ${APP_VERSION}</p></section>`;
+  $('save-conf').onclick=saveConfig;
+  $('create-backup').onclick=createManualBackup;
+  $('download-backup').onclick=downloadBackup;
+  $('restore-backup').onclick=restoreBackup;
+  $('refresh-backups').onclick=loadBackups;
+  $('save-users').onclick=async()=>{try{for(const p of state.perfiles){const q=await db.rpc('admin_actualizar_perfil',{objetivo_id:p.id,nuevo_rol:document.querySelector(`[data-role="${p.id}"]`).value,nuevo_activo:document.querySelector(`[data-active="${p.id}"]`).checked});if(q.error)throw q.error}await refresh();alert('Usuarios actualizados.')}catch(e){console.error(e);alert(e.message||'No se pudieron actualizar los usuarios.')}};
+  app.querySelectorAll('[data-delete-user]').forEach(btn=>btn.onclick=async()=>{const name=btn.dataset.deleteName;if(!confirm(`¿Eliminar definitivamente la cuenta de ${name}? Esta acción no se puede deshacer.`))return;btn.disabled=true;try{const q=await db.rpc('admin_eliminar_usuario',{objetivo_id:btn.dataset.deleteUser});if(q.error)throw q.error;await refresh();alert('Cuenta eliminada.')}catch(e){console.error(e);btn.disabled=false;alert(e.message||'No se pudo eliminar la cuenta. Verificá que hayas ejecutado el SQL de V3.2.1.')}});
+  loadBackups();
+}
 async function saveConfig(){const emp=[...new Set($('emps').value.split('\n').map(x=>x.trim()).filter(Boolean))],gen=[...new Set($('gens').value.split('\n').map(x=>x.trim()).filter(Boolean))];for(const n of emp)await db.from('empleados').upsert({nombre:n,activo:true},{onConflict:'nombre'});for(const e of state.empleados.filter(e=>!emp.includes(e.nombre)))await db.from('empleados').update({activo:false}).eq('id',e.id);for(const n of gen)await db.from('geneticas').upsert({nombre:n,activa:true},{onConflict:'nombre'});for(const g of state.geneticas.filter(g=>!gen.includes(g.nombre)))await db.from('geneticas').update({activa:false}).eq('id',g.id);await refresh();alert('Configuración guardada.')}
 document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;state.room=null;state.roomDay=null;state.day=null;render()});$('sign-out').onclick=()=>db.auth.signOut();$('sign-in').onclick=async()=>{
   const message=$('auth-message');
@@ -923,5 +1068,5 @@ try{
 }
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.6.6.0').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.7.0').catch(console.error));
 }

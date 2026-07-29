@@ -513,3 +513,18 @@ body{
 
 #worker-dialog menu{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end}
 #continue-worker:not([hidden]){display:inline-flex}
+
+
+/* V3.7.0 — Copias de seguridad */
+.backup-panel{display:grid;gap:14px}
+.backup-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.backup-panel-head h3{margin:0 0 4px}
+.backup-panel-head p{margin:0}
+.backup-actions{display:flex;flex-wrap:wrap;gap:10px}
+.backup-actions button{min-height:42px}
+.backup-status{margin:0;padding:11px 13px;border-radius:10px;background:#111827;border:1px solid #374151;color:#d1d5db}
+.backup-status.ok{border-color:#166534;background:rgba(22,101,52,.18);color:#bbf7d0}
+.backup-status.working{border-color:#9a6700;background:rgba(154,103,0,.18);color:#fde68a}
+.backup-status.error{border-color:#991b1b;background:rgba(153,27,27,.18);color:#fecaca}
+.backup-warning{margin:0;font-size:.88rem;color:#9ca3af;line-height:1.45}
+@media (max-width:640px){.backup-panel-head{align-items:stretch;flex-direction:column}.backup-actions{display:grid}.backup-actions button{width:100%}}
