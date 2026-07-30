@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.7.0';
+const APP_VERSION='3.8.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Veges',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,channel:null,backups:[],backupRuns:[],backupLoading:false};
+const state={view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,channel:null,backups:[],backupRuns:[],backupLoading:false};
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
 function cycle(r,date){if(r.type!=='flora')return{label:'Permanente',stage:'permanente'};const days=77,bt=parse(r.transplant),bf=parse(r.floraStart);let c=Math.floor(diff(date,bt)/days);if(diff(date,bt)<0)c=-1;const tr=add(bt,c*days),fl=add(bf,c*days),day=diff(date,tr);if(day<0)return{label:'Pendiente',stage:'pendiente',tr,fl};if(diff(date,fl)<0){const w=Math.min(Math.floor(day/7)+1,3);return{label:`Vege S${w}`,stage:'vege',week:w,tr,fl}}const fd=diff(date,fl),w=Math.min(Math.floor(fd/7)+1,8);return{label:`Flora S${w}`,stage:'flora',week:w,tr,fl}}
@@ -168,7 +168,7 @@ async function undo(t){
   if(update.error)throw update.error;
   await refresh();
 }
-async function load(){const qs=await Promise.all([db.from('salas').select('*'),db.from('camas').select('*'),db.from('plantas').select('*'),db.from('geneticas').select('*').eq('activa',true).order('nombre'),db.from('empleados').select('*').eq('activo',true).order('nombre'),db.from('tareas').select('*'),db.from('realizaciones_tarea').select('*'),db.from('realizacion_empleados').select('*'),db.from('perfiles').select('*').order('nombre'),db.from('perfiles').select('*').eq('id',state.session.user.id).maybeSingle(),db.from('tareas_generales').select('*').order('created_at',{ascending:false}),db.from('tarea_general_empleados').select('*')]);for(const q of qs)if(q.error)throw q.error;[state.salas,state.camas,state.plantas,state.geneticas,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,9).map(q=>q.data||[]);state.profile=qs[9].data||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;state.generalTasks=qs[10].data||[];state.generalJoins=qs[11].data||[]}async function refresh(){try{await load();render()}catch(e){console.error(e);app.innerHTML=`<section class="panel error-panel"><strong>Error</strong><p>${e.message}</p></section>`}}
+async function load(){const qs=await Promise.all([db.from('salas').select('*'),db.from('camas').select('*'),db.from('plantas').select('*'),db.from('geneticas').select('*').order('nombre'),db.from('empleados').select('*').eq('activo',true).order('nombre'),db.from('tareas').select('*'),db.from('realizaciones_tarea').select('*'),db.from('realizacion_empleados').select('*'),db.from('perfiles').select('*').order('nombre'),db.from('perfiles').select('*').eq('id',state.session.user.id).maybeSingle(),db.from('tareas_generales').select('*').order('created_at',{ascending:false}),db.from('tarea_general_empleados').select('*')]);for(const q of qs)if(q.error)throw q.error;[state.salas,state.camas,state.plantas,state.geneticas,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,9).map(q=>q.data||[]);state.profile=qs[9].data||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;state.generalTasks=qs[10].data||[];state.generalJoins=qs[11].data||[]}async function refresh(){try{await load();render()}catch(e){console.error(e);app.innerHTML=`<section class="panel error-panel"><strong>Error</strong><p>${e.message}</p></section>`}}
 function subscribe(){if(state.channel)db.removeChannel(state.channel);state.channel=db.channel('rainbows-shared').on('postgres_changes',{event:'*',schema:'public'},refresh).subscribe()}
 function progress(r,d){const x=tasks(d).filter(t=>t.room===r.name),n=x.filter(done).length;return{total:x.length,done:n,pct:x.length?Math.round(n/x.length*100):100}}
 function taskCounter(doneCount,totalCount){const complete=totalCount>0&&doneCount===totalCount;return `<span class="task-counter ${complete?'is-complete':''}">Tareas ${doneCount}/${totalCount}</span>`}
@@ -697,10 +697,10 @@ function openPlant(id){
 
   const select=$('plant-genetics');
   select.innerHTML='<option value="">Sin genética</option>';
-  state.geneticas.forEach(genetic=>{
+  state.geneticas.filter(genetic=>genetic.activa!==false||String(genetic.id)===String(plant.genetica_id||'')).forEach(genetic=>{
     const option=document.createElement('option');
     option.value=genetic.id;
-    option.textContent=genetic.nombre;
+    option.textContent=genetic.nomenclatura?`${genetic.nomenclatura} — ${genetic.nombre}`:genetic.nombre;
     option.selected=String(genetic.id)===String(plant.genetica_id||'');
     select.appendChild(option);
   });
@@ -780,8 +780,18 @@ $('save-plant').onclick=async()=>{
   try{await savePlantDialog()}catch(error){console.error(error);alert(error.message||'No se pudo guardar la planta.')}
 };
 
+$('cancel-genetic').onclick=()=>{
+  state.editGenetic=null;
+  closeDialog('genetic-dialog');
+};
+$('save-genetic').onclick=async()=>{
+  const button=$('save-genetic');
+  button.disabled=true;
+  try{await saveGeneticDialog()}catch(error){console.error(error);alert(error.message||'No se pudo guardar la genética.')}finally{button.disabled=false}
+};
 
-function render(){const cb=$('header-config');if(cb){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';render()}} $('today-label').textContent=nice(today());document.querySelectorAll('.top-nav button').forEach(b=>{const allowed=canViewOperations();b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',b.dataset.view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
+
+function render(){const cb=$('header-config');if(cb){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';render()}} $('today-label').textContent=nice(today());document.querySelectorAll('.top-nav button').forEach(b=>{const allowed=canViewOperations();b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',b.dataset.view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
 function renderToday(){
   $('screen-title').textContent='Hoy';
   const d=today(),ts=tasks(d),n=ts.filter(done).length,p=ts.length?Math.round(n/ts.length*100):100;
@@ -812,7 +822,69 @@ function renderDay(d){
 }
 function beds(name){const s=sr(name);return state.camas.filter(c=>c.sala_id===s?.id).sort((a,b)=>a.numero-b.numero)}function plants(b){return state.plantas.filter(p=>p.cama_id===b.id&&p.habilitada).sort((a,b)=>a.posicion-b.posicion)}
 function renderRooms(){ $('screen-title').textContent='Salas';if(!state.room){app.innerHTML=`<div class="list">${rules.map(r=>{const pr=progress(r,today());return`<section class="room-card" data-room="${r.name}"><div class="room-head"><div><div class="room-title">${r.name}</div><div class="stage">${roomStatus(r,today())}</div></div><div class="room-head-actions">${taskCounter(pr.done,pr.total)}${canEditTasks()?`<button class="task-menu room-options-button" type="button" data-room-menu="${r.name}" data-room-date="${ymd(today())}" aria-label="Opciones de ${r.name}" title="Opciones de sala">⋮</button>`:''}</div></div></section>`}).join('')}</div>`;app.querySelectorAll('[data-room]').forEach(x=>x.onclick=()=>{state.room=x.dataset.room;state.roomDay=today();render()});app.querySelectorAll('[data-room-menu]').forEach(button=>button.onclick=event=>{event.stopPropagation();openRoomMenu(button.dataset.roomMenu,button.dataset.roomDate)});return}const r=rr(state.room),cro=r.type==='flora',d=state.roomDay||today(),rt=orderedTasks(tasks(d).filter(t=>t.room===r.name)),pr=progress(r,d);app.innerHTML=`<button id="back-room" class="secondary">← Volver</button><section class="panel room-detail-header"><div class="room-head"><div><h2>${r.name}</h2><p class="muted">${roomStatus(r,d)}</p></div><div class="room-head-actions">${taskCounter(pr.done,pr.total)}${canEditTasks()?`<button class="task-menu room-options-button" type="button" data-room-menu="${r.name}" data-room-date="${ymd(d)}" aria-label="Opciones de ${r.name}" title="Opciones de sala">⋮</button>`:''}</div></div><div class="room-date-controls"><button id="room-today" class="secondary room-back-today" ${same(d,today())?'disabled':''}>${same(d,today())?'Hoy':'Volver a hoy'}</button><div class="day-navigator"><button id="room-prev" class="secondary nav-day" aria-label="Día anterior">◀</button><div class="room-date-label">${shortRoomDate(d)}</div><button id="room-next" class="secondary nav-day" aria-label="Día siguiente">▶</button></div></div></section>${cro?`<div class="room-tabs"><button data-tab="summary" class="${state.tab==='summary'?'active':''}">Resumen</button><button data-tab="croquis" class="${state.tab==='croquis'?'active':''}">Croquis</button></div>`:''}${state.tab==='croquis'&&cro?renderCroquis(r):`<div class="section-title">Tareas del ${nice(d)}</div>${rt.length?rt.map(row).join(''):'<div class="empty-room-tasks">Sin tareas programadas</div>'}`}`;$('back-room').onclick=()=>{state.room=null;state.roomDay=null;state.tab='summary';render()};$('room-prev').onclick=()=>{state.roomDay=add(d,-1);render()};$('room-next').onclick=()=>{state.roomDay=add(d,1);render()};$('room-today').onclick=()=>{state.roomDay=today();render()};app.querySelectorAll('[data-tab]').forEach(x=>x.onclick=()=>{state.tab=x.dataset.tab;render()});app.querySelectorAll('[data-bed]').forEach(x=>x.onclick=()=>openBed(x.dataset.bed));app.querySelectorAll('[data-plant]').forEach(x=>x.onclick=()=>openPlant(x.dataset.plant));bind(d);app.querySelectorAll('[data-room-menu]').forEach(button=>button.onclick=event=>{event.stopPropagation();openRoomMenu(button.dataset.roomMenu,button.dataset.roomDate||ymd(d))})}
-function renderCroquis(r){const bs=beds(r.name),ps=bs.flatMap(plants),occ=ps.filter(p=>p.ocupada),cols=r.name==='Flora 3'?4:3;return`<section class="panel"><div class="croquis-metrics"><div><span>Plantas</span><strong>${occ.length}</strong></div><div><span>Capacidad</span><strong>${ps.length}</strong></div><div><span>Camas</span><strong>${bs.length}</strong></div></div></section><section class="croquis-shell"><div class="side-aisle"><span>Pasillo lateral</span></div><div class="beds-grid" style="--bed-columns:${cols}">${bs.map(b=>{const pp=plants(b),n=pp.filter(p=>p.ocupada).length;return`<article class="bed-card"><button class="bed-edit-button" data-bed="${b.id}"><div class="bed-card-head"><strong>Cama ${String(b.numero).padStart(2,'0')}</strong><span>${n}/${b.capacidad}</span></div></button><div class="plant-grid">${Array.from({length:9},(_,i)=>{const p=pp.find(x=>x.posicion===i+1);if(!p)return'<span class="plant-position plant-spacer"></span>';const g=state.geneticas.find(x=>x.id===p.genetica_id)?.nombre||'';return`<button class="plant-position ${p.ocupada?'occupied':''}" data-plant="${p.id}" title="${p.ocupada?g:'Vacía'}"></button>`}).join('')}</div></article>`}).join('')}</div><div class="side-aisle"><span>Pasillo lateral</span></div></section>`}
+function renderCroquis(r){const bs=beds(r.name),ps=bs.flatMap(plants),occ=ps.filter(p=>p.ocupada),cols=r.name==='Flora 3'?4:3;return`<section class="panel"><div class="croquis-metrics"><div><span>Plantas</span><strong>${occ.length}</strong></div><div><span>Capacidad</span><strong>${ps.length}</strong></div><div><span>Camas</span><strong>${bs.length}</strong></div></div></section><section class="croquis-shell"><div class="side-aisle"><span>Pasillo lateral</span></div><div class="beds-grid" style="--bed-columns:${cols}">${bs.map(b=>{const pp=plants(b),n=pp.filter(p=>p.ocupada).length;return`<article class="bed-card"><button class="bed-edit-button" data-bed="${b.id}"><div class="bed-card-head"><strong>Cama ${String(b.numero).padStart(2,'0')}</strong><span>${n}/${b.capacidad}</span></div></button><div class="plant-grid">${Array.from({length:9},(_,i)=>{const p=pp.find(x=>x.posicion===i+1);if(!p)return'<span class="plant-position plant-spacer"></span>';const genetic=state.geneticas.find(x=>x.id===p.genetica_id);const g=genetic?(genetic.nomenclatura?`${genetic.nomenclatura} — ${genetic.nombre}`:genetic.nombre):'';return`<button class="plant-position ${p.ocupada?'occupied':''}" data-plant="${p.id}" title="${p.ocupada?g:'Vacía'}"></button>`}).join('')}</div></article>`}).join('')}</div><div class="side-aisle"><span>Pasillo lateral</span></div></section>`}
+
+
+function escapeHtml(value){
+  return String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
+}
+
+function renderGenetics(){
+  $('screen-title').textContent='Genéticas';
+  const canManage=currentRole()==='administrador';
+  const rows=[...state.geneticas].sort((a,b)=>{
+    const activeDiff=Number(b.activa!==false)-Number(a.activa!==false);
+    return activeDiff||String(a.nombre||'').localeCompare(String(b.nombre||''),'es',{sensitivity:'base'});
+  });
+  app.innerHTML=`
+    <section class="panel genetics-page-head">
+      <div><h2>Genéticas</h2><p class="muted">Listado central de variedades, nomenclaturas, linajes y genotipos.</p></div>
+      ${canManage?'<button id="add-genetic" class="primary compact-button" type="button">+ Nueva genética</button>':''}
+    </section>
+    <section class="panel genetics-table-panel">
+      ${rows.length?`<div class="genetics-table-wrap"><table class="genetics-table"><thead><tr><th>Genética</th><th>Nomenclatura</th><th>Linaje</th><th>Genotipo</th><th>Estado</th>${canManage?'<th></th>':''}</tr></thead><tbody>${rows.map(g=>`<tr class="${g.activa===false?'genetic-archived':''}"><td data-label="Genética"><strong>${escapeHtml(g.nombre||'—')}</strong></td><td data-label="Nomenclatura">${escapeHtml(g.nomenclatura||'—')}</td><td data-label="Linaje">${escapeHtml(g.linaje||'—')}</td><td data-label="Genotipo">${escapeHtml(g.genotipo||'—')}</td><td data-label="Estado"><span class="genetic-status ${g.activa===false?'archived':'active'}">${g.activa===false?'Archivada':'Activa'}</span></td>${canManage?`<td class="genetic-actions"><button class="secondary compact-button" type="button" data-edit-genetic="${g.id}">Editar</button></td>`:''}</tr>`).join('')}</tbody></table></div>`:'<div class="empty-room-tasks">Todavía no hay genéticas cargadas.</div>'}
+    </section>`;
+  if(canManage){
+    $('add-genetic').onclick=()=>openGenetic();
+    app.querySelectorAll('[data-edit-genetic]').forEach(button=>button.onclick=()=>openGenetic(button.dataset.editGenetic));
+  }
+}
+
+function openGenetic(id=null){
+  if(currentRole()!=='administrador')return;
+  const genetic=id?state.geneticas.find(g=>String(g.id)===String(id)):null;
+  state.editGenetic=genetic||null;
+  $('genetic-dialog-title').textContent=genetic?'Editar genética':'Nueva genética';
+  $('genetic-name').value=genetic?.nombre||'';
+  $('genetic-code').value=genetic?.nomenclatura||'';
+  $('genetic-lineage').value=genetic?.linaje||'';
+  $('genetic-genotype').value=genetic?.genotipo||'';
+  $('genetic-active').value=String(genetic?.activa!==false);
+  $('genetic-dialog').showModal();
+  setTimeout(()=>$('genetic-name').focus(),0);
+}
+
+async function saveGeneticDialog(){
+  if(currentRole()!=='administrador')throw new Error('Solo un administrador puede modificar genéticas.');
+  const nombre=$('genetic-name').value.trim();
+  if(!nombre)throw new Error('Completá el nombre de la genética.');
+  const payload={
+    nombre,
+    nomenclatura:$('genetic-code').value.trim()||null,
+    linaje:$('genetic-lineage').value.trim()||null,
+    genotipo:$('genetic-genotype').value.trim()||null,
+    activa:$('genetic-active').value==='true'
+  };
+  const duplicate=state.geneticas.find(g=>String(g.nombre||'').trim().toLowerCase()===nombre.toLowerCase()&&String(g.id)!==String(state.editGenetic?.id||''));
+  if(duplicate)throw new Error('Ya existe una genética con ese nombre.');
+  const q=state.editGenetic
+    ?await db.from('geneticas').update(payload).eq('id',state.editGenetic.id)
+    :await db.from('geneticas').insert(payload);
+  if(q.error)throw q.error;
+  closeDialog('genetic-dialog');
+  state.editGenetic=null;
+  await refresh();
+}
 
 function renderHistory(){
   $('screen-title').textContent='Historial';
@@ -961,7 +1033,6 @@ function renderSettings(){
       <p class="backup-warning">La restauración requiere doble confirmación y se ejecuta del lado del servidor. Ninguna clave privada queda dentro de la app.</p>
     </section>
     <section class="panel"><h3>Empleados compartidos</h3><textarea id="emps" class="text-input" style="min-height:150px">${state.empleados.map(e=>e.nombre).join('\n')}</textarea></section>
-    <section class="panel"><h3>Genéticas compartidas</h3><textarea id="gens" class="text-input" style="min-height:180px">${state.geneticas.map(g=>g.nombre).join('\n')}</textarea></section>
     <button id="save-conf" class="primary">Guardar configuración</button>
     <section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>`<div class="user-row"><div><strong>${p.nombre||'Sin nombre'}</strong><div class="user-email">${p.email||''}</div></div><select class="text-input user-role" data-role="${p.id}">${['administrador','encargado','empleado','lectura'].map(r=>`<option value="${r}" ${p.rol===r?'selected':''}>${r}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${p.id}" ${p.activo?'checked':''}> Activo</label>${p.id!==state.session.user.id?`<button class="danger user-delete" data-delete-user="${p.id}" data-delete-name="${p.nombre||p.email||'este usuario'}">Eliminar cuenta</button>`:'<span class="self-account">Tu cuenta</span>'}</div>`).join('')}</div><p><button id="save-users" class="primary">Guardar usuarios</button></p></section>
     <section class="panel"><h3>Permisos por rol</h3><div class="role-permissions">${Object.entries(permissions).map(([role,text])=>`<div class="role-permission"><strong>${role}</strong><p>${text}</p></div>`).join('')}</div></section>
@@ -975,7 +1046,7 @@ function renderSettings(){
   app.querySelectorAll('[data-delete-user]').forEach(btn=>btn.onclick=async()=>{const name=btn.dataset.deleteName;if(!confirm(`¿Eliminar definitivamente la cuenta de ${name}? Esta acción no se puede deshacer.`))return;btn.disabled=true;try{const q=await db.rpc('admin_eliminar_usuario',{objetivo_id:btn.dataset.deleteUser});if(q.error)throw q.error;await refresh();alert('Cuenta eliminada.')}catch(e){console.error(e);btn.disabled=false;alert(e.message||'No se pudo eliminar la cuenta. Verificá que hayas ejecutado el SQL de V3.2.1.')}});
   loadBackups();
 }
-async function saveConfig(){const emp=[...new Set($('emps').value.split('\n').map(x=>x.trim()).filter(Boolean))],gen=[...new Set($('gens').value.split('\n').map(x=>x.trim()).filter(Boolean))];for(const n of emp)await db.from('empleados').upsert({nombre:n,activo:true},{onConflict:'nombre'});for(const e of state.empleados.filter(e=>!emp.includes(e.nombre)))await db.from('empleados').update({activo:false}).eq('id',e.id);for(const n of gen)await db.from('geneticas').upsert({nombre:n,activa:true},{onConflict:'nombre'});for(const g of state.geneticas.filter(g=>!gen.includes(g.nombre)))await db.from('geneticas').update({activa:false}).eq('id',g.id);await refresh();alert('Configuración guardada.')}
+async function saveConfig(){const emp=[...new Set($('emps').value.split('\n').map(x=>x.trim()).filter(Boolean))];for(const n of emp)await db.from('empleados').upsert({nombre:n,activo:true},{onConflict:'nombre'});for(const e of state.empleados.filter(e=>!emp.includes(e.nombre)))await db.from('empleados').update({activo:false}).eq('id',e.id);await refresh();alert('Configuración guardada.')}
 document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;state.room=null;state.roomDay=null;state.day=null;render()});$('sign-out').onclick=()=>db.auth.signOut();$('sign-in').onclick=async()=>{
   const message=$('auth-message');
   message.textContent='Ingresando…';

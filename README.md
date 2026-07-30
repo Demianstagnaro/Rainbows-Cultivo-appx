@@ -290,3 +290,12 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - El backup diario conserva las copias durante 30 días.
 - La restauración se dirige primero a un proyecto vacío de recuperación para evitar sobrescribir accidentalmente la base activa.
 - Incluye `INSTALACION_BACKUPS.md` y el código de la función `supabase/functions/rainbows-backups`.
+
+
+## V3.8.0 — Genéticas
+
+- Nueva solapa principal **Genéticas**.
+- Columnas: Genética, Nomenclatura, Linaje, Genotipo y Estado.
+- Alta y edición disponibles para administradores.
+- Las genéticas archivadas conservan el historial pero no se ofrecen para nuevas asignaciones.
+- Antes de publicar, ejecutar `Rainbows_V3.8.0_geneticas_catalogo.sql` en Supabase.
