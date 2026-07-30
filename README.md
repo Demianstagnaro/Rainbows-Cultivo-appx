@@ -304,3 +304,13 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 ## V3.8.2 — Cannabinoides
 
 Se agregó el campo `cannabinoides` al catálogo de genéticas. Admite valores sugeridos como THC, CBD, THC + CBD y combinaciones personalizadas.
+
+
+## V3.8.3 — Plantas visibles en el croquis
+
+- Las posiciones ocupadas muestran directamente la nomenclatura de la genética.
+- Si una genética no tiene nomenclatura, se muestra una abreviatura automática de su nombre.
+- Cada genética recibe un color visual consistente para poder distinguirla rápidamente.
+- Las plantas ocupadas sin genética asignada muestran `S/G`.
+- El detalle completo continúa disponible al dejar el puntero sobre la planta o al abrirla.
+- No requiere cambios en Supabase.
