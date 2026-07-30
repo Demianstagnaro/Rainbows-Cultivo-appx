@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.8.0';
+const APP_VERSION='3.8.1';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -784,6 +784,9 @@ $('cancel-genetic').onclick=()=>{
   state.editGenetic=null;
   closeDialog('genetic-dialog');
 };
+$('genetic-unknown').onchange=updateGenotypeFields;
+$('genetic-indica').oninput=()=>{const v=Number($('genetic-indica').value);if(Number.isFinite(v)&&v>=0&&v<=100)$('genetic-sativa').value=100-v};
+$('genetic-sativa').oninput=()=>{const v=Number($('genetic-sativa').value);if(Number.isFinite(v)&&v>=0&&v<=100)$('genetic-indica').value=100-v};
 $('save-genetic').onclick=async()=>{
   const button=$('save-genetic');
   button.disabled=true;
@@ -829,6 +832,14 @@ function escapeHtml(value){
   return String(value??'').replace(/[&<>'"]/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[char]));
 }
 
+
+function formatGenotype(genetic){
+  const indica=Number(genetic?.porcentaje_indica);
+  const sativa=Number(genetic?.porcentaje_sativa);
+  if(Number.isFinite(indica)&&Number.isFinite(sativa))return `${indica}% Índica / ${sativa}% Sativa`;
+  return genetic?.genotipo||'Genotipo desconocido';
+}
+
 function renderGenetics(){
   $('screen-title').textContent='Genéticas';
   const canManage=currentRole()==='administrador';
@@ -842,7 +853,7 @@ function renderGenetics(){
       ${canManage?'<button id="add-genetic" class="primary compact-button" type="button">+ Nueva genética</button>':''}
     </section>
     <section class="panel genetics-table-panel">
-      ${rows.length?`<div class="genetics-table-wrap"><table class="genetics-table"><thead><tr><th>Genética</th><th>Nomenclatura</th><th>Linaje</th><th>Genotipo</th><th>Estado</th>${canManage?'<th></th>':''}</tr></thead><tbody>${rows.map(g=>`<tr class="${g.activa===false?'genetic-archived':''}"><td data-label="Genética"><strong>${escapeHtml(g.nombre||'—')}</strong></td><td data-label="Nomenclatura">${escapeHtml(g.nomenclatura||'—')}</td><td data-label="Linaje">${escapeHtml(g.linaje||'—')}</td><td data-label="Genotipo">${escapeHtml(g.genotipo||'—')}</td><td data-label="Estado"><span class="genetic-status ${g.activa===false?'archived':'active'}">${g.activa===false?'Archivada':'Activa'}</span></td>${canManage?`<td class="genetic-actions"><button class="secondary compact-button" type="button" data-edit-genetic="${g.id}">Editar</button></td>`:''}</tr>`).join('')}</tbody></table></div>`:'<div class="empty-room-tasks">Todavía no hay genéticas cargadas.</div>'}
+      ${rows.length?`<div class="genetics-table-wrap"><table class="genetics-table"><thead><tr><th>Genética</th><th>Nomenclatura</th><th>Linaje</th><th>Genotipo</th><th>Estado</th>${canManage?'<th></th>':''}</tr></thead><tbody>${rows.map(g=>`<tr class="${g.activa===false?'genetic-archived':''}"><td data-label="Genética"><strong>${escapeHtml(g.nombre||'—')}</strong></td><td data-label="Nomenclatura">${escapeHtml(g.nomenclatura||'—')}</td><td data-label="Linaje">${escapeHtml(g.linaje||'—')}</td><td data-label="Genotipo">${escapeHtml(formatGenotype(g))}</td><td data-label="Estado"><span class="genetic-status ${g.activa===false?'archived':'active'}">${g.activa===false?'Archivada':'Activa'}</span></td>${canManage?`<td class="genetic-actions"><button class="secondary compact-button" type="button" data-edit-genetic="${g.id}">Editar</button></td>`:''}</tr>`).join('')}</tbody></table></div>`:'<div class="empty-room-tasks">Todavía no hay genéticas cargadas.</div>'}
     </section>`;
   if(canManage){
     $('add-genetic').onclick=()=>openGenetic();
@@ -858,10 +869,21 @@ function openGenetic(id=null){
   $('genetic-name').value=genetic?.nombre||'';
   $('genetic-code').value=genetic?.nomenclatura||'';
   $('genetic-lineage').value=genetic?.linaje||'';
-  $('genetic-genotype').value=genetic?.genotipo||'';
+  const hasPercentages=genetic?.porcentaje_indica!=null&&genetic?.porcentaje_sativa!=null;
+  $('genetic-unknown').checked=!hasPercentages;
+  $('genetic-indica').value=hasPercentages?genetic.porcentaje_indica:'';
+  $('genetic-sativa').value=hasPercentages?genetic.porcentaje_sativa:'';
+  updateGenotypeFields();
   $('genetic-active').value=String(genetic?.activa!==false);
   $('genetic-dialog').showModal();
   setTimeout(()=>$('genetic-name').focus(),0);
+}
+
+function updateGenotypeFields(){
+  const disabled=$('genetic-unknown').checked;
+  $('genetic-indica').disabled=disabled;
+  $('genetic-sativa').disabled=disabled;
+  if(disabled){$('genetic-indica').value='';$('genetic-sativa').value='';}
 }
 
 async function saveGeneticDialog(){
@@ -872,9 +894,22 @@ async function saveGeneticDialog(){
     nombre,
     nomenclatura:$('genetic-code').value.trim()||null,
     linaje:$('genetic-lineage').value.trim()||null,
-    genotipo:$('genetic-genotype').value.trim()||null,
+    porcentaje_indica:null,
+    porcentaje_sativa:null,
+    genotipo:null,
     activa:$('genetic-active').value==='true'
   };
+  const unknown=$('genetic-unknown').checked;
+  if(!unknown){
+    const indica=Number($('genetic-indica').value);
+    const sativa=Number($('genetic-sativa').value);
+    if(!Number.isFinite(indica)||!Number.isFinite(sativa))throw new Error('Completá los porcentajes de Índica y Sativa.');
+    if(indica<0||indica>100||sativa<0||sativa>100)throw new Error('Los porcentajes deben estar entre 0 y 100.');
+    if(indica+sativa!==100)throw new Error('Los porcentajes de Índica y Sativa deben sumar 100.');
+    payload.porcentaje_indica=indica;
+    payload.porcentaje_sativa=sativa;
+    payload.genotipo=`${indica}% Índica / ${sativa}% Sativa`;
+  }
   const duplicate=state.geneticas.find(g=>String(g.nombre||'').trim().toLowerCase()===nombre.toLowerCase()&&String(g.id)!==String(state.editGenetic?.id||''));
   if(duplicate)throw new Error('Ya existe una genética con ese nombre.');
   const q=state.editGenetic

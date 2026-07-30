@@ -560,3 +560,5 @@ body{
   .genetics-table .genetic-actions::before{display:none}
   .genetics-table .genetic-actions button{width:100%}
 }
+
+.genotype-fieldset{border:1px solid var(--line);border-radius:12px;padding:14px;margin:0}.genotype-fieldset legend{padding:0 6px;font-weight:700}.genotype-percent-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.genotype-unknown{display:flex;align-items:center;gap:8px;margin-top:10px}.genotype-help{margin:6px 0 0;font-size:.85rem}@media(max-width:560px){.genotype-percent-grid{grid-template-columns:1fr}}
