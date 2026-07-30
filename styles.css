@@ -535,7 +535,7 @@ body{
 .genetics-page-head h2{margin:0 0 4px}
 .genetics-table-panel{padding:0;overflow:hidden}
 .genetics-table-wrap{overflow-x:auto}
-.genetics-table{width:100%;border-collapse:collapse;min-width:850px}
+.genetics-table{width:100%;border-collapse:collapse;min-width:980px}
 .genetics-table th,.genetics-table td{padding:14px 12px;text-align:left;vertical-align:top;border-bottom:1px solid rgba(255,255,255,.07)}
 .genetics-table th{font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:rgba(255,255,255,.025)}
 .genetics-table tbody tr:last-child td{border-bottom:0}

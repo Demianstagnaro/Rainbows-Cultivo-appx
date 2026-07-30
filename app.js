@@ -849,11 +849,11 @@ function renderGenetics(){
   });
   app.innerHTML=`
     <section class="panel genetics-page-head">
-      <div><h2>Genéticas</h2><p class="muted">Listado central de variedades, nomenclaturas, linajes y genotipos.</p></div>
+      <div><h2>Genéticas</h2><p class="muted">Listado central de variedades, nomenclaturas, linajes, cannabinoides y genotipos.</p></div>
       ${canManage?'<button id="add-genetic" class="primary compact-button" type="button">+ Nueva genética</button>':''}
     </section>
     <section class="panel genetics-table-panel">
-      ${rows.length?`<div class="genetics-table-wrap"><table class="genetics-table"><thead><tr><th>Genética</th><th>Nomenclatura</th><th>Linaje</th><th>Genotipo</th><th>Estado</th>${canManage?'<th></th>':''}</tr></thead><tbody>${rows.map(g=>`<tr class="${g.activa===false?'genetic-archived':''}"><td data-label="Genética"><strong>${escapeHtml(g.nombre||'—')}</strong></td><td data-label="Nomenclatura">${escapeHtml(g.nomenclatura||'—')}</td><td data-label="Linaje">${escapeHtml(g.linaje||'—')}</td><td data-label="Genotipo">${escapeHtml(formatGenotype(g))}</td><td data-label="Estado"><span class="genetic-status ${g.activa===false?'archived':'active'}">${g.activa===false?'Archivada':'Activa'}</span></td>${canManage?`<td class="genetic-actions"><button class="secondary compact-button" type="button" data-edit-genetic="${g.id}">Editar</button></td>`:''}</tr>`).join('')}</tbody></table></div>`:'<div class="empty-room-tasks">Todavía no hay genéticas cargadas.</div>'}
+      ${rows.length?`<div class="genetics-table-wrap"><table class="genetics-table"><thead><tr><th>Genética</th><th>Nomenclatura</th><th>Linaje</th><th>Cannabinoides</th><th>Genotipo</th><th>Estado</th>${canManage?'<th></th>':''}</tr></thead><tbody>${rows.map(g=>`<tr class="${g.activa===false?'genetic-archived':''}"><td data-label="Genética"><strong>${escapeHtml(g.nombre||'—')}</strong></td><td data-label="Nomenclatura">${escapeHtml(g.nomenclatura||'—')}</td><td data-label="Linaje">${escapeHtml(g.linaje||'—')}</td><td data-label="Cannabinoides">${escapeHtml(g.cannabinoides||'—')}</td><td data-label="Genotipo">${escapeHtml(formatGenotype(g))}</td><td data-label="Estado"><span class="genetic-status ${g.activa===false?'archived':'active'}">${g.activa===false?'Archivada':'Activa'}</span></td>${canManage?`<td class="genetic-actions"><button class="secondary compact-button" type="button" data-edit-genetic="${g.id}">Editar</button></td>`:''}</tr>`).join('')}</tbody></table></div>`:'<div class="empty-room-tasks">Todavía no hay genéticas cargadas.</div>'}
     </section>`;
   if(canManage){
     $('add-genetic').onclick=()=>openGenetic();
@@ -869,6 +869,7 @@ function openGenetic(id=null){
   $('genetic-name').value=genetic?.nombre||'';
   $('genetic-code').value=genetic?.nomenclatura||'';
   $('genetic-lineage').value=genetic?.linaje||'';
+  $('genetic-cannabinoids').value=genetic?.cannabinoides||'';
   const hasPercentages=genetic?.porcentaje_indica!=null&&genetic?.porcentaje_sativa!=null;
   $('genetic-unknown').checked=!hasPercentages;
   $('genetic-indica').value=hasPercentages?genetic.porcentaje_indica:'';
@@ -894,6 +895,7 @@ async function saveGeneticDialog(){
     nombre,
     nomenclatura:$('genetic-code').value.trim()||null,
     linaje:$('genetic-lineage').value.trim()||null,
+    cannabinoides:$('genetic-cannabinoids').value.trim()||null,
     porcentaje_indica:null,
     porcentaje_sativa:null,
     genotipo:null,

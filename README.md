@@ -299,3 +299,8 @@ La primera cuenta puede crearse desde la app. Si la confirmación de correo est�
 - Alta y edición disponibles para administradores.
 - Las genéticas archivadas conservan el historial pero no se ofrecen para nuevas asignaciones.
 - Antes de publicar, ejecutar `Rainbows_V3.8.0_geneticas_catalogo.sql` en Supabase.
+
+
+## V3.8.2 — Cannabinoides
+
+Se agregó el campo `cannabinoides` al catálogo de genéticas. Admite valores sugeridos como THC, CBD, THC + CBD y combinaciones personalizadas.
