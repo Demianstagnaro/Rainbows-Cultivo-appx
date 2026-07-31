@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.9.0';
+const APP_VERSION='3.9.2';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1003,7 +1003,7 @@ function renderHarvests(){
   $('harvest-back-years').onclick=()=>{state.harvestYear='todos';state.selectedHarvest=null;renderHarvests()};
   $('harvest-back-rooms').onclick=()=>{state.harvestRoom='todas';state.harvestYear='todos';state.selectedHarvest=null;renderHarvests()};
   app.querySelectorAll('[data-harvest-select]').forEach(row=>row.onclick=()=>{state.selectedHarvest=row.dataset.harvestSelect;renderHarvests()});
-  if(canManage){$('add-harvest').onclick=()=>openHarvest();const edit=$('[data-edit-selected-harvest]');if(edit)edit.onclick=()=>openHarvest(edit.dataset.editSelectedHarvest)}
+  if(canManage){$('add-harvest').onclick=()=>openHarvest();const edit=app.querySelector('[data-edit-selected-harvest]');if(edit)edit.onclick=()=>openHarvest(edit.dataset.editSelectedHarvest)}
 }
 function renderSelectedHarvestDetail(h,canManage){
   const rows=harvestDetails(h.id);
