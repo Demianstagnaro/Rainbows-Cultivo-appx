@@ -321,3 +321,7 @@ Se agregó el campo `cannabinoides` al catálogo de genéticas. Admite valores s
 - Veges se considera vacía desde el trasplante de sus plantas a la sala de Flora correspondiente.
 - Mientras Veges está vacía no se generan tareas automáticas de Riego, Fumigación, KNF ni Enmienda.
 - Las tareas vuelven a generarse desde el siguiente trasplante Esquejes → Veges.
+
+
+## V3.9.0 — Cosechas
+Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros y carga editable. Los nombres históricos se conservan textualmente; las cosechas nuevas seleccionan genéticas del catálogo.

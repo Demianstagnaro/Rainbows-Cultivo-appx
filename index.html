@@ -6,7 +6,7 @@
   <title>rainbows</title>
   <meta name="theme-color" content="#111827">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=3.8.4">
+  <link rel="stylesheet" href="styles.css?v=3.9.0">
 </head>
 <body>
   <section id="auth-screen" class="auth-screen">
@@ -24,7 +24,7 @@
 
   <div id="app-shell" hidden>
     <header class="topbar"><div><div class="app-brand"><span class="cultivo-prefix">Cultivo</span><img src="rainbows-logo.webp?v=3.8.0" class="rainbows-logo header-logo" alt="rainbows"></div><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><div class="header-actions"><button id="header-config" class="secondary compact-button" hidden>Config</button><button id="sign-out" class="secondary compact-button">Salir</button></div></header>
-    <nav class="top-nav"><button data-view="today" class="active">Hoy</button><button data-view="calendar">Calendario</button><button data-view="rooms">Salas</button><button data-view="genetics">Genéticas</button><button data-view="history">Historial</button></nav>
+    <nav class="top-nav"><button data-view="today" class="active">Hoy</button><button data-view="calendar">Calendario</button><button data-view="rooms">Salas</button><button data-view="genetics">Genéticas</button><button data-view="harvests">Cosechas</button><button data-view="history">Historial</button></nav>
     <main id="app"><div class="panel">Cargando…</div></main>
   </div>
 
@@ -44,8 +44,11 @@
 
   <dialog id="genetic-dialog" class="dialog"><form method="dialog"><h3 id="genetic-dialog-title">Nueva genética</h3><label class="field-label">Genética<input id="genetic-name" class="text-input" maxlength="120" placeholder="Ej.: Mandarin Cookies V2"></label><label class="field-label">Nomenclatura<input id="genetic-code" class="text-input" maxlength="30" placeholder="Ej.: MCV2"></label><label class="field-label">Linaje<textarea id="genetic-lineage" class="text-input" maxlength="500" placeholder="Ej.: Forum Cut Cookies × Mandarin Sunset"></textarea></label><label class="field-label">Cannabinoides<input id="genetic-cannabinoids" class="text-input" maxlength="100" list="cannabinoid-options" placeholder="Ej.: THC, CBD o THC + CBD"></label><datalist id="cannabinoid-options"><option value="THC"><option value="CBD"><option value="THC + CBD"><option value="CBG"><option value="THC + CBG"><option value="CBD + CBG"><option value="THC + CBD + CBG"><option value="Desconocido"></datalist><fieldset class="genotype-fieldset"><legend>Genotipo</legend><div class="genotype-percent-grid"><label class="field-label">Índica (%)<input id="genetic-indica" class="text-input" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="Ej.: 70"></label><label class="field-label">Sativa (%)<input id="genetic-sativa" class="text-input" type="number" min="0" max="100" step="1" inputmode="numeric" placeholder="Ej.: 30"></label></div><label class="genotype-unknown"><input id="genetic-unknown" type="checkbox"> Genotipo desconocido</label><p class="muted genotype-help">Los porcentajes deben sumar 100.</p></fieldset><label class="field-label">Estado<select id="genetic-active" class="text-input"><option value="true">Activa</option><option value="false">Archivada</option></select></label><menu><button type="button" id="cancel-genetic" class="secondary">Cancelar</button><button type="button" id="save-genetic" class="primary">Guardar</button></menu></form></dialog>
 
+
+  <dialog id="harvest-dialog" class="dialog harvest-dialog"><form method="dialog"><h3 id="harvest-dialog-title">Nueva cosecha</h3><div class="harvest-form-grid"><label class="field-label">Fecha<input id="harvest-date" class="text-input" type="date"></label><label class="field-label">Sala<select id="harvest-room" class="text-input"><option>Flora 1</option><option>Flora 2</option><option>Flora 3</option></select></label><label class="field-label">Ciclo<input id="harvest-cycle" class="text-input" type="number" min="1" step="1"></label><label class="field-label">Meta (g)<input id="harvest-goal" class="text-input" type="number" min="0" step="1"></label><label class="field-label">Total cosechado (g)<input id="harvest-total" class="text-input" type="number" min="0" step="0.01"></label><label class="field-label">Cantidad de plantas<input id="harvest-plants" class="text-input" type="number" min="0" step="1"></label></div><label class="field-label">Observaciones<textarea id="harvest-notes" class="text-input"></textarea></label><div class="harvest-lines-head"><div><strong>Resultados por genética</strong><p class="muted">Las cosechas nuevas usan el catálogo de Genéticas. Los nombres históricos se conservan sin cambios.</p></div><button type="button" id="add-harvest-line" class="secondary compact-button">+ Agregar genética</button></div><div id="harvest-lines" class="harvest-lines"></div><p id="harvest-line-total" class="harvest-line-total"></p><menu><button type="button" id="delete-harvest" class="danger">Eliminar</button><button type="button" id="cancel-harvest" class="secondary">Cancelar</button><button type="button" id="save-harvest" class="primary">Guardar</button></menu></form></dialog>
+
   <dialog id="plant-dialog" class="dialog"><form method="dialog"><h3 id="plant-dialog-title">Editar planta</h3><label class="field-label">Estado<select id="plant-status" class="text-input"><option value="occupied">Ocupada</option><option value="empty">Vacía</option></select></label><label class="field-label">Genética<select id="plant-genetics" class="text-input"></select></label><label class="field-label">Observaciones<textarea id="plant-notes" class="text-input"></textarea></label><menu><button type="button" id="cancel-plant" class="secondary">Cancelar</button><button type="button" id="save-plant" class="primary">Guardar</button></menu></form></dialog>
 
-  <script type="module" src="app.js?v=3.8.4"></script>
+  <script type="module" src="app.js?v=3.9.0"></script>
 </body>
 </html>

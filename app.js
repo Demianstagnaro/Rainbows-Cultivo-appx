@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.8.4';
+const APP_VERSION='3.9.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Veges',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,channel:null,backups:[],backupRuns:[],backupLoading:false};
+const state={view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',channel:null,backups:[],backupRuns:[],backupLoading:false};
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
 function cycle(r,date){if(r.type!=='flora')return{label:'Permanente',stage:'permanente'};const days=77,bt=parse(r.transplant),bf=parse(r.floraStart);let c=Math.floor(diff(date,bt)/days);if(diff(date,bt)<0)c=-1;const tr=add(bt,c*days),fl=add(bf,c*days),day=diff(date,tr);if(day<0)return{label:'Pendiente',stage:'pendiente',tr,fl};if(diff(date,fl)<0){const w=Math.min(Math.floor(day/7)+1,3);return{label:`Vege S${w}`,stage:'vege',week:w,tr,fl}}const fd=diff(date,fl),w=Math.min(Math.floor(fd/7)+1,8);return{label:`Flora S${w}`,stage:'flora',week:w,tr,fl}}
@@ -183,7 +183,7 @@ async function undo(t){
   if(update.error)throw update.error;
   await refresh();
 }
-async function load(){const qs=await Promise.all([db.from('salas').select('*'),db.from('camas').select('*'),db.from('plantas').select('*'),db.from('geneticas').select('*').order('nombre'),db.from('empleados').select('*').eq('activo',true).order('nombre'),db.from('tareas').select('*'),db.from('realizaciones_tarea').select('*'),db.from('realizacion_empleados').select('*'),db.from('perfiles').select('*').order('nombre'),db.from('perfiles').select('*').eq('id',state.session.user.id).maybeSingle(),db.from('tareas_generales').select('*').order('created_at',{ascending:false}),db.from('tarea_general_empleados').select('*')]);for(const q of qs)if(q.error)throw q.error;[state.salas,state.camas,state.plantas,state.geneticas,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,9).map(q=>q.data||[]);state.profile=qs[9].data||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;state.generalTasks=qs[10].data||[];state.generalJoins=qs[11].data||[]}async function refresh(){try{await load();render()}catch(e){console.error(e);app.innerHTML=`<section class="panel error-panel"><strong>Error</strong><p>${e.message}</p></section>`}}
+async function load(){const qs=await Promise.all([db.from('salas').select('*'),db.from('camas').select('*'),db.from('plantas').select('*'),db.from('geneticas').select('*').order('nombre'),db.from('cosechas').select('*').order('fecha',{ascending:false}),db.from('cosecha_geneticas').select('*'),db.from('empleados').select('*').eq('activo',true).order('nombre'),db.from('tareas').select('*'),db.from('realizaciones_tarea').select('*'),db.from('realizacion_empleados').select('*'),db.from('perfiles').select('*').order('nombre'),db.from('perfiles').select('*').eq('id',state.session.user.id).maybeSingle(),db.from('tareas_generales').select('*').order('created_at',{ascending:false}),db.from('tarea_general_empleados').select('*')]);for(const q of qs)if(q.error)throw q.error;[state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,11).map(q=>q.data||[]);state.profile=qs[11].data||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;state.generalTasks=qs[12].data||[];state.generalJoins=qs[13].data||[]}async function refresh(){try{await load();render()}catch(e){console.error(e);app.innerHTML=`<section class="panel error-panel"><strong>Error</strong><p>${e.message}</p></section>`}}
 function subscribe(){if(state.channel)db.removeChannel(state.channel);state.channel=db.channel('rainbows-shared').on('postgres_changes',{event:'*',schema:'public'},refresh).subscribe()}
 function progress(r,d){const x=tasks(d).filter(t=>t.room===r.name),n=x.filter(done).length;return{total:x.length,done:n,pct:x.length?Math.round(n/x.length*100):100}}
 function taskCounter(doneCount,totalCount){const complete=totalCount>0&&doneCount===totalCount;return `<span class="task-counter ${complete?'is-complete':''}">Tareas ${doneCount}/${totalCount}</span>`}
@@ -809,7 +809,14 @@ $('save-genetic').onclick=async()=>{
 };
 
 
-function render(){const cb=$('header-config');if(cb){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';render()}} $('today-label').textContent=nice(today());document.querySelectorAll('.top-nav button').forEach(b=>{const allowed=canViewOperations();b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',b.dataset.view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
+function render(){const cb=$('header-config');if(cb){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';render()}} $('today-label').textContent=nice(today());
+$('cancel-harvest').onclick=()=>closeDialog('harvest-dialog');
+$('add-harvest-line').onclick=()=>{$('harvest-lines').insertAdjacentHTML('beforeend',harvestLineTemplate());bindHarvestLines()};
+$('harvest-total').oninput=updateHarvestLineTotal;
+$('save-harvest').onclick=async()=>{try{await saveHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la cosecha.')}};
+$('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
+
+document.querySelectorAll('.top-nav button').forEach(b=>{const allowed=canViewOperations();b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',b.dataset.view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
 function renderToday(){
   $('screen-title').textContent='Hoy';
   const d=today(),ts=tasks(d),n=ts.filter(done).length,p=ts.length?Math.round(n/ts.length*100):100;
@@ -953,6 +960,64 @@ async function saveGeneticDialog(){
   state.editGenetic=null;
   await refresh();
 }
+
+
+function formatGrams(value){return `${new Intl.NumberFormat('es-AR',{maximumFractionDigits:2}).format(Number(value)||0)} g`}
+function harvestDetails(id){return state.cosechaDetalles.filter(x=>String(x.cosecha_id)===String(id))}
+function harvestDeviation(h){const goal=Number(h.meta_gramos)||0;return goal?((Number(h.total_gramos)-goal)/goal)*100:null}
+function harvestGeneticName(row){return row.nombre_historico||state.geneticas.find(g=>String(g.id)===String(row.genetica_id))?.nombre||'Sin identificar'}
+function renderHarvests(){
+  $('screen-title').textContent='Cosechas';
+  const canManage=canEditTasks();
+  const years=[...new Set(state.cosechas.map(h=>String(h.fecha||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b-a);
+  const filtered=state.cosechas.filter(h=>(state.harvestYear==='todos'||String(h.fecha).startsWith(state.harvestYear))&&(state.harvestRoom==='todas'||h.sala===state.harvestRoom));
+  const total=filtered.reduce((sum,h)=>sum+Number(h.total_gramos||0),0);
+  const best=filtered.reduce((winner,h)=>!winner||Number(h.total_gramos)>Number(winner.total_gramos)?h:winner,null);
+  const weightedPlants=filtered.reduce((sum,h)=>sum+Number(h.cantidad_plantas||0),0);
+  const avgPlant=weightedPlants?total/weightedPlants:null;
+  app.innerHTML=`<section class="panel harvest-page-head"><div><h2>Cosechas</h2><p class="muted">Resultados históricos y nuevas cosechas. Los nombres históricos se muestran exactamente como fueron registrados.</p></div>${canManage?'<button id="add-harvest" class="primary compact-button">+ Nueva cosecha</button>':''}</section>
+  <section class="panel harvest-filters"><label>Año<select id="harvest-year-filter" class="text-input"><option value="todos">Todos</option>${years.map(y=>`<option value="${y}" ${state.harvestYear===y?'selected':''}>${y}</option>`).join('')}</select></label><label>Sala<select id="harvest-room-filter" class="text-input"><option value="todas">Todas</option>${['Flora 1','Flora 2','Flora 3'].map(r=>`<option ${state.harvestRoom===r?'selected':''}>${r}</option>`).join('')}</select></label></section>
+  <section class="harvest-kpis"><div class="panel"><span>Cosechas</span><strong>${filtered.length}</strong></div><div class="panel"><span>Total</span><strong>${formatGrams(total)}</strong></div><div class="panel"><span>Promedio general</span><strong>${avgPlant?`${avgPlant.toFixed(1)} g/planta`:'—'}</strong></div><div class="panel"><span>Mayor cosecha</span><strong>${best?`${best.sala} · C${best.ciclo}`:'—'}</strong></div></section>
+  <div class="harvest-list">${filtered.length?filtered.map(h=>renderHarvestCard(h,canManage)).join(''):'<section class="panel empty-room-tasks">No hay cosechas para estos filtros.</section>'}</div>`;
+  $('harvest-year-filter').onchange=e=>{state.harvestYear=e.target.value;renderHarvests()};
+  $('harvest-room-filter').onchange=e=>{state.harvestRoom=e.target.value;renderHarvests()};
+  if(canManage)$('add-harvest').onclick=()=>openHarvest();
+  app.querySelectorAll('[data-harvest-toggle]').forEach(b=>b.onclick=()=>{state.selectedHarvest=state.selectedHarvest===b.dataset.harvestToggle?null:b.dataset.harvestToggle;renderHarvests()});
+  app.querySelectorAll('[data-edit-harvest]').forEach(b=>b.onclick=e=>{e.stopPropagation();openHarvest(b.dataset.editHarvest)});
+}
+function renderHarvestCard(h,canManage){
+  const rows=harvestDetails(h.id),open=String(state.selectedHarvest)===String(h.id),dev=harvestDeviation(h),gpp=Number(h.cantidad_plantas)>0?Number(h.total_gramos)/Number(h.cantidad_plantas):null;
+  return `<section class="panel harvest-card ${open?'open':''}"><button class="harvest-card-main" data-harvest-toggle="${h.id}"><div><div class="harvest-card-title">${escapeHtml(h.sala)} · Ciclo ${h.ciclo}</div><div class="muted">${parse(h.fecha).toLocaleDateString('es-AR')} · ${h.origen==='historico'?'Histórica':'Registrada en la app'}</div></div><div class="harvest-total"><strong>${formatGrams(h.total_gramos)}</strong>${dev==null?'':`<span class="${dev>=0?'positive':'negative'}">${dev>=0?'+':''}${dev.toFixed(1)}% vs. meta</span>`}</div></button><div class="harvest-card-stats"><span>Meta <strong>${h.meta_gramos?formatGrams(h.meta_gramos):'—'}</strong></span><span>Plantas <strong>${h.cantidad_plantas||'—'}</strong></span><span>Rendimiento <strong>${gpp?`${gpp.toFixed(2)} g/planta`:'—'}</strong></span><span>Genéticas <strong>${rows.length||'—'}</strong></span></div>${open?`<div class="harvest-detail">${rows.length?`<div class="harvest-detail-table"><div class="harvest-detail-row header"><span>Genética</span><span>Gramos</span><span>%</span></div>${rows.map(r=>`<div class="harvest-detail-row"><span>${escapeHtml(harvestGeneticName(r))}</span><strong>${formatGrams(r.gramos)}</strong><span>${Number(h.total_gramos)?(Number(r.gramos)/Number(h.total_gramos)*100).toFixed(1):'0'}%</span></div>`).join('')}</div>`:'<p class="muted">Esta cosecha no tiene desglose por genética cargado.</p>'}${h.observaciones?`<p class="harvest-notes"><strong>Observaciones:</strong> ${escapeHtml(h.observaciones)}</p>`:''}${canManage?`<button class="secondary compact-button" data-edit-harvest="${h.id}">Editar cosecha</button>`:''}</div>`:''}</section>`;
+}
+function harvestLineTemplate(detail=null){
+  const selected=detail?.genetica_id||'';
+  const historical=detail&&!detail.genetica_id;
+  return `<div class="harvest-line" data-existing-id="${detail?.id||''}" data-historical="${historical?'true':'false'}">${historical?`<label class="field-label">Nombre histórico<input class="text-input harvest-line-name" value="${escapeHtml(detail.nombre_historico||'')}" readonly></label>`:`<label class="field-label">Genética<select class="text-input harvest-line-genetic"><option value="">Seleccionar…</option>${state.geneticas.filter(g=>g.activa!==false||String(g.id)===String(selected)).map(g=>`<option value="${g.id}" ${String(g.id)===String(selected)?'selected':''}>${escapeHtml(g.nombre)}</option>`).join('')}</select></label>`}<label class="field-label">Gramos<input class="text-input harvest-line-grams" type="number" min="0" step="0.01" value="${detail?.gramos??''}"></label><button type="button" class="danger compact-button remove-harvest-line">Quitar</button></div>`;
+}
+function bindHarvestLines(){
+  $('harvest-lines').querySelectorAll('.remove-harvest-line').forEach(b=>b.onclick=()=>{b.closest('.harvest-line').remove();updateHarvestLineTotal()});
+  $('harvest-lines').querySelectorAll('.harvest-line-grams').forEach(i=>i.oninput=updateHarvestLineTotal);
+  updateHarvestLineTotal();
+}
+function updateHarvestLineTotal(){const sum=[...document.querySelectorAll('.harvest-line-grams')].reduce((s,i)=>s+(Number(i.value)||0),0);const entered=Number($('harvest-total')?.value)||0;$('harvest-line-total').textContent=`Suma del desglose: ${formatGrams(sum)}${entered&&Math.abs(sum-entered)>.01?' · No coincide con el total informado.':''}`}
+function openHarvest(id=null){
+  if(!canEditTasks())return;
+  const h=id?state.cosechas.find(x=>String(x.id)===String(id)):null;state.editHarvest=h||null;
+  $('harvest-dialog-title').textContent=h?'Editar cosecha':'Nueva cosecha';$('harvest-date').value=h?.fecha||ymd(today());$('harvest-room').value=h?.sala||'Flora 1';$('harvest-cycle').value=h?.ciclo||'';$('harvest-goal').value=h?.meta_gramos??'';$('harvest-total').value=h?.total_gramos??'';$('harvest-plants').value=h?.cantidad_plantas??'';$('harvest-notes').value=h?.observaciones||'';$('delete-harvest').hidden=!h;
+  $('harvest-lines').innerHTML=(h?harvestDetails(h.id):[]).map(harvestLineTemplate).join('');bindHarvestLines();$('harvest-dialog').showModal();
+}
+async function saveHarvestDialog(){
+  if(!canEditTasks())throw new Error('No tenés permiso para editar cosechas.');
+  const payload={fecha:$('harvest-date').value,sala:$('harvest-room').value,ciclo:Number($('harvest-cycle').value),meta_gramos:$('harvest-goal').value===''?null:Number($('harvest-goal').value),total_gramos:Number($('harvest-total').value),cantidad_plantas:$('harvest-plants').value===''?null:Number($('harvest-plants').value),observaciones:$('harvest-notes').value.trim()||null,origen:state.editHarvest?.origen||'app'};
+  if(!payload.fecha||!payload.ciclo||payload.total_gramos<0)throw new Error('Completá fecha, sala, ciclo y total cosechado.');
+  const lines=[...$('harvest-lines').querySelectorAll('.harvest-line')].map(row=>{const historical=row.dataset.historical==='true';const geneticId=historical?null:row.querySelector('.harvest-line-genetic')?.value||null;const genetic=state.geneticas.find(g=>String(g.id)===String(geneticId));return{genetica_id:geneticId,nombre_historico:historical?row.querySelector('.harvest-line-name').value:(genetic?.nombre||null),gramos:Number(row.querySelector('.harvest-line-grams').value)}}).filter(x=>x.gramos>0);
+  if(lines.some(x=>!x.nombre_historico))throw new Error('Seleccioná una genética en cada fila cargada.');
+  let harvestId=state.editHarvest?.id;
+  if(harvestId){const q=await db.from('cosechas').update(payload).eq('id',harvestId);if(q.error)throw q.error;const del=await db.from('cosecha_geneticas').delete().eq('cosecha_id',harvestId);if(del.error)throw del.error}else{const q=await db.from('cosechas').insert(payload).select('id').single();if(q.error)throw q.error;harvestId=q.data.id}
+  if(lines.length){const q=await db.from('cosecha_geneticas').insert(lines.map(x=>({...x,cosecha_id:harvestId})));if(q.error)throw q.error}
+  closeDialog('harvest-dialog');state.editHarvest=null;await refresh();state.view='harvests';render();
+}
+async function deleteHarvestDialog(){if(!state.editHarvest||!confirm(`¿Eliminar ${state.editHarvest.sala} · Ciclo ${state.editHarvest.ciclo}?`))return;const q=await db.from('cosechas').delete().eq('id',state.editHarvest.id);if(q.error)throw q.error;closeDialog('harvest-dialog');state.editHarvest=null;state.selectedHarvest=null;await refresh();state.view='harvests';render()}
 
 function renderHistory(){
   $('screen-title').textContent='Historial';
@@ -1115,6 +1180,13 @@ function renderSettings(){
   loadBackups();
 }
 async function saveConfig(){const emp=[...new Set($('emps').value.split('\n').map(x=>x.trim()).filter(Boolean))];for(const n of emp)await db.from('empleados').upsert({nombre:n,activo:true},{onConflict:'nombre'});for(const e of state.empleados.filter(e=>!emp.includes(e.nombre)))await db.from('empleados').update({activo:false}).eq('id',e.id);await refresh();alert('Configuración guardada.')}
+
+$('cancel-harvest').onclick=()=>closeDialog('harvest-dialog');
+$('add-harvest-line').onclick=()=>{$('harvest-lines').insertAdjacentHTML('beforeend',harvestLineTemplate());bindHarvestLines()};
+$('harvest-total').oninput=updateHarvestLineTotal;
+$('save-harvest').onclick=async()=>{try{await saveHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la cosecha.')}};
+$('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
+
 document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;state.room=null;state.roomDay=null;state.day=null;render()});$('sign-out').onclick=()=>db.auth.signOut();$('sign-in').onclick=async()=>{
   const message=$('auth-message');
   message.textContent='Ingresando…';
