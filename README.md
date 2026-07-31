@@ -314,3 +314,10 @@ Se agregó el campo `cannabinoides` al catálogo de genéticas. Admite valores s
 - Las plantas ocupadas sin genética asignada muestran `S/G`.
 - El detalle completo continúa disponible al dejar el puntero sobre la planta o al abrirla.
 - No requiere cambios en Supabase.
+
+
+## V3.8.4 — Ocupación real de Veges y enmienda a 21 días
+- La enmienda automática de Veges pasa de 14 a 21 días después del trasplante Esquejes → Veges.
+- Veges se considera vacía desde el trasplante de sus plantas a la sala de Flora correspondiente.
+- Mientras Veges está vacía no se generan tareas automáticas de Riego, Fumigación, KNF ni Enmienda.
+- Las tareas vuelven a generarse desde el siguiente trasplante Esquejes → Veges.
