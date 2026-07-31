@@ -572,3 +572,37 @@ body{
 .harvest-page-head{display:flex;align-items:center;justify-content:space-between;gap:16px}.harvest-page-head h2{margin:0 0 4px}.harvest-filters{display:flex;gap:12px;align-items:end}.harvest-filters label{display:grid;gap:6px;color:var(--muted);font-size:12px;font-weight:800}.harvest-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:12px 0}.harvest-kpis .panel{display:grid;gap:4px;margin:0}.harvest-kpis span{color:var(--muted);font-size:12px}.harvest-kpis strong{font-size:18px}.harvest-list{display:grid;gap:12px}.harvest-card{padding:0;overflow:hidden}.harvest-card-main{width:100%;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px;border:0;background:transparent;color:inherit;text-align:left}.harvest-card-title{font-size:18px;font-weight:900}.harvest-total{display:grid;justify-items:end;gap:3px}.harvest-total strong{font-size:21px}.harvest-total span{font-size:12px;font-weight:800}.positive{color:#86efac}.negative{color:#fca5a5}.harvest-card-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:0 16px 14px}.harvest-card-stats span{display:grid;gap:3px;color:var(--muted);font-size:11px}.harvest-card-stats strong{color:var(--text);font-size:14px}.harvest-detail{border-top:1px solid var(--line);padding:14px 16px 16px}.harvest-detail-table{display:grid;margin-bottom:14px}.harvest-detail-row{display:grid;grid-template-columns:minmax(0,1fr) 120px 70px;gap:12px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.06)}.harvest-detail-row.header{color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:800}.harvest-notes{padding:10px;border-radius:10px;background:rgba(255,255,255,.03)}.harvest-dialog{width:min(760px,94vw)}.harvest-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:0 12px}.harvest-lines-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-top:18px}.harvest-lines-head p{margin:4px 0 0}.harvest-lines{display:grid;gap:8px;margin-top:10px}.harvest-line{display:grid;grid-template-columns:minmax(0,1fr) 150px auto;gap:10px;align-items:end;padding:10px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.025)}.harvest-line .field-label{margin:0}.harvest-line-total{color:var(--muted);font-size:13px;font-weight:700}
 @media(max-width:760px){.top-nav{grid-template-columns:repeat(6,minmax(84px,1fr))}.harvest-page-head,.harvest-lines-head{align-items:stretch;flex-direction:column}.harvest-page-head button,.harvest-lines-head button{width:100%}.harvest-kpis{grid-template-columns:1fr 1fr}.harvest-card-main{align-items:flex-start}.harvest-card-stats{grid-template-columns:1fr 1fr}.harvest-form-grid{grid-template-columns:1fr 1fr}.harvest-line{grid-template-columns:1fr}.harvest-detail-row{grid-template-columns:minmax(0,1fr) 90px 55px}}
 @media(max-width:480px){.harvest-kpis,.harvest-form-grid{grid-template-columns:1fr}.harvest-card-main{display:grid}.harvest-total{justify-items:start}}
+
+/* V3.9.1 — Cosechas organizadas por sala, año y ciclo */
+.harvest-room-selector{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.harvest-room-button,.harvest-year-button{border:1px solid var(--line);color:var(--text);text-align:left;cursor:pointer;transition:.18s transform,.18s border-color,.18s background}
+.harvest-room-button:hover,.harvest-year-button:hover{transform:translateY(-2px);border-color:var(--accent);background:rgba(43,141,244,.08)}
+.harvest-room-button span,.harvest-year-button span{display:block;font-size:22px;font-weight:900;margin-bottom:7px}
+.harvest-room-button strong,.harvest-year-button strong{color:var(--muted);font-size:13px}
+.harvest-year-selector{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.harvest-breadcrumb-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.harvest-summary-panel{padding:0;overflow:hidden}
+.harvest-summary-wrap{overflow-x:auto}
+.harvest-summary-table{width:100%;border-collapse:collapse;min-width:650px}
+.harvest-summary-table th,.harvest-summary-table td{padding:14px 16px;text-align:left;border-bottom:1px solid rgba(255,255,255,.07)}
+.harvest-summary-table th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:rgba(255,255,255,.025)}
+.harvest-summary-table tbody tr{cursor:pointer;transition:.15s background}
+.harvest-summary-table tbody tr:hover{background:rgba(255,255,255,.045)}
+.harvest-summary-table tbody tr.selected{background:rgba(43,141,244,.14);box-shadow:inset 4px 0 0 var(--accent)}
+.harvest-detail-placeholder{text-align:center;color:var(--muted);padding:28px;margin-top:14px}
+.selected-harvest-detail{margin-top:14px}
+.selected-harvest-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
+.selected-harvest-head h3{margin:0 0 4px}
+.selected-harvest-head p{margin:0}
+.harvest-detail-row.total-row{border-top:2px solid var(--line);border-bottom:0;padding-top:12px}
+@media(max-width:720px){
+  .harvest-room-selector{grid-template-columns:1fr}
+  .selected-harvest-head{flex-direction:column;align-items:stretch}
+  .selected-harvest-head button{width:100%}
+  .harvest-summary-table{min-width:0;display:block}
+  .harvest-summary-table thead{display:none}
+  .harvest-summary-table tbody,.harvest-summary-table tr,.harvest-summary-table td{display:block;width:100%}
+  .harvest-summary-table tr{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+  .harvest-summary-table td{display:grid;grid-template-columns:85px minmax(0,1fr);gap:10px;padding:5px 0;border:0}
+  .harvest-summary-table td::before{content:attr(data-label);color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:800}
+}

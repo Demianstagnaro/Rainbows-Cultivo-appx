@@ -969,25 +969,46 @@ function harvestGeneticName(row){return row.nombre_historico||state.geneticas.fi
 function renderHarvests(){
   $('screen-title').textContent='Cosechas';
   const canManage=canEditTasks();
-  const years=[...new Set(state.cosechas.map(h=>String(h.fecha||'').slice(0,4)).filter(Boolean))].sort((a,b)=>b-a);
-  const filtered=state.cosechas.filter(h=>(state.harvestYear==='todos'||String(h.fecha).startsWith(state.harvestYear))&&(state.harvestRoom==='todas'||h.sala===state.harvestRoom));
-  const total=filtered.reduce((sum,h)=>sum+Number(h.total_gramos||0),0);
-  const best=filtered.reduce((winner,h)=>!winner||Number(h.total_gramos)>Number(winner.total_gramos)?h:winner,null);
-  const weightedPlants=filtered.reduce((sum,h)=>sum+Number(h.cantidad_plantas||0),0);
-  const avgPlant=weightedPlants?total/weightedPlants:null;
-  app.innerHTML=`<section class="panel harvest-page-head"><div><h2>Cosechas</h2><p class="muted">Resultados históricos y nuevas cosechas. Los nombres históricos se muestran exactamente como fueron registrados.</p></div>${canManage?'<button id="add-harvest" class="primary compact-button">+ Nueva cosecha</button>':''}</section>
-  <section class="panel harvest-filters"><label>Año<select id="harvest-year-filter" class="text-input"><option value="todos">Todos</option>${years.map(y=>`<option value="${y}" ${state.harvestYear===y?'selected':''}>${y}</option>`).join('')}</select></label><label>Sala<select id="harvest-room-filter" class="text-input"><option value="todas">Todas</option>${['Flora 1','Flora 2','Flora 3'].map(r=>`<option ${state.harvestRoom===r?'selected':''}>${r}</option>`).join('')}</select></label></section>
-  <section class="harvest-kpis"><div class="panel"><span>Cosechas</span><strong>${filtered.length}</strong></div><div class="panel"><span>Total</span><strong>${formatGrams(total)}</strong></div><div class="panel"><span>Promedio general</span><strong>${avgPlant?`${avgPlant.toFixed(1)} g/planta`:'—'}</strong></div><div class="panel"><span>Mayor cosecha</span><strong>${best?`${best.sala} · C${best.ciclo}`:'—'}</strong></div></section>
-  <div class="harvest-list">${filtered.length?filtered.map(h=>renderHarvestCard(h,canManage)).join(''):'<section class="panel empty-room-tasks">No hay cosechas para estos filtros.</section>'}</div>`;
-  $('harvest-year-filter').onchange=e=>{state.harvestYear=e.target.value;renderHarvests()};
-  $('harvest-room-filter').onchange=e=>{state.harvestRoom=e.target.value;renderHarvests()};
-  if(canManage)$('add-harvest').onclick=()=>openHarvest();
-  app.querySelectorAll('[data-harvest-toggle]').forEach(b=>b.onclick=()=>{state.selectedHarvest=state.selectedHarvest===b.dataset.harvestToggle?null:b.dataset.harvestToggle;renderHarvests()});
-  app.querySelectorAll('[data-edit-harvest]').forEach(b=>b.onclick=e=>{e.stopPropagation();openHarvest(b.dataset.editHarvest)});
+  const rooms=['Flora 1','Flora 2','Flora 3'];
+  const selectedRoom=rooms.includes(state.harvestRoom)?state.harvestRoom:null;
+  const roomHarvests=selectedRoom?state.cosechas.filter(h=>h.sala===selectedRoom):[];
+  const years=[...new Set(roomHarvests.map(h=>String(h.fecha||'').slice(0,4)).filter(Boolean))].sort((a,b)=>Number(b)-Number(a));
+  const selectedYear=years.includes(String(state.harvestYear))?String(state.harvestYear):null;
+
+  if(!selectedRoom){
+    state.harvestYear='todos';
+    state.selectedHarvest=null;
+    app.innerHTML=`<section class="panel harvest-page-head"><div><h2>Cosechas</h2><p class="muted">Elegí una sala para consultar sus resultados.</p></div>${canManage?'<button id="add-harvest" class="primary compact-button">+ Nueva cosecha</button>':''}</section>
+    <section class="harvest-room-selector">${rooms.map(room=>{const count=state.cosechas.filter(h=>h.sala===room).length;return `<button class="panel harvest-room-button" data-harvest-room="${room}"><span>${room}</span><strong>${count} cosecha${count===1?'':'s'}</strong></button>`}).join('')}</section>`;
+    app.querySelectorAll('[data-harvest-room]').forEach(b=>b.onclick=()=>{state.harvestRoom=b.dataset.harvestRoom;state.harvestYear='todos';state.selectedHarvest=null;renderHarvests()});
+    if(canManage)$('add-harvest').onclick=()=>openHarvest();
+    return;
+  }
+
+  if(!selectedYear){
+    state.selectedHarvest=null;
+    app.innerHTML=`<section class="panel harvest-page-head"><div><button id="harvest-back-rooms" class="secondary compact-button">← Salas</button><h2>${escapeHtml(selectedRoom)}</h2><p class="muted">Elegí el año que querés consultar.</p></div>${canManage?'<button id="add-harvest" class="primary compact-button">+ Nueva cosecha</button>':''}</section>
+    <section class="harvest-year-selector">${years.length?years.map(year=>{const count=roomHarvests.filter(h=>String(h.fecha).startsWith(year)).length;return `<button class="panel harvest-year-button" data-harvest-year="${year}"><span>${year}</span><strong>${count} cosecha${count===1?'':'s'}</strong></button>`}).join(''):'<section class="panel empty-room-tasks">Todavía no hay cosechas cargadas para esta sala.</section>'}</section>`;
+    $('harvest-back-rooms').onclick=()=>{state.harvestRoom='todas';state.harvestYear='todos';state.selectedHarvest=null;renderHarvests()};
+    app.querySelectorAll('[data-harvest-year]').forEach(b=>b.onclick=()=>{state.harvestYear=b.dataset.harvestYear;state.selectedHarvest=null;renderHarvests()});
+    if(canManage)$('add-harvest').onclick=()=>openHarvest();
+    return;
+  }
+
+  const harvests=roomHarvests.filter(h=>String(h.fecha).startsWith(selectedYear)).sort((a,b)=>new Date(a.fecha)-new Date(b.fecha)||Number(a.ciclo)-Number(b.ciclo));
+  const selected=harvests.find(h=>String(h.id)===String(state.selectedHarvest))||null;
+  app.innerHTML=`<section class="panel harvest-page-head"><div><div class="harvest-breadcrumb-actions"><button id="harvest-back-years" class="secondary compact-button">← Años</button><button id="harvest-back-rooms" class="secondary compact-button">Cambiar sala</button></div><h2>${escapeHtml(selectedRoom)} · ${selectedYear}</h2><p class="muted">Seleccioná un ciclo en la tabla para ver su detalle debajo.</p></div>${canManage?'<button id="add-harvest" class="primary compact-button">+ Nueva cosecha</button>':''}</section>
+  <section class="panel harvest-summary-panel"><div class="harvest-summary-wrap"><table class="harvest-summary-table"><thead><tr><th>Fecha</th><th>Ciclo</th><th>Total</th><th>Meta</th><th>Desvío</th></tr></thead><tbody>${harvests.length?harvests.map(h=>{const dev=harvestDeviation(h);const active=selected&&String(selected.id)===String(h.id);return `<tr class="${active?'selected':''}" data-harvest-select="${h.id}"><td data-label="Fecha">${parse(h.fecha).toLocaleDateString('es-AR')}</td><td data-label="Ciclo">Ciclo ${h.ciclo}</td><td data-label="Total"><strong>${formatGrams(h.total_gramos)}</strong></td><td data-label="Meta">${h.meta_gramos?formatGrams(h.meta_gramos):'—'}</td><td data-label="Desvío"><span class="${dev==null?'':dev>=0?'positive':'negative'}">${dev==null?'—':`${dev>=0?'+':''}${dev.toFixed(1)}%`}</span></td></tr>`}).join(''):'<tr><td colspan="5">No hay cosechas cargadas para este año.</td></tr>'}</tbody></table></div></section>
+  ${selected?renderSelectedHarvestDetail(selected,canManage):'<section class="panel harvest-detail-placeholder">Elegí un ciclo de la tabla para ver el resultado de cada genética.</section>'}`;
+  $('harvest-back-years').onclick=()=>{state.harvestYear='todos';state.selectedHarvest=null;renderHarvests()};
+  $('harvest-back-rooms').onclick=()=>{state.harvestRoom='todas';state.harvestYear='todos';state.selectedHarvest=null;renderHarvests()};
+  app.querySelectorAll('[data-harvest-select]').forEach(row=>row.onclick=()=>{state.selectedHarvest=row.dataset.harvestSelect;renderHarvests()});
+  if(canManage){$('add-harvest').onclick=()=>openHarvest();const edit=$('[data-edit-selected-harvest]');if(edit)edit.onclick=()=>openHarvest(edit.dataset.editSelectedHarvest)}
 }
-function renderHarvestCard(h,canManage){
-  const rows=harvestDetails(h.id),open=String(state.selectedHarvest)===String(h.id),dev=harvestDeviation(h),gpp=Number(h.cantidad_plantas)>0?Number(h.total_gramos)/Number(h.cantidad_plantas):null;
-  return `<section class="panel harvest-card ${open?'open':''}"><button class="harvest-card-main" data-harvest-toggle="${h.id}"><div><div class="harvest-card-title">${escapeHtml(h.sala)} · Ciclo ${h.ciclo}</div><div class="muted">${parse(h.fecha).toLocaleDateString('es-AR')} · ${h.origen==='historico'?'Histórica':'Registrada en la app'}</div></div><div class="harvest-total"><strong>${formatGrams(h.total_gramos)}</strong>${dev==null?'':`<span class="${dev>=0?'positive':'negative'}">${dev>=0?'+':''}${dev.toFixed(1)}% vs. meta</span>`}</div></button><div class="harvest-card-stats"><span>Meta <strong>${h.meta_gramos?formatGrams(h.meta_gramos):'—'}</strong></span><span>Plantas <strong>${h.cantidad_plantas||'—'}</strong></span><span>Rendimiento <strong>${gpp?`${gpp.toFixed(2)} g/planta`:'—'}</strong></span><span>Genéticas <strong>${rows.length||'—'}</strong></span></div>${open?`<div class="harvest-detail">${rows.length?`<div class="harvest-detail-table"><div class="harvest-detail-row header"><span>Genética</span><span>Gramos</span><span>%</span></div>${rows.map(r=>`<div class="harvest-detail-row"><span>${escapeHtml(harvestGeneticName(r))}</span><strong>${formatGrams(r.gramos)}</strong><span>${Number(h.total_gramos)?(Number(r.gramos)/Number(h.total_gramos)*100).toFixed(1):'0'}%</span></div>`).join('')}</div>`:'<p class="muted">Esta cosecha no tiene desglose por genética cargado.</p>'}${h.observaciones?`<p class="harvest-notes"><strong>Observaciones:</strong> ${escapeHtml(h.observaciones)}</p>`:''}${canManage?`<button class="secondary compact-button" data-edit-harvest="${h.id}">Editar cosecha</button>`:''}</div>`:''}</section>`;
+function renderSelectedHarvestDetail(h,canManage){
+  const rows=harvestDetails(h.id);
+  const gpp=Number(h.cantidad_plantas)>0?Number(h.total_gramos)/Number(h.cantidad_plantas):null;
+  return `<section class="panel selected-harvest-detail"><div class="selected-harvest-head"><div><h3>${escapeHtml(h.sala)} · Ciclo ${h.ciclo}</h3><p class="muted">${parse(h.fecha).toLocaleDateString('es-AR')} · Total ${formatGrams(h.total_gramos)}${gpp?` · ${gpp.toFixed(2)} g/planta`:''}</p></div>${canManage?`<button class="secondary compact-button" data-edit-selected-harvest="${h.id}">Editar cosecha</button>`:''}</div>${rows.length?`<div class="harvest-detail-table"><div class="harvest-detail-row header"><span>Genética</span><span>Gramos</span><span>%</span></div>${rows.map(r=>`<div class="harvest-detail-row"><span>${escapeHtml(harvestGeneticName(r))}</span><strong>${formatGrams(r.gramos)}</strong><span>${Number(h.total_gramos)?(Number(r.gramos)/Number(h.total_gramos)*100).toFixed(1):'0'}%</span></div>`).join('')}<div class="harvest-detail-row total-row"><strong>Total</strong><strong>${formatGrams(h.total_gramos)}</strong><strong>100%</strong></div></div>`:'<p class="muted">Esta cosecha no tiene desglose por genética cargado.</p>'}${h.observaciones?`<p class="harvest-notes"><strong>Observaciones:</strong> ${escapeHtml(h.observaciones)}</p>`:''}</section>`;
 }
 function harvestLineTemplate(detail=null){
   const selected=detail?.genetica_id||'';
