@@ -327,5 +327,13 @@ Se agregó el campo `cannabinoides` al catálogo de genéticas. Admite valores s
 Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros y carga editable. Los nombres históricos se conservan textualmente; las cosechas nuevas seleccionan genéticas del catálogo.
 
 
-## V3.9.2
+## V3.10.0
 - Corregido el botón Editar cosecha en la vista por sala y año.
+
+
+## V3.10.0 — Stock Palestina
+- Nueva solapa Stock Palestina.
+- Stock actual general por sala, ciclo y genética.
+- Detalle por Flora y ciclo.
+- Historial importado desde Stock Palestina.xlsx.
+- Registro de entradas y salidas nuevas con actualización automática del saldo.

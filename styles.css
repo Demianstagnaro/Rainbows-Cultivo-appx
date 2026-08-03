@@ -606,3 +606,22 @@ body{
   .harvest-summary-table td{display:grid;grid-template-columns:85px minmax(0,1fr);gap:10px;padding:5px 0;border:0}
   .harvest-summary-table td::before{content:attr(data-label);color:var(--muted);font-size:11px;text-transform:uppercase;font-weight:800}
 }
+
+
+/* V3.10.0 — Stock Palestina */
+.stock-page-head{display:flex;align-items:center;justify-content:space-between;gap:16px}.stock-page-head h2{margin:8px 0 4px}
+.stock-current-summary{display:grid;gap:5px;margin:14px 0}.stock-current-summary span,.stock-current-summary small{color:var(--muted)}.stock-current-summary strong{font-size:34px}
+.stock-room-selector{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:14px}
+.stock-room-button,.stock-cycle-button{border:1px solid var(--line);color:var(--text);text-align:left;cursor:pointer;transition:.18s transform,.18s border-color,.18s background}
+.stock-room-button:hover,.stock-cycle-button:hover,.stock-cycle-button.active{transform:translateY(-2px);border-color:var(--accent);background:rgba(43,141,244,.08)}
+.stock-room-button span,.stock-cycle-button span{display:block;font-size:20px;font-weight:900;margin-bottom:6px}
+.stock-room-button strong,.stock-cycle-button strong{display:block;font-size:17px}.stock-room-button small,.stock-cycle-button small{display:block;color:var(--muted);margin-top:5px}
+.stock-cycle-selector{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin:14px 0}
+.stock-overview-panel,.stock-detail-panel{padding:0;overflow:hidden}.stock-detail-panel h3{padding:16px 16px 0;margin:0}
+.stock-table-wrap{overflow-x:auto}.stock-table{width:100%;border-collapse:collapse;min-width:620px}.stock-table th,.stock-table td{padding:13px 16px;border-bottom:1px solid rgba(255,255,255,.07);text-align:left}.stock-table th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:rgba(255,255,255,.025)}
+.stock-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px 0}.stock-kpis .panel{display:grid;gap:5px;margin:0}.stock-kpis span{color:var(--muted);font-size:12px}.stock-kpis strong{font-size:20px}
+.stock-section-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:16px}.stock-section-head h3{padding:0;margin:0 0 4px}.stock-section-head p{margin:0}
+.stock-movement-type{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:900;text-transform:capitalize}.stock-movement-type.salida{background:rgba(153,27,27,.22);color:#fecaca}.stock-movement-type.entrada{background:rgba(22,101,52,.22);color:#bbf7d0}
+.stock-placeholder{text-align:center;color:var(--muted);padding:28px}.stock-movement-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:760px){.top-nav{grid-template-columns:repeat(7,minmax(92px,1fr))}.stock-page-head,.stock-section-head{align-items:stretch;flex-direction:column}.stock-page-head button,.stock-section-head button{width:100%}.stock-room-selector,.stock-kpis{grid-template-columns:1fr 1fr}.stock-movement-form-grid{grid-template-columns:1fr}.stock-table{min-width:680px}}
+@media(max-width:480px){.stock-room-selector,.stock-kpis{grid-template-columns:1fr}.stock-current-summary strong{font-size:28px}}

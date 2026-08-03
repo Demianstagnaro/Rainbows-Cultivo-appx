@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.9.2';
+const APP_VERSION='3.10.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Veges',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',channel:null,backups:[],backupRuns:[],backupLoading:false};
+const state={view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,channel:null,backups:[],backupRuns:[],backupLoading:false};
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
 function cycle(r,date){if(r.type!=='flora')return{label:'Permanente',stage:'permanente'};const days=77,bt=parse(r.transplant),bf=parse(r.floraStart);let c=Math.floor(diff(date,bt)/days);if(diff(date,bt)<0)c=-1;const tr=add(bt,c*days),fl=add(bf,c*days),day=diff(date,tr);if(day<0)return{label:'Pendiente',stage:'pendiente',tr,fl};if(diff(date,fl)<0){const w=Math.min(Math.floor(day/7)+1,3);return{label:`Vege S${w}`,stage:'vege',week:w,tr,fl}}const fd=diff(date,fl),w=Math.min(Math.floor(fd/7)+1,8);return{label:`Flora S${w}`,stage:'flora',week:w,tr,fl}}
@@ -183,7 +183,30 @@ async function undo(t){
   if(update.error)throw update.error;
   await refresh();
 }
-async function load(){const qs=await Promise.all([db.from('salas').select('*'),db.from('camas').select('*'),db.from('plantas').select('*'),db.from('geneticas').select('*').order('nombre'),db.from('cosechas').select('*').order('fecha',{ascending:false}),db.from('cosecha_geneticas').select('*'),db.from('empleados').select('*').eq('activo',true).order('nombre'),db.from('tareas').select('*'),db.from('realizaciones_tarea').select('*'),db.from('realizacion_empleados').select('*'),db.from('perfiles').select('*').order('nombre'),db.from('perfiles').select('*').eq('id',state.session.user.id).maybeSingle(),db.from('tareas_generales').select('*').order('created_at',{ascending:false}),db.from('tarea_general_empleados').select('*')]);for(const q of qs)if(q.error)throw q.error;[state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,11).map(q=>q.data||[]);state.profile=qs[11].data||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;state.generalTasks=qs[12].data||[];state.generalJoins=qs[13].data||[]}async function refresh(){try{await load();render()}catch(e){console.error(e);app.innerHTML=`<section class="panel error-panel"><strong>Error</strong><p>${e.message}</p></section>`}}
+async function load(){const qs=await Promise.all([
+db.from('salas').select('*'),
+db.from('camas').select('*'),
+db.from('plantas').select('*'),
+db.from('geneticas').select('*').order('nombre'),
+db.from('cosechas').select('*').order('fecha',{ascending:false}),
+db.from('cosecha_geneticas').select('*'),
+db.from('stock_ciclos').select('*').order('sala').order('ciclo',{ascending:false}),
+db.from('stock_existencias').select('*').order('orden'),
+db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}),
+db.from('empleados').select('*').eq('activo',true).order('nombre'),
+db.from('tareas').select('*'),
+db.from('realizaciones_tarea').select('*'),
+db.from('realizacion_empleados').select('*'),
+db.from('perfiles').select('*').order('nombre'),
+db.from('perfiles').select('*').eq('id',state.session.user.id).maybeSingle(),
+db.from('tareas_generales').select('*').order('created_at',{ascending:false}),
+db.from('tarea_general_empleados').select('*')
+]);for(const q of qs)if(q.error)throw q.error;
+[state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,14).map(q=>q.data||[]);
+state.profile=qs[14].data||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;
+state.generalTasks=qs[15].data||[];
+state.generalJoins=qs[16].data||[]
+}async function refresh(){try{await load();render()}catch(e){console.error(e);app.innerHTML=`<section class="panel error-panel"><strong>Error</strong><p>${e.message}</p></section>`}}
 function subscribe(){if(state.channel)db.removeChannel(state.channel);state.channel=db.channel('rainbows-shared').on('postgres_changes',{event:'*',schema:'public'},refresh).subscribe()}
 function progress(r,d){const x=tasks(d).filter(t=>t.room===r.name),n=x.filter(done).length;return{total:x.length,done:n,pct:x.length?Math.round(n/x.length*100):100}}
 function taskCounter(doneCount,totalCount){const complete=totalCount>0&&doneCount===totalCount;return `<span class="task-counter ${complete?'is-complete':''}">Tareas ${doneCount}/${totalCount}</span>`}
@@ -810,13 +833,16 @@ $('save-genetic').onclick=async()=>{
 
 
 function render(){const cb=$('header-config');if(cb){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';render()}} $('today-label').textContent=nice(today());
+$('cancel-stock-movement').onclick=()=>closeDialog('stock-movement-dialog');
+$('stock-movement-cycle').onchange=updateStockMovementItems;
+$('save-stock-movement').onclick=async()=>{const b=$('save-stock-movement');b.disabled=true;try{await saveStockMovement()}catch(e){console.error(e);alert(e.message||'No se pudo registrar el movimiento.')}finally{b.disabled=false}};
 $('cancel-harvest').onclick=()=>closeDialog('harvest-dialog');
 $('add-harvest-line').onclick=()=>{$('harvest-lines').insertAdjacentHTML('beforeend',harvestLineTemplate());bindHarvestLines()};
 $('harvest-total').oninput=updateHarvestLineTotal;
 $('save-harvest').onclick=async()=>{try{await saveHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la cosecha.')}};
 $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
 
-document.querySelectorAll('.top-nav button').forEach(b=>{const allowed=canViewOperations();b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',b.dataset.view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
+document.querySelectorAll('.top-nav button').forEach(b=>{const allowed=canViewOperations();b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',b.dataset.view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
 function renderToday(){
   $('screen-title').textContent='Hoy';
   const d=today(),ts=tasks(d),n=ts.filter(done).length,p=ts.length?Math.round(n/ts.length*100):100;
@@ -1040,6 +1066,99 @@ async function saveHarvestDialog(){
 }
 async function deleteHarvestDialog(){if(!state.editHarvest||!confirm(`¿Eliminar ${state.editHarvest.sala} · Ciclo ${state.editHarvest.ciclo}?`))return;const q=await db.from('cosechas').delete().eq('id',state.editHarvest.id);if(q.error)throw q.error;closeDialog('harvest-dialog');state.editHarvest=null;state.selectedHarvest=null;await refresh();state.view='harvests';render()}
 
+
+function stockCycleItems(cycleId){return state.stockItems.filter(x=>String(x.ciclo_id)===String(cycleId))}
+function stockCycleMovements(cycleId){return state.stockMovements.filter(x=>String(x.ciclo_id)===String(cycleId))}
+function stockItemCurrent(item){
+  const delta=state.stockMovements.filter(m=>m.afecta_stock&&String(m.existencia_id)===String(item.id)).reduce((sum,m)=>{
+    const grams=Number(m.gramos)||0;
+    return sum+(m.tipo==='entrada'?grams:m.tipo==='salida'?-grams:Number(m.ajuste_delta)||0);
+  },0);
+  return Math.max(0,(Number(item.stock_actual_base)||0)+delta);
+}
+function stockCycleCurrent(cycle){return stockCycleItems(cycle.id).reduce((sum,item)=>sum+stockItemCurrent(item),0)}
+function stockMovementTitle(m){
+  const item=state.stockItems.find(x=>String(x.id)===String(m.existencia_id));
+  return m.nombre_historico||item?.nombre_historico||state.geneticas.find(g=>String(g.id)===String(m.genetica_id))?.nombre||'Sin identificar';
+}
+function stockMovementDate(m){if(m.fecha)return parse(m.fecha).toLocaleDateString('es-AR');return m.fecha_text||'Sin fecha'}
+function renderStock(){
+  $('screen-title').textContent='Stock Palestina';
+  const canManage=canEditTasks();
+  const rooms=['Flora 1','Flora 2','Flora 3'];
+  const total=state.stockCycles.reduce((sum,c)=>sum+stockCycleCurrent(c),0);
+  const available=[];
+  state.stockCycles.forEach(c=>stockCycleItems(c.id).forEach(item=>{
+    const current=stockItemCurrent(item);
+    if(current>0)available.push({cycle:c,item,current});
+  }));
+  available.sort((a,b)=>b.current-a.current);
+
+  if(!state.stockRoom){
+    app.innerHTML=`<section class="panel stock-page-head"><div><h2>Stock Palestina</h2><p class="muted">Stock disponible actualmente en el edificio Palestina.</p></div>${canManage?'<button id="stock-add-movement" class="primary compact-button">+ Registrar movimiento</button>':''}</section>
+    <section class="panel stock-current-summary"><span>Stock actual disponible</span><strong>${formatGrams(total)}</strong><small>${available.length} partida${available.length===1?'':'s'} con saldo</small></section>
+    <section class="panel stock-overview-panel"><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Sala</th><th>Ciclo</th><th>Genética</th><th>Disponible</th></tr></thead><tbody>${available.length?available.map(x=>`<tr><td>${escapeHtml(x.cycle.sala)}</td><td>Ciclo ${x.cycle.ciclo}</td><td>${escapeHtml(x.item.nombre_historico)}</td><td><strong>${formatGrams(x.current)}</strong></td></tr>`).join(''):'<tr><td colspan="4">No hay stock disponible cargado.</td></tr>'}</tbody></table></div></section>
+    <section class="stock-room-selector">${rooms.map(room=>{const cycles=state.stockCycles.filter(c=>c.sala===room);const roomTotal=cycles.reduce((s,c)=>s+stockCycleCurrent(c),0);return `<button class="panel stock-room-button" data-stock-room="${room}"><span>${room}</span><strong>${formatGrams(roomTotal)}</strong><small>${cycles.length} ciclos</small></button>`}).join('')}</section>`;
+    app.querySelectorAll('[data-stock-room]').forEach(b=>b.onclick=()=>{state.stockRoom=b.dataset.stockRoom;state.stockCycle=null;renderStock()});
+    if(canManage)$('stock-add-movement').onclick=()=>openStockMovement();
+    return;
+  }
+
+  const cycles=state.stockCycles.filter(c=>c.sala===state.stockRoom).sort((a,b)=>Number(b.ciclo)-Number(a.ciclo));
+  const selected=cycles.find(c=>String(c.id)===String(state.stockCycle))||null;
+  app.innerHTML=`<section class="panel stock-page-head"><div><button id="stock-back-home" class="secondary compact-button">← Stock general</button><h2>${escapeHtml(state.stockRoom)}</h2><p class="muted">Elegí un ciclo para consultar sus existencias y movimientos.</p></div>${canManage?'<button id="stock-add-movement" class="primary compact-button">+ Registrar movimiento</button>':''}</section>
+  <section class="stock-cycle-selector">${cycles.map(c=>`<button class="panel stock-cycle-button ${selected&&String(selected.id)===String(c.id)?'active':''}" data-stock-cycle="${c.id}"><span>Ciclo ${c.ciclo}</span><strong>${formatGrams(stockCycleCurrent(c))}</strong><small>Inicial: ${formatGrams(c.stock_inicial)}</small></button>`).join('')}</section>
+  ${selected?renderStockCycleDetail(selected,canManage):'<section class="panel stock-placeholder">Seleccioná un ciclo para ver el detalle.</section>'}`;
+  $('stock-back-home').onclick=()=>{state.stockRoom=null;state.stockCycle=null;renderStock()};
+  app.querySelectorAll('[data-stock-cycle]').forEach(b=>b.onclick=()=>{state.stockCycle=b.dataset.stockCycle;renderStock()});
+  if(canManage){
+    $('stock-add-movement').onclick=()=>openStockMovement(selected?.id||null);
+    const addCycle=app.querySelector('[data-stock-add-cycle]');
+    if(addCycle)addCycle.onclick=()=>openStockMovement(addCycle.dataset.stockAddCycle);
+  }
+}
+function renderStockCycleDetail(cycle,canManage){
+  const items=stockCycleItems(cycle.id);
+  const movements=stockCycleMovements(cycle.id);
+  return `<section class="stock-kpis"><div class="panel"><span>Stock inicial</span><strong>${formatGrams(cycle.stock_inicial)}</strong></div><div class="panel"><span>Stock actual</span><strong>${formatGrams(stockCycleCurrent(cycle))}</strong></div><div class="panel"><span>Genéticas</span><strong>${items.length}</strong></div><div class="panel"><span>Movimientos</span><strong>${movements.length}</strong></div></section>
+  <section class="panel stock-detail-panel"><h3>Existencias por genética</h3><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Genética</th><th>Stock actual</th></tr></thead><tbody>${items.length?items.map(item=>`<tr><td>${escapeHtml(item.nombre_historico)}</td><td><strong>${formatGrams(stockItemCurrent(item))}</strong></td></tr>`).join(''):'<tr><td colspan="2">Sin detalle cargado.</td></tr>'}</tbody></table></div></section>
+  <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Los movimientos históricos se conservan tal como estaban registrados en el Excel.</p></div>${canManage?`<button class="primary compact-button" data-stock-add-cycle="${cycle.id}">+ Movimiento</button>`:''}</div><div class="stock-table-wrap"><table class="stock-table movements"><thead><tr><th>Fecha</th><th>Genética / detalle</th><th>Tipo</th><th>Destino</th><th>Gramos</th></tr></thead><tbody>${movements.length?movements.map(m=>`<tr><td>${escapeHtml(stockMovementDate(m))}</td><td>${escapeHtml(stockMovementTitle(m))}</td><td><span class="stock-movement-type ${m.tipo}">${escapeHtml(m.tipo)}</span></td><td>${escapeHtml(m.destino||'—')}</td><td><strong>${formatGrams(m.gramos)}</strong></td></tr>`).join(''):'<tr><td colspan="5">No hay movimientos registrados.</td></tr>'}</tbody></table></div></section>`;
+}
+function openStockMovement(preselectedCycleId=null){
+  const cycles=state.stockCycles.filter(c=>!state.stockRoom||c.sala===state.stockRoom).sort((a,b)=>a.sala.localeCompare(b.sala)||Number(b.ciclo)-Number(a.ciclo));
+  const cycleId=preselectedCycleId||state.stockCycle||cycles[0]?.id||'';
+  $('stock-movement-cycle').innerHTML=cycles.map(c=>`<option value="${c.id}" ${String(c.id)===String(cycleId)?'selected':''}>${escapeHtml(c.sala)} · Ciclo ${c.ciclo}</option>`).join('');
+  $('stock-movement-date').value=ymd(today());
+  $('stock-movement-type').value='salida';
+  $('stock-movement-grams').value='';
+  $('stock-movement-destination').value='Medrano';
+  $('stock-movement-notes').value='';
+  updateStockMovementItems();
+  $('stock-movement-dialog').showModal();
+}
+function updateStockMovementItems(){
+  const cycleId=$('stock-movement-cycle').value;
+  const items=stockCycleItems(cycleId);
+  $('stock-movement-item').innerHTML=items.map(i=>`<option value="${i.id}">${escapeHtml(i.nombre_historico)} · ${formatGrams(stockItemCurrent(i))}</option>`).join('');
+}
+async function saveStockMovement(){
+  const cycleId=$('stock-movement-cycle').value;
+  const itemId=$('stock-movement-item').value;
+  const type=$('stock-movement-type').value;
+  const grams=Number($('stock-movement-grams').value);
+  if(!cycleId||!itemId)throw new Error('Seleccioná el ciclo y la genética.');
+  if(!Number.isFinite(grams)||grams<=0)throw new Error('Ingresá una cantidad válida.');
+  const item=state.stockItems.find(x=>String(x.id)===String(itemId));
+  if(type==='salida'&&grams>stockItemCurrent(item))throw new Error('La salida supera el stock disponible de esa genética.');
+  const payload={ciclo_id:cycleId,existencia_id:itemId,genetica_id:item?.genetica_id||null,nombre_historico:item?.nombre_historico||null,fecha:$('stock-movement-date').value||ymd(today()),fecha_text:null,tipo:type,destino:$('stock-movement-destination').value.trim()||null,gramos:grams,observaciones:$('stock-movement-notes').value.trim()||null,afecta_stock:true,origen:'app'};
+  const q=await db.from('stock_movimientos').insert(payload);
+  if(q.error)throw q.error;
+  closeDialog('stock-movement-dialog');
+  state.stockRoom=state.stockCycles.find(c=>String(c.id)===String(cycleId))?.sala||state.stockRoom;
+  state.stockCycle=cycleId;
+  await refresh();
+}
+
 function renderHistory(){
   $('screen-title').textContent='Historial';
   if(state.day){
@@ -1208,7 +1327,7 @@ $('harvest-total').oninput=updateHarvestLineTotal;
 $('save-harvest').onclick=async()=>{try{await saveHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la cosecha.')}};
 $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
 
-document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;state.room=null;state.roomDay=null;state.day=null;render()});$('sign-out').onclick=()=>db.auth.signOut();$('sign-in').onclick=async()=>{
+document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;state.room=null;state.roomDay=null;state.day=null;if(state.view!=='stock'){state.stockRoom=null;state.stockCycle=null}render()});$('sign-out').onclick=()=>db.auth.signOut();$('sign-in').onclick=async()=>{
   const message=$('auth-message');
   message.textContent='Ingresando…';
   try{
