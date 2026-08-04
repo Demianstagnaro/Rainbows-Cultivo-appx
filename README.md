@@ -367,3 +367,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - La tabla de cada ciclo muestra por separado el stock inicial y el stock actual de cada genética.
 - Se reemplazó “existencias” por “stock” en los textos de las salas.
 - No requiere cambios adicionales en Supabase.
+
+
+## V3.10.6 — Total automático de cosecha
+
+- En cosechas nuevas, el total cosechado se calcula automáticamente sumando los gramos ingresados por genética.
+- Al editar una cosecha con desglose por genética, el total también se recalcula automáticamente.
+- Las cosechas históricas sin desglose conservan la posibilidad de editar manualmente el total.
+- No requiere cambios en Supabase.

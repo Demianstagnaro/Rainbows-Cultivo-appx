@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.10.5';
+const APP_VERSION='3.10.6';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1070,7 +1070,23 @@ function bindHarvestLines(){
   updateHarvestLineTotal();
   refreshHarvestGeneticOptions();
 }
-function updateHarvestLineTotal(){const sum=[...document.querySelectorAll('.harvest-line-grams')].reduce((s,i)=>s+(Number(i.value)||0),0);const entered=Number($('harvest-total')?.value)||0;$('harvest-line-total').textContent=`Suma del desglose: ${formatGrams(sum)}${entered&&Math.abs(sum-entered)>.01?' · No coincide con el total informado.':''}`}
+function updateHarvestLineTotal(){
+  const rows=[...$('harvest-lines').querySelectorAll('.harvest-line')];
+  const sum=rows.reduce((total,row)=>total+(Number(row.querySelector('.harvest-line-grams')?.value)||0),0);
+  const totalInput=$('harvest-total');
+  const shouldCalculate=!state.editHarvest||rows.length>0;
+  if(shouldCalculate&&totalInput){
+    totalInput.value=Number(sum.toFixed(2));
+    totalInput.readOnly=true;
+    totalInput.title='Se calcula automáticamente con la suma de los resultados por genética.';
+  }else if(totalInput){
+    totalInput.readOnly=false;
+    totalInput.title='';
+  }
+  $('harvest-line-total').textContent=shouldCalculate
+    ?`Total calculado automáticamente: ${formatGrams(sum)}`
+    :'Agregá el detalle por genética para calcular el total automáticamente.';
+}
 function openHarvest(id=null){
   if(!canEditTasks())return;
   const h=id?state.cosechas.find(x=>String(x.id)===String(id)):null;state.editHarvest=h||null;
@@ -1079,7 +1095,10 @@ function openHarvest(id=null){
 }
 async function saveHarvestDialog(){
   if(!canEditTasks())throw new Error('No tenés permiso para editar cosechas.');
-  const payload={fecha:$('harvest-date').value,sala:$('harvest-room').value,ciclo:Number($('harvest-cycle').value),meta_gramos:$('harvest-goal').value===''?null:Number($('harvest-goal').value),total_gramos:Number($('harvest-total').value),cantidad_plantas:$('harvest-plants').value===''?null:Number($('harvest-plants').value),observaciones:$('harvest-notes').value.trim()||null,origen:state.editHarvest?.origen||'app'};
+  const detailRows=[...$('harvest-lines').querySelectorAll('.harvest-line')];
+  const calculatedTotal=detailRows.reduce((total,row)=>total+(Number(row.querySelector('.harvest-line-grams')?.value)||0),0);
+  const useCalculatedTotal=!state.editHarvest||detailRows.length>0;
+  const payload={fecha:$('harvest-date').value,sala:$('harvest-room').value,ciclo:Number($('harvest-cycle').value),meta_gramos:$('harvest-goal').value===''?null:Number($('harvest-goal').value),total_gramos:useCalculatedTotal?Number(calculatedTotal.toFixed(2)):Number($('harvest-total').value),cantidad_plantas:$('harvest-plants').value===''?null:Number($('harvest-plants').value),observaciones:$('harvest-notes').value.trim()||null,origen:state.editHarvest?.origen||'app'};
   if(!payload.fecha||!payload.ciclo||payload.total_gramos<0)throw new Error('Completá fecha, sala, ciclo y total cosechado.');
   const lines=[...$('harvest-lines').querySelectorAll('.harvest-line')].map(row=>{const historical=row.dataset.historical==='true';const geneticId=historical?null:row.querySelector('.harvest-line-genetic')?.value||null;const genetic=state.geneticas.find(g=>String(g.id)===String(geneticId));return{id:row.dataset.existingId||null,genetica_id:geneticId,nombre_historico:historical?row.querySelector('.harvest-line-name').value:(genetic?.nombre||null),gramos:Number(row.querySelector('.harvest-line-grams').value)}}).filter(x=>x.gramos>0);
   if(lines.some(x=>!x.nombre_historico))throw new Error('Seleccioná una genética en cada fila cargada.');
