@@ -625,3 +625,10 @@ body{
 .stock-placeholder{text-align:center;color:var(--muted);padding:28px}.stock-movement-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 @media(max-width:760px){.top-nav{grid-template-columns:repeat(7,minmax(92px,1fr))}.stock-page-head,.stock-section-head{align-items:stretch;flex-direction:column}.stock-page-head button,.stock-section-head button{width:100%}.stock-room-selector,.stock-kpis{grid-template-columns:1fr 1fr}.stock-movement-form-grid{grid-template-columns:1fr}.stock-table{min-width:680px}}
 @media(max-width:480px){.stock-room-selector,.stock-kpis{grid-template-columns:1fr}.stock-current-summary strong{font-size:28px}}
+
+
+/* V3.10.1 — Stock actual plegable */
+.stock-current-toggle{position:relative;width:100%;border:1px solid var(--line);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.stock-current-toggle:hover{border-color:var(--accent);background:rgba(43,141,244,.06)}
+.stock-toggle-icon{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--muted)}
+.stock-overview-collapsed{display:none}

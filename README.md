@@ -337,3 +337,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Detalle por Flora y ciclo.
 - Historial importado desde Stock Palestina.xlsx.
 - Registro de entradas y salidas nuevas con actualización automática del saldo.
+
+
+## V3.10.1 — Stock Palestina en cero y detalle plegable
+
+- El stock actual se reinicia a 0 mediante el SQL complementario.
+- Los movimientos históricos permanecen visibles pero dejan de afectar el saldo actual.
+- El cuadro de stock actual se puede desplegar y replegar con un clic.
