@@ -344,3 +344,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - El stock actual se reinicia a 0 mediante el SQL complementario.
 - Los movimientos históricos permanecen visibles pero dejan de afectar el saldo actual.
 - El cuadro de stock actual se puede desplegar y replegar con un clic.
+
+
+## V3.10.2 — Cosechas sincronizadas con Stock Palestina
+
+- Al guardar una cosecha se ofrece crear o actualizar automáticamente su planilla de Stock Palestina.
+- Cada planilla queda vinculada a la cosecha mediante `cosecha_id`, con protección contra duplicados.
+- Editar una cosecha actualiza el mismo stock y registra diferencias como ajustes, sin volver a ingresar toda la cosecha.
+- Los detalles de cosecha existentes conservan sus IDs al editarse para mantener el vínculo con las existencias.

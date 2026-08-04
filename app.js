@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.10.1';
+const APP_VERSION='3.10.2';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1057,12 +1057,34 @@ async function saveHarvestDialog(){
   if(!canEditTasks())throw new Error('No tenés permiso para editar cosechas.');
   const payload={fecha:$('harvest-date').value,sala:$('harvest-room').value,ciclo:Number($('harvest-cycle').value),meta_gramos:$('harvest-goal').value===''?null:Number($('harvest-goal').value),total_gramos:Number($('harvest-total').value),cantidad_plantas:$('harvest-plants').value===''?null:Number($('harvest-plants').value),observaciones:$('harvest-notes').value.trim()||null,origen:state.editHarvest?.origen||'app'};
   if(!payload.fecha||!payload.ciclo||payload.total_gramos<0)throw new Error('Completá fecha, sala, ciclo y total cosechado.');
-  const lines=[...$('harvest-lines').querySelectorAll('.harvest-line')].map(row=>{const historical=row.dataset.historical==='true';const geneticId=historical?null:row.querySelector('.harvest-line-genetic')?.value||null;const genetic=state.geneticas.find(g=>String(g.id)===String(geneticId));return{genetica_id:geneticId,nombre_historico:historical?row.querySelector('.harvest-line-name').value:(genetic?.nombre||null),gramos:Number(row.querySelector('.harvest-line-grams').value)}}).filter(x=>x.gramos>0);
+  const lines=[...$('harvest-lines').querySelectorAll('.harvest-line')].map(row=>{const historical=row.dataset.historical==='true';const geneticId=historical?null:row.querySelector('.harvest-line-genetic')?.value||null;const genetic=state.geneticas.find(g=>String(g.id)===String(geneticId));return{id:row.dataset.existingId||null,genetica_id:geneticId,nombre_historico:historical?row.querySelector('.harvest-line-name').value:(genetic?.nombre||null),gramos:Number(row.querySelector('.harvest-line-grams').value)}}).filter(x=>x.gramos>0);
   if(lines.some(x=>!x.nombre_historico))throw new Error('Seleccioná una genética en cada fila cargada.');
   let harvestId=state.editHarvest?.id;
-  if(harvestId){const q=await db.from('cosechas').update(payload).eq('id',harvestId);if(q.error)throw q.error;const del=await db.from('cosecha_geneticas').delete().eq('cosecha_id',harvestId);if(del.error)throw del.error}else{const q=await db.from('cosechas').insert(payload).select('id').single();if(q.error)throw q.error;harvestId=q.data.id}
-  if(lines.length){const q=await db.from('cosecha_geneticas').insert(lines.map(x=>({...x,cosecha_id:harvestId})));if(q.error)throw q.error}
-  closeDialog('harvest-dialog');state.editHarvest=null;await refresh();state.view='harvests';render();
+  if(harvestId){
+    const q=await db.from('cosechas').update(payload).eq('id',harvestId);if(q.error)throw q.error;
+    const previous=harvestDetails(harvestId);
+    const keptIds=lines.filter(x=>x.id).map(x=>x.id);
+    const removedIds=previous.filter(x=>!keptIds.includes(String(x.id))).map(x=>x.id);
+    if(removedIds.length){const del=await db.from('cosecha_geneticas').delete().in('id',removedIds);if(del.error)throw del.error}
+    for(const line of lines){
+      const detailPayload={genetica_id:line.genetica_id,nombre_historico:line.nombre_historico,gramos:line.gramos};
+      if(line.id){const u=await db.from('cosecha_geneticas').update(detailPayload).eq('id',line.id).eq('cosecha_id',harvestId);if(u.error)throw u.error}
+      else{const i=await db.from('cosecha_geneticas').insert({...detailPayload,cosecha_id:harvestId});if(i.error)throw i.error}
+    }
+  }else{
+    const q=await db.from('cosechas').insert(payload).select('id').single();if(q.error)throw q.error;harvestId=q.data.id;
+    if(lines.length){const q2=await db.from('cosecha_geneticas').insert(lines.map(({id,...x})=>({...x,cosecha_id:harvestId})));if(q2.error)throw q2.error}
+  }
+  closeDialog('harvest-dialog');
+  const linkedCycle=state.stockCycles.find(c=>String(c.cosecha_id||'')===String(harvestId));
+  const syncMessage=linkedCycle
+    ?`La cosecha quedó guardada. Ya está vinculada al Stock Palestina.\n\n¿Actualizar su stock sin duplicar el ingreso? Los cambios se registrarán como ajustes.`
+    :`La cosecha quedó guardada.\n\n¿Crear automáticamente la planilla de Stock Palestina con el detalle por genética?`;
+  if(confirm(syncMessage)){
+    const sync=await db.rpc('sincronizar_cosecha_stock',{p_cosecha_id:harvestId});
+    if(sync.error)throw new Error(`La cosecha se guardó, pero no se pudo sincronizar el stock: ${sync.error.message}`);
+  }
+  state.editHarvest=null;await refresh();state.view='harvests';render();
 }
 async function deleteHarvestDialog(){if(!state.editHarvest||!confirm(`¿Eliminar ${state.editHarvest.sala} · Ciclo ${state.editHarvest.ciclo}?`))return;const q=await db.from('cosechas').delete().eq('id',state.editHarvest.id);if(q.error)throw q.error;closeDialog('harvest-dialog');state.editHarvest=null;state.selectedHarvest=null;await refresh();state.view='harvests';render()}
 
