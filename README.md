@@ -352,3 +352,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Cada planilla queda vinculada a la cosecha mediante `cosecha_id`, con protección contra duplicados.
 - Editar una cosecha actualiza el mismo stock y registra diferencias como ajustes, sin volver a ingresar toda la cosecha.
 - Los detalles de cosecha existentes conservan sus IDs al editarse para mantener el vínculo con las existencias.
+
+
+## V3.10.3 — Genéticas únicas por cosecha
+
+- Impide seleccionar la misma genética más de una vez dentro de una cosecha nueva o editada.
+- Las genéticas ya utilizadas quedan deshabilitadas en los demás selectores.
+- Si se intenta repetir una genética, la app indica que deben modificarse los gramos de la fila existente.
+- Incluye una segunda validación al guardar para evitar duplicados incluso si se altera el formulario.
