@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.10.4';
+const APP_VERSION='3.10.5';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1148,9 +1148,9 @@ function renderStock(){
 
   if(!state.stockRoom){
     app.innerHTML=`<section class="panel stock-page-head"><div><h2>Stock Palestina</h2><p class="muted">Stock disponible actualmente en el edificio Palestina.</p></div>${canManage?'<button id="stock-add-movement" class="primary compact-button">+ Registrar movimiento</button>':''}</section>
+    <section class="stock-room-selector">${rooms.map(room=>{const cycles=state.stockCycles.filter(c=>c.sala===room);const roomTotal=cycles.reduce((s,c)=>s+stockCycleCurrent(c),0);return `<button class="panel stock-room-button" data-stock-room="${room}"><span>${room}</span><strong>${formatGrams(roomTotal)}</strong><small>${cycles.length} ciclos</small></button>`}).join('')}</section>
     <button id="stock-current-toggle" class="panel stock-current-summary stock-current-toggle" type="button" aria-expanded="${state.stockOverviewExpanded?'true':'false'}" aria-controls="stock-current-detail"><span>Stock actual disponible</span><strong>${formatGrams(total)}</strong><small>${available.length} partida${available.length===1?'':'s'} con saldo · ${state.stockOverviewExpanded?'Ocultar detalle':'Ver detalle'}</small><span class="stock-toggle-icon" aria-hidden="true">${state.stockOverviewExpanded?'▲':'▼'}</span></button>
-    <section id="stock-current-detail" class="panel stock-overview-panel ${state.stockOverviewExpanded?'':'stock-overview-collapsed'}"><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Sala</th><th>Ciclo</th><th>Genética</th><th>Disponible</th></tr></thead><tbody>${available.length?available.map(x=>`<tr><td>${escapeHtml(x.cycle.sala)}</td><td>Ciclo ${x.cycle.ciclo}</td><td>${escapeHtml(x.item.nombre_historico)}</td><td><strong>${formatGrams(x.current)}</strong></td></tr>`).join(''):'<tr><td colspan="4">No hay stock disponible cargado.</td></tr>'}</tbody></table></div></section>
-    <section class="stock-room-selector">${rooms.map(room=>{const cycles=state.stockCycles.filter(c=>c.sala===room);const roomTotal=cycles.reduce((s,c)=>s+stockCycleCurrent(c),0);return `<button class="panel stock-room-button" data-stock-room="${room}"><span>${room}</span><strong>${formatGrams(roomTotal)}</strong><small>${cycles.length} ciclos</small></button>`}).join('')}</section>`;
+    <section id="stock-current-detail" class="panel stock-overview-panel ${state.stockOverviewExpanded?'':'stock-overview-collapsed'}"><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Sala</th><th>Ciclo</th><th>Genética</th><th>Disponible</th></tr></thead><tbody>${available.length?available.map(x=>`<tr><td>${escapeHtml(x.cycle.sala)}</td><td>Ciclo ${x.cycle.ciclo}</td><td>${escapeHtml(x.item.nombre_historico)}</td><td><strong>${formatGrams(x.current)}</strong></td></tr>`).join(''):'<tr><td colspan="4">No hay stock disponible cargado.</td></tr>'}</tbody></table></div></section>`;
     $('stock-current-toggle').onclick=()=>{state.stockOverviewExpanded=!state.stockOverviewExpanded;renderStock()};
     app.querySelectorAll('[data-stock-room]').forEach(b=>b.onclick=()=>{state.stockRoom=b.dataset.stockRoom;state.stockCycle=null;renderStock()});
     if(canManage)$('stock-add-movement').onclick=()=>openStockMovement();
