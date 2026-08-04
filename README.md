@@ -375,3 +375,12 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Al editar una cosecha con desglose por genética, el total también se recalcula automáticamente.
 - Las cosechas históricas sin desglose conservan la posibilidad de editar manualmente el total.
 - No requiere cambios en Supabase.
+
+
+## V3.10.7 — Ingreso por bolsas y agrupación automática
+
+- Permite repetir una genética en varias filas al cargar o editar una cosecha.
+- Cada fila puede representar una bolsa o pesada independiente.
+- Al guardar, suma automáticamente las filas repetidas y conserva una sola línea por genética.
+- El detalle de la cosecha y Stock Palestina continúan mostrando y sincronizando el total agrupado por genética.
+- No requiere cambios en Supabase.
