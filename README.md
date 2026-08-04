@@ -384,3 +384,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Al guardar, suma automáticamente las filas repetidas y conserva una sola línea por genética.
 - El detalle de la cosecha y Stock Palestina continúan mostrando y sincronizando el total agrupado por genética.
 - No requiere cambios en Supabase.
+
+
+## V3.10.8 — Corrección guardado por bolsas
+
+- Corrige el error que guardaba el encabezado de una cosecha pero fallaba al insertar su desglose por genética.
+- Los campos internos usados para agrupar bolsas ya no se envían a Supabase.
+- Si fallara el detalle de una cosecha nueva, se elimina automáticamente el encabezado incompleto para evitar registros colgados.
+- No requiere cambios en Supabase.

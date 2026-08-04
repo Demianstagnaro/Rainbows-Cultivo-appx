@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.10.7';
+const APP_VERSION='3.10.8';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1133,7 +1133,19 @@ async function saveHarvestDialog(){
     }
   }else{
     const q=await db.from('cosechas').insert(payload).select('id').single();if(q.error)throw q.error;harvestId=q.data.id;
-    if(lines.length){const q2=await db.from('cosecha_geneticas').insert(lines.map(({id,...x})=>({...x,cosecha_id:harvestId})));if(q2.error)throw q2.error}
+    if(lines.length){
+      const detailPayloads=lines.map(line=>({
+        cosecha_id:harvestId,
+        genetica_id:line.genetica_id,
+        nombre_historico:line.nombre_historico,
+        gramos:line.gramos
+      }));
+      const q2=await db.from('cosecha_geneticas').insert(detailPayloads);
+      if(q2.error){
+        await db.from('cosechas').delete().eq('id',harvestId);
+        throw q2.error;
+      }
+    }
   }
   closeDialog('harvest-dialog');
   const linkedCycle=state.stockCycles.find(c=>String(c.cosecha_id||'')===String(harvestId));
