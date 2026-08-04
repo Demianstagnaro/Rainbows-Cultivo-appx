@@ -360,3 +360,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Las genéticas ya utilizadas quedan deshabilitadas en los demás selectores.
 - Si se intenta repetir una genética, la app indica que deben modificarse los gramos de la fila existente.
 - Incluye una segunda validación al guardar para evitar duplicados incluso si se altera el formulario.
+
+
+## V3.10.4 — Stock inicial por genética y textos
+
+- La tabla de cada ciclo muestra por separado el stock inicial y el stock actual de cada genética.
+- Se reemplazó “existencias” por “stock” en los textos de las salas.
+- No requiere cambios adicionales en Supabase.
