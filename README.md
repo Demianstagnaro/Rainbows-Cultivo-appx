@@ -416,3 +416,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Las tareas pasadas siguen disponibles desde Calendario.
 - No se borran tareas ni realizaciones de Supabase.
 - No requiere cambios en Supabase.
+
+
+## V3.11.2 — Ícono oficial de la app
+
+- Se agregó el logo oficial para Android, iPhone/iPad y escritorio.
+- Incluye íconos estándar y maskable para evitar recortes.
+- Los usuarios que ya tengan el acceso directo deben eliminarlo y volver a instalar la app para ver el ícono nuevo.
+- No requiere cambios en Supabase.
