@@ -424,3 +424,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Incluye íconos estándar y maskable para evitar recortes.
 - Los usuarios que ya tengan el acceso directo deben eliminarlo y volver a instalar la app para ver el ícono nuevo.
 - No requiere cambios en Supabase.
+
+
+## V3.11.3 — Encabezado centrado
+
+- La marca queda centrada en el encabezado.
+- “Rainbows” aparece arriba y “Cultivo” debajo.
+- Se conservan las tipografías y estilos actuales.
+- No requiere cambios en Supabase.
