@@ -634,3 +634,20 @@ body{
 .stock-overview-collapsed{display:none}
 
 .auth-link-button{display:block;width:100%;margin-top:12px;padding:8px;border:0;background:transparent;color:#fdba74;font-weight:800;text-decoration:underline;text-underline-offset:3px;cursor:pointer}.auth-link-button:hover{color:#fed7aa}.auth-link-button:disabled{opacity:.55;cursor:wait}
+
+
+/* V3.11.0 — navegación diaria en Hoy y Calendario */
+.today-date-controls,.calendar-day-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.today-date-controls .day-navigator{margin-left:auto}
+.calendar-day-summary{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:12px}
+.calendar-day-title{text-align:center}
+.calendar-day-title h2{margin:0 0 4px}
+@media(max-width:640px){
+  .today-date-controls{align-items:stretch}
+  .today-date-controls .day-navigator{order:-1;width:100%;margin-left:0;justify-content:space-between}
+  .today-date-controls #today-back{width:100%}
+  .calendar-day-summary{grid-template-columns:auto minmax(0,1fr) auto}
+  .calendar-day-summary [data-new]{grid-column:1/-1;width:100%}
+  .calendar-day-top{align-items:stretch}
+  .calendar-day-top button{flex:1}
+}

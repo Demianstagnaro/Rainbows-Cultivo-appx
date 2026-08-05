@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.10.9';
+const APP_VERSION='3.11.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Veges',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,channel:null,backups:[],backupRuns:[],backupLoading:false};
+const state={view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false};
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
 function cycle(r,date){if(r.type!=='flora')return{label:'Permanente',stage:'permanente'};const days=77,bt=parse(r.transplant),bf=parse(r.floraStart);let c=Math.floor(diff(date,bt)/days);if(diff(date,bt)<0)c=-1;const tr=add(bt,c*days),fl=add(bf,c*days),day=diff(date,tr);if(day<0)return{label:'Pendiente',stage:'pendiente',tr,fl};if(diff(date,fl)<0){const w=Math.min(Math.floor(day/7)+1,3);return{label:`Vege S${w}`,stage:'vege',week:w,tr,fl}}const fd=diff(date,fl),w=Math.min(Math.floor(fd/7)+1,8);return{label:`Flora S${w}`,stage:'flora',week:w,tr,fl}}
@@ -845,9 +845,9 @@ $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){c
 document.querySelectorAll('.top-nav button').forEach(b=>{const allowed=canViewOperations();b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',b.dataset.view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
 function renderToday(){
   $('screen-title').textContent='Hoy';
-  const d=today(),ts=tasks(d),n=ts.filter(done).length,p=ts.length?Math.round(n/ts.length*100):100;
+  const d=state.todayDay||today(),ts=tasks(d),n=ts.filter(done).length,p=ts.length?Math.round(n/ts.length*100):100;
   const pendingGeneral=state.generalTasks.filter(t=>t.estado!=='realizada');
-  app.innerHTML=`<div class="today-layout">
+  app.innerHTML=`<div class="today-date-controls"><button id="today-back" class="secondary" ${same(d,today())?'disabled':''}>Volver a hoy</button><div class="day-navigator"><button id="today-prev" class="secondary nav-day" aria-label="Día anterior">◀</button><div class="room-date-label">${shortRoomDate(d)}</div><button id="today-next" class="secondary nav-day" aria-label="Día siguiente">▶</button></div></div><div class="today-layout">
     <div class="today-main">
       <section class="panel daily-summary"><div class="daily-summary-head"><div>${taskCounter(n,ts.length)}</div></div><div class="progress"><span style="width:${p}%"></span></div></section>
       <div class="today-room-list">${rules.map(r=>{
@@ -859,6 +859,9 @@ function renderToday(){
       <div class="general-task-section">${pendingGeneral.length?pendingGeneral.map(generalTaskRow).join(''):'<div class="empty-room-tasks">No hay tareas generales pendientes</div>'}</div>
     </aside>
   </div>`;
+  $('today-prev').onclick=()=>{state.todayDay=add(d,-1);render()};
+  $('today-next').onclick=()=>{state.todayDay=add(d,1);render()};
+  $('today-back').onclick=()=>{state.todayDay=today();render()};
   bind(d);
   bindGeneralTasks();
 }
@@ -866,8 +869,11 @@ function renderCalendar(){ $('screen-title').textContent='Calendario';if(state.d
 function renderDay(d){
   const ts=tasks(d),n=ts.filter(done).length;
   const completedGeneral=generalTasksForDate(d);
-  app.innerHTML=`<button id="back-cal" class="secondary">← Volver</button><section class="panel"><div class="daily-summary-head"><div><h2>${nice(d)}</h2>${taskCounter(n,ts.length)}</div>${canEditTasks()?`<button class="primary compact-button" data-new="${ymd(d)}">+ Nueva tarea</button>`:''}</div></section><div class="today-room-list">${rules.map(r=>{const rt=orderedTasks(ts.filter(t=>t.room===r.name)),pr=progress(r,d);return`<section class="room-card"><div class="room-head"><div><div class="room-title">${r.name}</div><div class="stage">${stage(r,d)}</div></div><div class="room-head-actions">${taskCounter(pr.done,pr.total)}${canEditTasks()?`<button class="task-menu room-options-button" type="button" data-room-menu="${r.name}" data-room-date="${ymd(d)}" aria-label="Opciones de ${r.name}" title="Opciones de sala">⋮</button>`:''}</div></div><div class="progress"><span style="width:${pr.pct}%"></span></div><div class="room-tasks">${rt.length?rt.map(row).join(''):'<div class="empty-room-tasks">Sin tareas programadas</div>'}</div></section>`}).join('')}</div>${completedGeneral.length?`<section class="panel general-history-day"><h3>Tareas generales realizadas</h3><div class="general-task-section">${completedGeneral.map(generalTaskRow).join('')}</div></section>`:''}`;
-  $('back-cal').onclick=()=>{state.day=null;render()};
+  app.innerHTML=`<div class="calendar-day-top"><button id="back-cal" class="secondary">← Volver</button><button id="calendar-day-today" class="secondary" ${same(d,today())?'disabled':''}>Volver a hoy</button></div><section class="panel"><div class="daily-summary-head calendar-day-summary"><button id="calendar-day-prev" class="secondary nav-day" aria-label="Día anterior">◀</button><div class="calendar-day-title"><h2>${nice(d)}</h2>${taskCounter(n,ts.length)}</div><button id="calendar-day-next" class="secondary nav-day" aria-label="Día siguiente">▶</button>${canEditTasks()?`<button class="primary compact-button" data-new="${ymd(d)}">+ Nueva tarea</button>`:''}</div></section><div class="today-room-list">${rules.map(r=>{const rt=orderedTasks(ts.filter(t=>t.room===r.name)),pr=progress(r,d);return`<section class="room-card"><div class="room-head"><div><div class="room-title">${r.name}</div><div class="stage">${stage(r,d)}</div></div><div class="room-head-actions">${taskCounter(pr.done,pr.total)}${canEditTasks()?`<button class="task-menu room-options-button" type="button" data-room-menu="${r.name}" data-room-date="${ymd(d)}" aria-label="Opciones de ${r.name}" title="Opciones de sala">⋮</button>`:''}</div></div><div class="progress"><span style="width:${pr.pct}%"></span></div><div class="room-tasks">${rt.length?rt.map(row).join(''):'<div class="empty-room-tasks">Sin tareas programadas</div>'}</div></section>`}).join('')}</div>${completedGeneral.length?`<section class="panel general-history-day"><h3>Tareas generales realizadas</h3><div class="general-task-section">${completedGeneral.map(generalTaskRow).join('')}</div></section>`:''}`;
+  $('back-cal').onclick=()=>{state.day=null;state.month=new Date(d.getFullYear(),d.getMonth(),1);render()};
+  $('calendar-day-prev').onclick=()=>{state.day=add(d,-1);render()};
+  $('calendar-day-next').onclick=()=>{state.day=add(d,1);render()};
+  $('calendar-day-today').onclick=()=>{state.day=today();render()};
   bind(d);
   bindGeneralTasks();
 }

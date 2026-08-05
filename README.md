@@ -400,3 +400,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Envío de enlace de recuperación mediante Supabase Auth.
 - Pantalla segura para establecer y confirmar una contraseña nueva.
 - Requiere autorizar la URL pública de la app en Supabase Authentication → URL Configuration → Redirect URLs.
+
+
+## V3.11.0 — Navegación por días
+
+- La solapa Hoy permite avanzar y retroceder un día con flechas.
+- Muestra la fecha consultada y un botón para volver al día actual.
+- El detalle diario del Calendario permite avanzar y retroceder sin volver a la grilla mensual.
+- No requiere cambios en Supabase.
