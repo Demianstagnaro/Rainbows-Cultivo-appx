@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.11.0';
+const APP_VERSION='3.11.1';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1397,7 +1397,7 @@ async function restoreBackup(){
 function renderSettings(){
   if(currentRole()!=='administrador'){state.view='today';render();return}
   $('screen-title').textContent='Config';
-  const permissions={administrador:'Acceso total: puede gestionar usuarios, roles, empleados, genéticas, tareas, configuración y backups.',encargado:'Puede crear, editar, completar y reprogramar tareas, además de consultar Hoy, Salas, Calendario e Historial.',empleado:'Puede consultar Hoy, Salas, Calendario e Historial, y completar tareas indicando quiénes las realizaron.',lectura:'Puede consultar Hoy, Salas, Calendario e Historial; no puede modificar información.'};
+  const permissions={administrador:'Acceso total: puede gestionar usuarios, roles, empleados, genéticas, tareas, configuración y backups.',encargado:'Puede crear, editar, completar y reprogramar tareas, además de consultar Hoy, Salas y Calendario.',empleado:'Puede consultar Hoy, Salas y Calendario, y completar tareas indicando quiénes las realizaron.',lectura:'Puede consultar Hoy, Salas y Calendario; no puede modificar información.'};
   app.innerHTML=`
     <section class="panel backup-panel">
       <div class="backup-panel-head"><div><h3>Copias de seguridad</h3><p class="muted">Backup completo diario, conservación por 30 días y descarga local.</p></div><button id="refresh-backups" class="secondary compact-button">Actualizar</button></div>

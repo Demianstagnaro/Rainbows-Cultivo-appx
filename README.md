@@ -408,3 +408,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Muestra la fecha consultada y un botón para volver al día actual.
 - El detalle diario del Calendario permite avanzar y retroceder sin volver a la grilla mensual.
 - No requiere cambios en Supabase.
+
+
+## V3.11.1 — Historial removido del menú
+
+- Se eliminó la solapa Historial del menú principal.
+- Las tareas pasadas siguen disponibles desde Calendario.
+- No se borran tareas ni realizaciones de Supabase.
+- No requiere cambios en Supabase.
