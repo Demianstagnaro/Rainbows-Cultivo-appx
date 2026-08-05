@@ -437,3 +437,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 ## V3.11.4 — Centrado real del encabezado
 - La marca Rainbows / Cultivo queda centrada respecto del ancho total de la pantalla.
 - No requiere cambios en Supabase.
+
+
+## V3.11.5 — Corrección del encabezado
+
+- Se eliminó el posicionamiento absoluto que superponía Config y Salir sobre la marca.
+- Rainbows / Cultivo queda en la columna central del encabezado.
+- Los controles laterales conservan su espacio propio.
+- No requiere cambios en Supabase.

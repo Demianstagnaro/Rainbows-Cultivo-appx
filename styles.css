@@ -693,17 +693,41 @@ body{
 }
 
 
-/* V3.11.4 — centrado real de la marca respecto de toda la pantalla */
-.topbar{position:sticky}
-.topbar .app-brand{
-  position:absolute;
-  left:50%;
-  top:50%;
-  transform:translate(-50%,-50%);
-  margin:0;
-  z-index:1;
+/* V3.11.5 — encabezado centrado sin superposiciones */
+.topbar{
+  position:sticky;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:center;
+  column-gap:16px;
 }
-.header-copy,.header-actions{position:relative;z-index:2}
+.header-copy{
+  grid-column:1;
+  justify-self:start;
+  min-width:0;
+}
+.topbar .app-brand{
+  grid-column:2;
+  position:static;
+  transform:none;
+  justify-self:center;
+  margin:0;
+  z-index:auto;
+}
+.header-actions{
+  grid-column:3;
+  justify-self:end;
+  position:static;
+  z-index:auto;
+  min-width:0;
+}
 @media(max-width:760px){
-  .topbar .app-brand{left:50%}
+  .topbar{
+    grid-template-columns:minmax(78px,1fr) auto minmax(78px,1fr);
+    column-gap:8px;
+  }
+  .header-actions{
+    flex-wrap:wrap;
+    justify-content:flex-end;
+  }
 }
