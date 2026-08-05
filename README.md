@@ -392,3 +392,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Los campos internos usados para agrupar bolsas ya no se envían a Supabase.
 - Si fallara el detalle de una cosecha nueva, se elimina automáticamente el encabezado incompleto para evitar registros colgados.
 - No requiere cambios en Supabase.
+
+
+## V3.10.9 — Recuperación de contraseña
+
+- Botón “¿Olvidaste tu contraseña?” en el acceso.
+- Envío de enlace de recuperación mediante Supabase Auth.
+- Pantalla segura para establecer y confirmar una contraseña nueva.
+- Requiere autorizar la URL pública de la app en Supabase Authentication → URL Configuration → Redirect URLs.

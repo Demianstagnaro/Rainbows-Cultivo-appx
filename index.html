@@ -6,7 +6,7 @@
   <title>rainbows</title>
   <meta name="theme-color" content="#111827">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="styles.css?v=3.10.8">
+  <link rel="stylesheet" href="styles.css?v=3.10.9">
 </head>
 <body>
   <section id="auth-screen" class="auth-screen">
@@ -18,9 +18,13 @@
       <label class="field-label">Correo<input id="auth-email" class="text-input" type="email" autocomplete="email"></label>
       <label class="field-label">Contraseña<input id="auth-password" class="text-input" type="password" minlength="6"></label>
       <div class="auth-actions"><button id="sign-in" class="primary" type="button">Ingresar</button><button id="sign-up" class="secondary" type="button">Crear cuenta</button></div>
+      <button id="forgot-password" class="auth-link-button" type="button">¿Olvidaste tu contraseña?</button>
       <p id="auth-message" class="auth-message" aria-live="polite"></p>
     </div>
   </section>
+
+
+  <dialog id="reset-password-dialog" class="dialog"><form method="dialog"><h3>Crear contraseña nueva</h3><p class="muted">Ingresá una contraseña de al menos 6 caracteres.</p><label class="field-label">Contraseña nueva<input id="reset-password" class="text-input" type="password" minlength="6" autocomplete="new-password"></label><label class="field-label">Repetir contraseña<input id="reset-password-confirm" class="text-input" type="password" minlength="6" autocomplete="new-password"></label><p id="reset-password-message" class="auth-message" aria-live="polite"></p><menu><button type="button" id="save-reset-password" class="primary">Guardar contraseña</button></menu></form></dialog>
 
   <div id="app-shell" hidden>
     <header class="topbar"><div><div class="app-brand"><span class="cultivo-prefix">Cultivo</span><img src="rainbows-logo.webp?v=3.8.0" class="rainbows-logo header-logo" alt="rainbows"></div><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><div class="header-actions"><button id="header-config" class="secondary compact-button" hidden>Config</button><button id="sign-out" class="secondary compact-button">Salir</button></div></header>
@@ -63,6 +67,6 @@
 
   <dialog id="plant-dialog" class="dialog"><form method="dialog"><h3 id="plant-dialog-title">Editar planta</h3><label class="field-label">Estado<select id="plant-status" class="text-input"><option value="occupied">Ocupada</option><option value="empty">Vacía</option></select></label><label class="field-label">Genética<select id="plant-genetics" class="text-input"></select></label><label class="field-label">Observaciones<textarea id="plant-notes" class="text-input"></textarea></label><menu><button type="button" id="cancel-plant" class="secondary">Cancelar</button><button type="button" id="save-plant" class="primary">Guardar</button></menu></form></dialog>
 
-  <script type="module" src="app.js?v=3.10.8"></script>
+  <script type="module" src="app.js?v=3.10.9"></script>
 </body>
 </html>

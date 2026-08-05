@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.10.8';
+const APP_VERSION='3.10.9';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1437,7 +1437,53 @@ document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{state.vie
     console.error(error);
     message.textContent=error.message||'No se pudo iniciar sesión.';
   }
-};$('sign-up').onclick=async()=>{
+};
+$('forgot-password').onclick=async()=>{
+  const message=$('auth-message');
+  const button=$('forgot-password');
+  const email=$('auth-email').value.trim();
+  if(!email){
+    message.textContent='Ingresá tu correo para recibir el enlace de recuperación.';
+    $('auth-email').focus();
+    return;
+  }
+  button.disabled=true;
+  message.textContent='Enviando enlace de recuperación…';
+  try{
+    const redirectTo=`${window.location.origin}${window.location.pathname}`;
+    const q=await db.auth.resetPasswordForEmail(email,{redirectTo});
+    if(q.error) throw q.error;
+    message.textContent='Te enviamos un enlace para recuperar la contraseña. Revisá también la carpeta de spam.';
+  }catch(error){
+    console.error(error);
+    message.textContent=error.message||'No se pudo enviar el enlace de recuperación.';
+  }finally{
+    button.disabled=false;
+  }
+};
+$('save-reset-password').onclick=async()=>{
+  const message=$('reset-password-message');
+  const password=$('reset-password').value;
+  const confirmation=$('reset-password-confirm').value;
+  if(password.length<6){message.textContent='La contraseña debe tener al menos 6 caracteres.';return}
+  if(password!==confirmation){message.textContent='Las contraseñas no coinciden.';return}
+  message.textContent='Guardando contraseña…';
+  try{
+    const q=await db.auth.updateUser({password});
+    if(q.error) throw q.error;
+    message.textContent='Contraseña actualizada correctamente.';
+    setTimeout(()=>{
+      closeDialog('reset-password-dialog');
+      $('reset-password').value='';
+      $('reset-password-confirm').value='';
+      if(state.session) scheduleStart(state.session);
+    },500);
+  }catch(error){
+    console.error(error);
+    message.textContent=error.message||'No se pudo actualizar la contraseña.';
+  }
+};
+$('sign-up').onclick=async()=>{
   const message=$('auth-message');
   message.textContent='Creando cuenta…';
   try{
@@ -1493,7 +1539,17 @@ async function start(session){
   }
 }
 
-db.auth.onAuthStateChange((_event,session)=>{
+db.auth.onAuthStateChange((event,session)=>{
+  if(event==='PASSWORD_RECOVERY'&&session){
+    state.session=session;
+    $('auth-screen').hidden=true;$('auth-screen').style.display='none';
+    $('app-shell').hidden=true;
+    $('reset-password-message').textContent='';
+    $('reset-password').value='';
+    $('reset-password-confirm').value='';
+    $('reset-password-dialog').showModal();
+    return;
+  }
   if(session){
     scheduleStart(session);
   }else{
@@ -1514,5 +1570,5 @@ try{
 }
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.7.0').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.10.9').catch(console.error));
 }

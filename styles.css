@@ -632,3 +632,5 @@ body{
 .stock-current-toggle:hover{border-color:var(--accent);background:rgba(43,141,244,.06)}
 .stock-toggle-icon{position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--muted)}
 .stock-overview-collapsed{display:none}
+
+.auth-link-button{display:block;width:100%;margin-top:12px;padding:8px;border:0;background:transparent;color:#fdba74;font-weight:800;text-decoration:underline;text-underline-offset:3px;cursor:pointer}.auth-link-button:hover{color:#fed7aa}.auth-link-button:disabled{opacity:.55;cursor:wait}
