@@ -432,3 +432,8 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - “Rainbows” aparece arriba y “Cultivo” debajo.
 - Se conservan las tipografías y estilos actuales.
 - No requiere cambios en Supabase.
+
+
+## V3.11.4 — Centrado real del encabezado
+- La marca Rainbows / Cultivo queda centrada respecto del ancho total de la pantalla.
+- No requiere cambios en Supabase.

@@ -691,3 +691,19 @@ body{
   .app-brand .cultivo-prefix{font-size:15px}
   .header-copy h1{font-size:18px}
 }
+
+
+/* V3.11.4 — centrado real de la marca respecto de toda la pantalla */
+.topbar{position:sticky}
+.topbar .app-brand{
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  margin:0;
+  z-index:1;
+}
+.header-copy,.header-actions{position:relative;z-index:2}
+@media(max-width:760px){
+  .topbar .app-brand{left:50%}
+}
