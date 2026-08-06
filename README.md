@@ -452,3 +452,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Se desplazó únicamente el logo “Rainbows” 4 px hacia la derecha.
 - “Cultivo” permanece centrado en su posición.
 - No requiere cambios en Supabase.
+
+
+## V3.11.7 — Corrección real del desplazamiento del logo
+
+- Se reemplazó `transform: translateX(4px)`, que interfería con el escalado previo del logo.
+- El logo Rainbows ahora se desplaza 4 px a la derecha mediante `position: relative; left: 4px`.
+- No se modifica “Cultivo”, los botones ni la estructura del encabezado.

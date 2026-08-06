@@ -733,7 +733,8 @@ body{
 }
 
 
-/* V3.11.6 — ajuste fino del logo Rainbows */
+/* V3.11.7 — ajuste fino del logo Rainbows sin interferir con su escala */
 .topbar .app-brand .header-logo{
-  transform:translateX(4px);
+  position:relative;
+  left:4px;
 }
