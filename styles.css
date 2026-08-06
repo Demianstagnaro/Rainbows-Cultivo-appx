@@ -731,3 +731,9 @@ body{
     justify-content:flex-end;
   }
 }
+
+
+/* V3.11.6 — ajuste fino del logo Rainbows */
+.topbar .app-brand .header-logo{
+  transform:translateX(4px);
+}

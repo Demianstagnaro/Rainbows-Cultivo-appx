@@ -445,3 +445,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Rainbows / Cultivo queda en la columna central del encabezado.
 - Los controles laterales conservan su espacio propio.
 - No requiere cambios en Supabase.
+
+
+## V3.11.6 — Ajuste fino del encabezado
+
+- Se desplazó únicamente el logo “Rainbows” 4 px hacia la derecha.
+- “Cultivo” permanece centrado en su posición.
+- No requiere cambios en Supabase.
