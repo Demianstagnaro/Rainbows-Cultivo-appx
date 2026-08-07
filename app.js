@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.11.7';
+const APP_VERSION='3.12.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1575,6 +1575,102 @@ try{
   $('auth-message').textContent=error.message||'No se pudo recuperar la sesión.';
 }
 
+
+// V3.12.0 — Voz etapa 1: transcripción y navegación. No modifica datos ni escribe en Supabase.
+const VoiceRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
+let voiceRecognition=null;
+let voiceListening=false;
+
+function normalizeVoiceText(value=''){
+  return value.toLocaleLowerCase('es-AR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+}
+function showVoicePanel(status='Comandos de voz',message=''){
+  const panel=$('voice-panel');
+  if(!panel)return;
+  panel.hidden=false;
+  $('voice-status').textContent=status;
+  if(message)$('voice-transcript').textContent=message;
+}
+function closeVoicePanel(){
+  if(voiceRecognition&&voiceListening){try{voiceRecognition.stop()}catch(_){}}
+  voiceListening=false;
+  const panel=$('voice-panel');if(panel)panel.hidden=true;
+  const button=$('voice-button');if(button)button.classList.remove('listening');
+}
+function setVoiceView(view){
+  if(!canViewOperations())return false;
+  state.view=view;state.room=null;state.roomDay=null;state.day=null;
+  if(view!=='stock'){state.stockRoom=null;state.stockCycle=null}
+  render();
+  return true;
+}
+function executeVoiceNavigation(rawText){
+  const text=normalizeVoiceText(rawText);
+  if(text.includes('volver a hoy')){
+    state.todayDay=today();state.day=null;state.roomDay=state.room?today():null;setVoiceView('today');
+    return {ok:true,message:'Listo. Volví a hoy.'};
+  }
+  if(text.includes('manana')||text.includes('dia siguiente')){
+    if(state.view==='calendar'&&state.day){state.day=add(state.day,1);render();}
+    else if(state.view==='rooms'&&state.room){state.roomDay=add(state.roomDay||today(),1);render();}
+    else {state.todayDay=add(state.todayDay||today(),1);setVoiceView('today');}
+    return {ok:true,message:'Listo. Mostré el día siguiente.'};
+  }
+  if(text.includes('ayer')||text.includes('dia anterior')){
+    if(state.view==='calendar'&&state.day){state.day=add(state.day,-1);render();}
+    else if(state.view==='rooms'&&state.room){state.roomDay=add(state.roomDay||today(),-1);render();}
+    else {state.todayDay=add(state.todayDay||today(),-1);setVoiceView('today');}
+    return {ok:true,message:'Listo. Mostré el día anterior.'};
+  }
+  const roomMatch=text.match(/flora\s*(1|2|3)|veges|madres|esquejes/);
+  if(roomMatch&&(text.includes('abrir')||text.includes('ir a')||text.includes('mostrar'))){
+    const token=roomMatch[0];
+    const roomName=token.startsWith('flora')?`Flora ${roomMatch[1]}`:token.charAt(0).toUpperCase()+token.slice(1);
+    if(!rules.some(r=>r.name===roomName))return {ok:false,message:`No encontré la sala ${roomName}.`};
+    state.view='rooms';state.room=roomName;state.roomDay=today();state.day=null;state.tab='summary';render();
+    return {ok:true,message:`Listo. Abrí ${roomName}.`};
+  }
+  const destinations=[
+    {view:'today',name:'Hoy',labels:['hoy','inicio']},
+    {view:'calendar',name:'Calendario',labels:['calendario']},
+    {view:'rooms',name:'Salas',labels:['salas','sala']},
+    {view:'genetics',name:'Genéticas',labels:['geneticas','genetica']},
+    {view:'harvests',name:'Cosechas',labels:['cosechas','cosecha']},
+    {view:'stock',name:'Stock Palestina',labels:['stock palestina','stock']},
+    {view:'settings',name:'Configuración',labels:['configuracion','config']}
+  ];
+  const destination=destinations.find(item=>item.labels.some(label=>text.includes(label)));
+  if(destination&&(text.includes('abrir')||text.includes('ir a')||text.includes('mostrar')||destination.labels.some(label=>text===label))){
+    if(destination.view==='settings'&&currentRole()!=='administrador')return {ok:false,message:'La configuración solo está disponible para administradores.'};
+    setVoiceView(destination.view);
+    return {ok:true,message:`Listo. Abrí ${destination.name}.`};
+  }
+  return {ok:false,message:`Entendí: “${rawText}”, pero todavía no reconozco ese comando. Probá “Abrir Calendario”, “Ir a Flora 2”, “Ir a mañana” o “Volver a hoy”.`};
+}
+function startVoiceRecognition(){
+  if(!VoiceRecognition){showVoicePanel('Voz no disponible','Este navegador no ofrece reconocimiento de voz. La app sigue funcionando normalmente de forma manual.');return;}
+  if(voiceListening)return;
+  if(!state.session){showVoicePanel('Iniciá sesión','Los comandos de voz están disponibles después de ingresar.');return;}
+  voiceRecognition=new VoiceRecognition();
+  voiceRecognition.lang='es-AR';voiceRecognition.interimResults=true;voiceRecognition.continuous=false;voiceRecognition.maxAlternatives=1;
+  voiceRecognition.onstart=()=>{voiceListening=true;$('voice-button')?.classList.add('listening');showVoicePanel('Escuchando…','Decí un comando.');};
+  voiceRecognition.onresult=event=>{
+    let transcript='';let finalText='';
+    for(let i=event.resultIndex;i<event.results.length;i++){transcript+=event.results[i][0].transcript;if(event.results[i].isFinal)finalText+=event.results[i][0].transcript;}
+    $('voice-transcript').textContent=transcript||'Escuchando…';
+    if(finalText){const result=executeVoiceNavigation(finalText.trim());$('voice-status').textContent=result.ok?'Comando realizado':'No pude realizarlo';$('voice-transcript').textContent=result.message;}
+  };
+  voiceRecognition.onerror=event=>{const messages={'not-allowed':'No se concedió permiso para usar el micrófono.','service-not-allowed':'El navegador bloqueó el servicio de reconocimiento de voz.','no-speech':'No escuché ninguna instrucción.','audio-capture':'No se encontró un micrófono disponible.','network':'El reconocimiento de voz no pudo conectarse.'};showVoicePanel('No se pudo escuchar',messages[event.error]||`Error de reconocimiento: ${event.error}.`);};
+  voiceRecognition.onend=()=>{voiceListening=false;$('voice-button')?.classList.remove('listening');};
+  try{voiceRecognition.start()}catch(error){console.error(error);showVoicePanel('No se pudo iniciar','Cerrá cualquier otra escucha activa y probá nuevamente.');}
+}
+
+$('voice-button')?.addEventListener('click',startVoiceRecognition);
+$('voice-retry')?.addEventListener('click',startVoiceRecognition);
+$('voice-close')?.addEventListener('click',closeVoicePanel);
+$('voice-cancel')?.addEventListener('click',closeVoicePanel);
+if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
+
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.10.9').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.12.0').catch(console.error));
 }

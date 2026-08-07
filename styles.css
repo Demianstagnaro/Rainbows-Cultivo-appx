@@ -738,3 +738,10 @@ body{
   position:relative;
   left:4px;
 }
+
+
+/* V3.12.0 — Voz etapa 1 */
+.voice-button{position:fixed;right:20px;bottom:20px;z-index:40;width:58px;height:58px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:var(--accent);color:#fff;font-size:25px;display:grid;place-items:center;box-shadow:0 12px 30px rgba(0,0,0,.35);cursor:pointer}.voice-button:hover{filter:brightness(1.08)}.voice-button.listening{animation:voice-pulse 1.15s infinite}.voice-button.unsupported{opacity:.55;filter:grayscale(.4)}
+.voice-panel{position:fixed;right:20px;bottom:90px;z-index:41;width:min(390px,calc(100vw - 28px));padding:16px;border:1px solid var(--line);border-radius:16px;background:#111827;box-shadow:0 18px 44px rgba(0,0,0,.5)}.voice-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.voice-close{border:0;background:transparent;color:var(--muted);font-size:28px;line-height:1;cursor:pointer}.voice-transcript{min-height:48px;margin:12px 0;color:var(--text);line-height:1.45}.voice-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+@keyframes voice-pulse{0%,100%{box-shadow:0 0 0 0 rgba(43,141,244,.55),0 12px 30px rgba(0,0,0,.35)}50%{box-shadow:0 0 0 12px rgba(43,141,244,0),0 12px 30px rgba(0,0,0,.35)}}
+@media(max-width:600px){.voice-button{right:14px;bottom:14px}.voice-panel{right:14px;bottom:82px}}

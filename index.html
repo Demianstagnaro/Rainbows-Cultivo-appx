@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.json?v=3.11.2">
   <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3.11.2">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.11.2">
-  <link rel="stylesheet" href="styles.css?v=3.11.7">
+  <link rel="stylesheet" href="styles.css?v=3.12.0">
 </head>
 <body>
   <section id="auth-screen" class="auth-screen">
@@ -32,6 +32,12 @@
     <header class="topbar"><div class="header-copy"><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><div class="app-brand"><img src="rainbows-logo.webp?v=3.8.0" class="rainbows-logo header-logo" alt="rainbows"><span class="cultivo-prefix">Cultivo</span></div><div class="header-actions"><button id="header-config" class="secondary compact-button" hidden>Config</button><button id="sign-out" class="secondary compact-button">Salir</button></div></header>
     <nav class="top-nav"><button data-view="today" class="active">Hoy</button><button data-view="calendar">Calendario</button><button data-view="rooms">Salas</button><button data-view="genetics">Genéticas</button><button data-view="harvests">Cosechas</button><button data-view="stock">Stock Palestina</button></nav>
     <main id="app"><div class="panel">Cargando…</div></main>
+    <button id="voice-button" class="voice-button" type="button" aria-label="Usar comandos de voz" title="Comandos de voz">🎙️</button>
+    <section id="voice-panel" class="voice-panel" hidden aria-live="polite">
+      <div class="voice-panel-head"><strong id="voice-status">Comandos de voz</strong><button id="voice-close" class="voice-close" type="button" aria-label="Cerrar">×</button></div>
+      <p id="voice-transcript" class="voice-transcript">Tocá el micrófono y decí, por ejemplo: “Abrir Calendario”.</p>
+      <div class="voice-actions"><button id="voice-retry" class="secondary compact-button" type="button">Escuchar otra vez</button><button id="voice-cancel" class="secondary compact-button" type="button">Cerrar</button></div>
+    </section>
   </div>
 
   <dialog id="worker-dialog" class="dialog"><form method="dialog"><h3>¿Quiénes realizaron esta tarea?</h3><div id="worker-options" class="worker-options"></div><menu><button type="button" id="cancel-worker" class="secondary">Cancelar</button><button type="button" id="continue-worker" class="secondary" hidden>Completar día y continuar mañana</button><button type="button" id="confirm-worker" class="primary">Guardar</button></menu></form></dialog>
@@ -69,6 +75,6 @@
 
   <dialog id="plant-dialog" class="dialog"><form method="dialog"><h3 id="plant-dialog-title">Editar planta</h3><label class="field-label">Estado<select id="plant-status" class="text-input"><option value="occupied">Ocupada</option><option value="empty">Vacía</option></select></label><label class="field-label">Genética<select id="plant-genetics" class="text-input"></select></label><label class="field-label">Observaciones<textarea id="plant-notes" class="text-input"></textarea></label><menu><button type="button" id="cancel-plant" class="secondary">Cancelar</button><button type="button" id="save-plant" class="primary">Guardar</button></menu></form></dialog>
 
-  <script type="module" src="app.js?v=3.11.7"></script>
+  <script type="module" src="app.js?v=3.12.0"></script>
 </body>
 </html>

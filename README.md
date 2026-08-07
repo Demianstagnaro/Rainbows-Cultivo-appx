@@ -454,8 +454,18 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - No requiere cambios en Supabase.
 
 
-## V3.11.7 — Corrección real del desplazamiento del logo
+## V3.12.0 — Corrección real del desplazamiento del logo
 
 - Se reemplazó `transform: translateX(4px)`, que interfería con el escalado previo del logo.
 - El logo Rainbows ahora se desplaza 4 px a la derecha mediante `position: relative; left: 4px`.
 - No se modifica “Cultivo”, los botones ni la estructura del encabezado.
+
+
+## V3.12.0 — Voz, etapa 1
+- Botón flotante de micrófono.
+- Reconocimiento de voz configurado en español de Argentina (`es-AR`).
+- Transcripción visible antes/durante la interpretación.
+- Navegación por voz: Hoy, Calendario, Salas, Genéticas, Cosechas, Stock Palestina y Configuración (según permisos).
+- Acceso por voz a Flora 1, Flora 2, Flora 3, Veges, Madres y Esquejes.
+- Navegación diaria: día anterior, día siguiente/mañana y volver a hoy.
+- Esta etapa no modifica datos ni realiza escrituras en Supabase.
