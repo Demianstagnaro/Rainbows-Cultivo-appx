@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.14.2';
+const APP_VERSION='3.14.3';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -869,6 +869,7 @@ function renderHelp(){
       <article class="panel help-card"><h3>Flora 2 · croquis</h3><ul><li>“¿Qué genética hay en la cama 4 de Flora 2?”</li><li>“¿Cuántas plantas hay en Flora 2?”</li><li>“¿Cuántas camas tiene Flora 2?”</li></ul></article>
       <article class="panel help-card"><h3>Flora 3 · croquis</h3><ul><li>“¿Qué genética hay en la cama 4 de Flora 3?”</li><li>“¿Cuántas plantas hay en Flora 3?”</li><li>“¿Cuántas camas tiene Flora 3?”</li></ul></article>
       <article class="panel help-card"><h3>Stock Palestina · desde cualquier pantalla</h3><ul><li>“¿Cuánto stock total hay?”</li><li>“¿Cuánto stock hay de GomuGomu?”</li><li>“¿Cuánto queda del ciclo 9 de Flora 2?”</li><li>“¿Qué stock tiene Flora 1?”</li><li>“¿Qué salidas hubo a Medrano?”</li><li>“¿Cuánto consumo interno hubo?”</li><li>“¿Qué movimientos hubo hoy?”</li><li>“¿Cuánto se descartó esta semana?”</li></ul></article>
+      <article class="panel help-card"><h3>Cosechas · desde cualquier pantalla</h3><ul><li>“¿Cuánto produjo Flora 1 ciclo 8?”</li><li>“¿Cuál fue la última cosecha de Flora 3?”</li><li>“¿Qué genética produjo más en el ciclo 8 de Flora 2?”</li><li>“¿Cuánto produjo GomuGomu en 2026?”</li><li>“¿Cuál fue el desvío respecto de la meta en Flora 1 ciclo 8?”</li><li>“¿Cuánto cosechó Flora 2 en 2026?”</li></ul></article>
       <article class="panel help-card"><h3>Números por voz</h3><ul><li>Podés decir “Flora 3”, “Flora tres” o si el teléfono escribe “Flora III”.</li><li>También entiende camas dichas como “cama cuatro”, “cama doce”, etc.</li></ul></article>
       <article class="panel help-card"><h3>Control del micrófono</h3><ul><li>“Cerrar micrófono”</li><li>“Apagar micrófono”</li><li>“Dejar de escuchar”</li><li>También podés tocar nuevamente el botón 🎙️.</li></ul></article>
     </section>`;
@@ -1885,6 +1886,102 @@ function executeVoiceStockQuery(rawText){
   return {ok:true,message:`Stock total actual en Palestina: ${formatGrams(grand)}. ${byRoom.join('; ')}.`};
 }
 
+
+function voiceHarvestYearFromText(text){
+  const clean=normalizeVoiceText(text),base=today();
+  const m=clean.match(/\b(20\d{2})\b/);
+  if(m)return Number(m[1]);
+  if(clean.includes('este ano')||clean.includes('este año'))return base.getFullYear();
+  if(clean.includes('ano pasado')||clean.includes('año pasado'))return base.getFullYear()-1;
+  return null;
+}
+function voiceHarvestGeneticFromText(text){
+  const clean=normalizeVoiceText(text),candidates=[];
+  state.cosechaDetalles.forEach(d=>{if(d.nombre_historico)candidates.push({label:d.nombre_historico,key:normalizeVoiceText(d.nombre_historico)});});
+  state.geneticas.forEach(g=>{
+    if(g.nombre)candidates.push({label:g.nombre,key:normalizeVoiceText(g.nombre)});
+    if(g.nomenclatura)candidates.push({label:g.nomenclatura,key:normalizeVoiceText(g.nomenclatura)});
+  });
+  const unique=[...new Map(candidates.filter(x=>x.key).map(x=>[x.key,x])).values()].sort((a,b)=>b.key.length-a.key.length);
+  return unique.find(x=>new RegExp(`(^|\\s)${x.key.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')}(\\s|$)`).test(clean))||null;
+}
+function voiceHarvestDetailMatches(row,genetic){
+  if(!genetic)return true;
+  const g=state.geneticas.find(x=>String(x.id)===String(row.genetica_id));
+  const names=[row.nombre_historico,g?.nombre,g?.nomenclatura].filter(Boolean).map(normalizeVoiceText);
+  return names.includes(genetic.key);
+}
+function voiceHarvestLabel(h){
+  return `${h.sala} ciclo ${h.ciclo} (${parse(h.fecha).toLocaleDateString('es-AR')}): ${formatGrams(h.total_gramos)}`;
+}
+function executeVoiceHarvestQuery(rawText){
+  const text=normalizeVoiceText(rawText);
+  // “¿Cuándo se cosecha...?” es una consulta de calendario de sala, no de resultados históricos.
+  if(text.includes('cuando')&&(text.includes('cosecha')||text.includes('cosechar')))return null;
+  const harvestWords=['cosecha','cosechas','cosecho','cosechado','produjo','produccion','produccion total','rindio','rinde','rendimiento','meta','desvio'];
+  if(!harvestWords.some(w=>text.includes(w)))return null;
+
+  const room=voiceRoomFromText(text,{allowContext:false});
+  const cycleNumber=voiceCycleNumberFromText(text);
+  const year=voiceHarvestYearFromText(text);
+  const genetic=voiceHarvestGeneticFromText(text);
+  const wantsLast=text.includes('ultima cosecha')||text.includes('ultimo ciclo')||text.includes('cosecha mas reciente')||text.includes('ultima que se cosecho');
+  const wantsTopGenetic=(text.includes('genetica')||text.includes('variedad'))&&(text.includes('mas produjo')||text.includes('produjo mas')||text.includes('mayor produccion')||text.includes('rindio mas'));
+  const wantsDeviation=text.includes('desvio')||text.includes('respecto de la meta')||text.includes('contra la meta')||text.includes('sobre la meta');
+  const wantsGoal=text.includes('meta')&&!wantsDeviation;
+
+  let hs=state.cosechas.filter(h=>(!room||h.sala===room)&&(cycleNumber===null||Number(h.ciclo)===cycleNumber)&&(year===null||String(h.fecha).startsWith(String(year))));
+  hs.sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))||Number(b.ciclo)-Number(a.ciclo));
+
+  if(wantsLast){
+    const h=hs[0]||null;
+    if(!h)return {ok:true,message:`No encontré cosechas${room?` de ${room}`:''}${year?` en ${year}`:''}.`};
+    const dev=harvestDeviation(h);
+    return {ok:true,message:`La última cosecha${room?` de ${room}`:''} fue el ${parse(h.fecha).toLocaleDateString('es-AR')}, ciclo ${h.ciclo}: ${formatGrams(h.total_gramos)}${h.meta_gramos?`, meta ${formatGrams(h.meta_gramos)}`:''}${dev==null?'':`, desvío ${dev>=0?'+':''}${dev.toFixed(1)}%`}.`};
+  }
+
+  if((cycleNumber!==null||room)&&hs.length===1&&(wantsDeviation||wantsGoal)){
+    const h=hs[0],dev=harvestDeviation(h);
+    if(wantsGoal)return {ok:true,message:`La meta de ${h.sala}, ciclo ${h.ciclo}, fue ${h.meta_gramos?formatGrams(h.meta_gramos):'no registrada'}. La cosecha real fue ${formatGrams(h.total_gramos)}.`};
+    return {ok:true,message:dev==null?`La cosecha de ${h.sala}, ciclo ${h.ciclo}, no tiene una meta registrada para calcular desvío.`:`${h.sala}, ciclo ${h.ciclo}: total ${formatGrams(h.total_gramos)}, meta ${formatGrams(h.meta_gramos)}, desvío ${dev>=0?'+':''}${dev.toFixed(1)}%.`};
+  }
+
+  if(wantsTopGenetic){
+    if(!hs.length)return {ok:true,message:`No encontré cosechas con esos filtros.`};
+    const ids=new Set(hs.map(h=>String(h.id))),totals=new Map();
+    state.cosechaDetalles.filter(d=>ids.has(String(d.cosecha_id))).forEach(d=>{
+      const name=harvestGeneticName(d);totals.set(name,(totals.get(name)||0)+(Number(d.gramos)||0));
+    });
+    const top=[...totals.entries()].sort((a,b)=>b[1]-a[1])[0];
+    if(!top)return {ok:true,message:'Las cosechas encontradas no tienen desglose por genética cargado.'};
+    const scope=[room,cycleNumber!==null?`ciclo ${cycleNumber}`:null,year].filter(Boolean).join(' · ');
+    return {ok:true,message:`La genética con mayor producción${scope?` en ${scope}`:''} fue ${top[0]} con ${formatGrams(top[1])}.`};
+  }
+
+  if(genetic){
+    if(!hs.length)return {ok:true,message:`No encontré cosechas${room?` de ${room}`:''}${cycleNumber!==null?` ciclo ${cycleNumber}`:''}${year?` en ${year}`:''}.`};
+    const ids=new Set(hs.map(h=>String(h.id)));
+    const rows=state.cosechaDetalles.filter(d=>ids.has(String(d.cosecha_id))&&voiceHarvestDetailMatches(d,genetic));
+    const total=rows.reduce((sum,d)=>sum+(Number(d.gramos)||0),0);
+    if(!rows.length)return {ok:true,message:`No encontré producción de ${genetic.label}${room?` en ${room}`:''}${cycleNumber!==null?` ciclo ${cycleNumber}`:''}${year?` durante ${year}`:''}.`};
+    const byHarvest=rows.map(d=>{const h=state.cosechas.find(x=>String(x.id)===String(d.cosecha_id));return h?`${h.sala} ciclo ${h.ciclo}: ${formatGrams(d.gramos)}`:null}).filter(Boolean);
+    return {ok:true,message:`Producción de ${genetic.label}${year?` en ${year}`:''}${room?` en ${room}`:''}${cycleNumber!==null?` ciclo ${cycleNumber}`:''}: ${formatGrams(total)}. ${voiceList(byHarvest,8)}.`};
+  }
+
+  if(!hs.length)return {ok:true,message:`No encontré cosechas${room?` de ${room}`:''}${cycleNumber!==null?` ciclo ${cycleNumber}`:''}${year?` en ${year}`:''}.`};
+
+  if(hs.length===1){
+    const h=hs[0],dev=harvestDeviation(h),details=harvestDetails(h.id).sort((a,b)=>(Number(b.gramos)||0)-(Number(a.gramos)||0));
+    const geneticParts=details.slice(0,6).map(d=>`${harvestGeneticName(d)}: ${formatGrams(d.gramos)}`);
+    return {ok:true,message:`${h.sala}, ciclo ${h.ciclo}, cosechado el ${parse(h.fecha).toLocaleDateString('es-AR')}: ${formatGrams(h.total_gramos)}${h.meta_gramos?`. Meta ${formatGrams(h.meta_gramos)}`:''}${dev==null?'':`. Desvío ${dev>=0?'+':''}${dev.toFixed(1)}%`}${geneticParts.length?`. ${voiceList(geneticParts,6)}`:''}.`};
+  }
+
+  const total=hs.reduce((sum,h)=>sum+(Number(h.total_gramos)||0),0);
+  const scope=[room,year].filter(Boolean).join(' · ');
+  const breakdown=hs.slice(0,8).map(voiceHarvestLabel);
+  return {ok:true,message:`Encontré ${hs.length} cosecha${hs.length===1?'':'s'}${scope?` para ${scope}`:''}, con ${formatGrams(total)} en total. ${voiceList(breakdown,8)}.`};
+}
+
 function executeVoiceRoomQuery(rawText){
   const text=normalizeVoiceText(rawText);
   const explicitRoom=voiceRoomFromText(text,{allowContext:false});
@@ -2003,7 +2100,7 @@ function executeGlobalVoiceQuery(rawText){
   // Toda consulta es global: no depende de la ventana activa.
   // Los futuros comandos que MODIFIQUEN datos se resolverán aparte y sí deberán
   // validar la sección activa antes de ofrecer una confirmación.
-  const handlers=[executeVoiceStockQuery,executeVoiceRoomQuery,executeVoiceTaskQuery];
+  const handlers=[executeVoiceHarvestQuery,executeVoiceStockQuery,executeVoiceRoomQuery,executeVoiceTaskQuery];
   for(const handler of handlers){
     const result=handler(rawText);
     if(result)return result;
@@ -2136,5 +2233,5 @@ $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.2').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.3').catch(console.error));
 }

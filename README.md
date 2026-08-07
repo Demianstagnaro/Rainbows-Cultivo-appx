@@ -602,3 +602,12 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Los comandos explícitos `ir a`, `abrir`, `abrime`, `entrar a` y `llevame a` se resuelven antes que las consultas globales.
 - Corrige la colisión donde `ir a stock` devolvía el stock disponible en vez de abrir Stock Palestina.
 - Las consultas como `cuánto stock hay` y `qué salidas hubo` siguen funcionando igual.
+
+
+## V3.14.3 — Consultas globales de Cosechas por voz
+
+- Agrega consultas globales de resultados de cosecha desde cualquier pantalla.
+- Permite consultar total por sala/ciclo, última cosecha, producción por genética, genética de mayor producción, meta/desvío y acumulados por año.
+- Mantiene “cuándo se cosecha” dentro de las consultas de calendario de Salas.
+- No habilita cargas ni ediciones de cosechas por voz.
+- Actualiza APP_VERSION, referencias de `app.js`/`styles.css` y caché del service worker.
