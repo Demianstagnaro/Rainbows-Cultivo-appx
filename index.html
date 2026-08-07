@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.json?v=3.11.2">
   <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3.11.2">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.11.2">
-  <link rel="stylesheet" href="styles.css?v=3.13.7">
+  <link rel="stylesheet" href="styles.css?v=3.13.8">
 </head>
 <body>
   <section id="auth-screen" class="auth-screen">
@@ -30,14 +30,14 @@
 
   <div id="app-shell" hidden>
     <header class="topbar"><div class="header-copy"><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><div class="app-brand"><img src="rainbows-logo.webp?v=3.8.0" class="rainbows-logo header-logo" alt="rainbows"><span class="cultivo-prefix">Cultivo</span></div><div class="header-actions"><button id="header-config" class="secondary compact-button" hidden>Config</button><button id="sign-out" class="secondary compact-button">Salir</button></div></header>
-    <nav class="top-nav"><button data-view="today" class="active">Hoy</button><button data-view="calendar">Calendario</button><button data-view="rooms">Salas</button><button data-view="genetics">Genéticas</button><button data-view="harvests">Cosechas</button><button data-view="stock">Stock Palestina</button></nav>
+    <nav class="top-nav"><button data-view="today" class="active">Hoy</button><button data-view="calendar">Calendario</button><button data-view="rooms">Salas</button><button data-view="genetics">Genéticas</button><button data-view="harvests">Cosechas</button><button data-view="stock">Stock Palestina</button><button data-view="help">Ayuda</button></nav>
     <main id="app"><div class="panel">Cargando…</div></main>
     <button id="voice-button" class="voice-button" type="button" aria-label="Usar comandos de voz" title="Comandos de voz">🎙️</button>
     <section id="voice-panel" class="voice-panel" hidden aria-live="polite">
       <div class="voice-panel-head"><div><strong>Comandos de voz</strong><div id="voice-status" class="voice-status">Micrófono apagado</div></div><button id="voice-close" class="voice-close" type="button" aria-label="Cerrar">×</button></div>
       <p id="voice-transcript" class="voice-transcript">Tocá el micrófono una vez y da varios comandos seguidos. Para apagarlo, tocá el botón otra vez o decí “cerrar micrófono”.</p>
       <div id="voice-response" class="voice-response" hidden><div class="voice-response-head"><strong>Respuesta</strong><button id="voice-response-close" class="voice-response-close" type="button" aria-label="Cerrar respuesta">×</button></div><div id="voice-response-text" class="voice-response-text"></div></div>
-      <div id="voice-help" class="voice-help" hidden></div><div class="voice-actions"><button id="voice-help-button" class="secondary compact-button" type="button">Ejemplos</button><button id="voice-retry" class="secondary compact-button" type="button">Activar micrófono</button><button id="voice-cancel" class="secondary compact-button" type="button">Cerrar</button></div>
+      <div class="voice-actions"><button id="voice-retry" class="secondary compact-button" type="button">Activar micrófono</button><button id="voice-cancel" class="secondary compact-button" type="button">Cerrar</button></div>
     </section>
   </div>
 
@@ -76,6 +76,6 @@
 
   <dialog id="plant-dialog" class="dialog"><form method="dialog"><h3 id="plant-dialog-title">Editar planta</h3><label class="field-label">Estado<select id="plant-status" class="text-input"><option value="occupied">Ocupada</option><option value="empty">Vacía</option></select></label><label class="field-label">Genética<select id="plant-genetics" class="text-input"></select></label><label class="field-label">Observaciones<textarea id="plant-notes" class="text-input"></textarea></label><menu><button type="button" id="cancel-plant" class="secondary">Cancelar</button><button type="button" id="save-plant" class="primary">Guardar</button></menu></form></dialog>
 
-  <script type="module" src="app.js?v=3.13.7"></script>
+  <script type="module" src="app.js?v=3.13.8"></script>
 </body>
 </html>

@@ -563,3 +563,9 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - También admite filtro por sala, por ejemplo "¿Quién hizo las tareas ayer en Flora 2?".
 - La respuesta muestra cada tarea realizada junto con la persona o personas registradas.
 - Si una tarea figura realizada pero no tiene responsable asociado, lo indica explícitamente.
+
+
+## V3.13.8
+- Se elimina el botón Ejemplos del panel del micrófono.
+- Se agrega la solapa Ayuda con instructivo de voz y comandos actualmente disponibles, organizados por navegación, tareas, fechas y salas.
+- Las consultas siguen siendo globales; las modificaciones por voz continúan deshabilitadas.

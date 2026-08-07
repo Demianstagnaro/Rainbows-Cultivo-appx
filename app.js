@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.13.7';
+const APP_VERSION='3.13.8';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -842,7 +842,36 @@ $('harvest-total').oninput=updateHarvestLineTotal;
 $('save-harvest').onclick=async()=>{try{await saveHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la cosecha.')}};
 $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
 
-document.querySelectorAll('.top-nav button').forEach(b=>{const allowed=canViewOperations();b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',b.dataset.view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings();renderVoiceHelp()}
+document.querySelectorAll('.top-nav button').forEach(b=>{const allowed=canViewOperations();b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',b.dataset.view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
+function renderHelp(){
+  $('screen-title').textContent='Ayuda';
+  app.innerHTML=`
+    <section class="panel help-hero">
+      <h2>Comandos de voz</h2>
+      <p>El micrófono funciona en modo continuo: tocá el botón 🎙️ una vez, hablá normalmente y seguí dando órdenes. Para apagarlo, tocá el botón otra vez o decí <strong>“cerrar micrófono”</strong>.</p>
+      <div class="help-rule"><strong>Regla actual:</strong> las consultas se pueden hacer desde cualquier parte de la app. Las modificaciones por voz todavía no están habilitadas.</div>
+    </section>
+    <section class="help-grid">
+      <article class="panel help-card"><h3>Generales · navegación</h3><ul>
+        <li>“Abrir Hoy”</li><li>“Abrir Calendario”</li><li>“Abrir Salas”</li><li>“Abrir Genéticas”</li><li>“Abrir Cosechas”</li><li>“Abrir Stock Palestina”</li><li>“Abrir Ayuda”</li>
+        <li>“Ir a Flora 1 / 2 / 3”</li><li>“Mostrar Veges / Madres / Esquejes”</li><li>“Ir a mañana”</li><li>“Día anterior”</li><li>“Volver a hoy”</li>
+      </ul></article>
+      <article class="panel help-card"><h3>Tareas · desde cualquier pantalla</h3><ul>
+        <li>“¿Qué tareas hay hoy?”</li><li>“¿Qué tareas están pendientes mañana?”</li><li>“¿Qué tareas hay mañana en Flora 2?”</li><li>“¿Qué tareas se hicieron ayer?”</li><li>“¿Qué hizo Cone hoy?”</li><li>“¿Quién hizo las tareas de hoy?”</li><li>“¿Quién hizo las tareas del 10 de agosto?”</li><li>“¿Quién hizo las tareas ayer en Flora 2?”</li>
+      </ul></article>
+      <article class="panel help-card"><h3>Fechas que entiende</h3><ul>
+        <li>Hoy, ayer, anteayer, mañana y pasado mañana.</li><li>“Lunes”, “martes pasado”, “próximo miércoles”.</li><li>“10 de agosto” o “5 de agosto de 2026”.</li><li>Si no decís una fecha, usa el día que estás viendo en la app.</li>
+      </ul></article>
+      <article class="panel help-card"><h3>Salas · estado y ciclo</h3><ul>
+        <li>“¿En qué semana está Flora 1?”</li><li>“¿En qué ciclo está Flora 2?”</li><li>“¿En qué semana estaba Flora 3 ayer?”</li><li>“¿Cuál es el estado de Flora 1 el 10 de agosto?”</li><li>“¿Cuándo se cosecha Flora 2?”</li><li>“¿Cuándo empieza flora en Flora 1?”</li><li>“¿Cuándo es el próximo trasplante de Flora 3?”</li>
+      </ul></article>
+      <article class="panel help-card"><h3>Flora 1 · croquis</h3><ul><li>“¿Qué genética hay en la cama 4 de Flora 1?”</li><li>“¿Cuántas plantas hay en Flora 1?”</li><li>“¿Cuántas camas tiene Flora 1?”</li></ul></article>
+      <article class="panel help-card"><h3>Flora 2 · croquis</h3><ul><li>“¿Qué genética hay en la cama 4 de Flora 2?”</li><li>“¿Cuántas plantas hay en Flora 2?”</li><li>“¿Cuántas camas tiene Flora 2?”</li></ul></article>
+      <article class="panel help-card"><h3>Flora 3 · croquis</h3><ul><li>“¿Qué genética hay en la cama 4 de Flora 3?”</li><li>“¿Cuántas plantas hay en Flora 3?”</li><li>“¿Cuántas camas tiene Flora 3?”</li></ul></article>
+      <article class="panel help-card"><h3>Números por voz</h3><ul><li>Podés decir “Flora 3”, “Flora tres” o si el teléfono escribe “Flora III”.</li><li>También entiende camas dichas como “cama cuatro”, “cama doce”, etc.</li></ul></article>
+      <article class="panel help-card"><h3>Control del micrófono</h3><ul><li>“Cerrar micrófono”</li><li>“Apagar micrófono”</li><li>“Dejar de escuchar”</li><li>También podés tocar nuevamente el botón 🎙️.</li></ul></article>
+    </section>`;
+}
 function renderToday(){
   $('screen-title').textContent='Hoy';
   const d=state.todayDay||today(),ts=tasks(d),n=ts.filter(done).length,p=ts.length?Math.round(n/ts.length*100):100;
@@ -1825,34 +1854,6 @@ function executeVoiceTaskQuery(rawText){
   const pending=ts.length-completed;
   return {ok:true,message:`El ${nice(d)}${room?` en ${room}`:''} hay ${ts.length} tarea${ts.length===1?'':'s'}: ${completed} realizada${completed===1?'':'s'} y ${pending} pendiente${pending===1?'':'s'}. ${voiceList(ts.map(voiceTaskLabel))}.`};
 }
-function voiceHelpExamples(){
-  // Las consultas de este bloque funcionan desde cualquier ventana.
-  return {
-    queries:[
-      '¿Qué tareas hay hoy?',
-      '¿Qué tareas están pendientes mañana en Flora 2?',
-      '¿Qué hizo Cone ayer?',
-      '¿En qué semana está Flora 1?',
-      '¿Cuándo se cosecha Flora 2?',
-      '¿Qué genética hay en la cama 4 de Flora 3?',
-      '¿Cuántas plantas hay en Flora 1?'
-    ],
-    navigation:['Abrir Calendario','Ir a Flora 2','Ir a mañana','Volver a hoy']
-  };
-}
-function renderVoiceHelp(){
-  const help=$('voice-help');
-  if(!help||help.hidden)return;
-  const examples=voiceHelpExamples();
-  help.innerHTML=`<strong>Consultas · desde cualquier sección</strong><ul>${examples.queries.map(x=>`<li>${x}</li>`).join('')}</ul><strong>Navegación</strong><ul>${examples.navigation.map(x=>`<li>${x}</li>`).join('')}</ul>`;
-}
-function toggleVoiceHelp(){
-  const help=$('voice-help');
-  if(!help)return;
-  const opening=help.hidden;
-  help.hidden=!opening;
-  if(opening)renderVoiceHelp();
-}
 function executeGlobalVoiceQuery(rawText){
   // Toda consulta es global: no depende de la ventana activa.
   // Los futuros comandos que MODIFIQUEN datos se resolverán aparte y sí deberán
@@ -1902,6 +1903,7 @@ function executeVoiceNavigation(rawText){
     {view:'genetics',name:'Genéticas',labels:['geneticas','genetica']},
     {view:'harvests',name:'Cosechas',labels:['cosechas','cosecha']},
     {view:'stock',name:'Stock Palestina',labels:['stock palestina','stock']},
+    {view:'help',name:'Ayuda',labels:['ayuda','instructivo','comandos de voz']},
     {view:'settings',name:'Configuración',labels:['configuracion','config']}
   ];
   const destination=destinations.find(item=>item.labels.some(label=>text.includes(label)));
@@ -1974,10 +1976,9 @@ $('voice-button')?.addEventListener('click',()=>startVoiceRecognition());
 $('voice-retry')?.addEventListener('click',()=>{if(voiceContinuousMode)stopVoiceRecognition({hidePanel:false});startVoiceRecognition();});
 $('voice-close')?.addEventListener('click',closeVoicePanel);
 $('voice-cancel')?.addEventListener('click',closeVoicePanel);
-$('voice-help-button')?.addEventListener('click',toggleVoiceHelp);
 $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.13.7').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.13.8').catch(console.error));
 }
