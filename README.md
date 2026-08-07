@@ -586,3 +586,13 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Las tareas ya continúan funcionando globalmente por fecha, sala y responsable.
 - La sección activa queda reservada como contexto para futuras MODIFICACIONES por voz, que requerirán confirmación.
 - Sin cambios en Supabase ni en datos.
+
+
+## V3.14.1 — Consultas globales de Stock Palestina por voz
+
+- Se agregaron consultas de stock desde cualquier sección de la app.
+- Permite consultar stock total, por sala, ciclo y genética.
+- Permite consultar movimientos, salidas, entradas, ajustes y destinos como Medrano, Consumo interno y Descarte.
+- Admite filtros de fechas habladas y rangos “esta semana” / “semana pasada”.
+- Las respuestas reutilizan la misma lógica de saldo (`stockItemCurrent`) que la pantalla Stock Palestina.
+- No se habilitaron modificaciones de stock por voz.

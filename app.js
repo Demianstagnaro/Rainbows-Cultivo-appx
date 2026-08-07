@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.14.0';
+const APP_VERSION='3.14.1';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -868,6 +868,7 @@ function renderHelp(){
       <article class="panel help-card"><h3>Flora 1 · croquis</h3><ul><li>“¿Qué genética hay en la cama 4 de Flora 1?”</li><li>“¿Cuántas plantas hay en Flora 1?”</li><li>“¿Cuántas camas tiene Flora 1?”</li></ul></article>
       <article class="panel help-card"><h3>Flora 2 · croquis</h3><ul><li>“¿Qué genética hay en la cama 4 de Flora 2?”</li><li>“¿Cuántas plantas hay en Flora 2?”</li><li>“¿Cuántas camas tiene Flora 2?”</li></ul></article>
       <article class="panel help-card"><h3>Flora 3 · croquis</h3><ul><li>“¿Qué genética hay en la cama 4 de Flora 3?”</li><li>“¿Cuántas plantas hay en Flora 3?”</li><li>“¿Cuántas camas tiene Flora 3?”</li></ul></article>
+      <article class="panel help-card"><h3>Stock Palestina · desde cualquier pantalla</h3><ul><li>“¿Cuánto stock total hay?”</li><li>“¿Cuánto stock hay de GomuGomu?”</li><li>“¿Cuánto queda del ciclo 9 de Flora 2?”</li><li>“¿Qué stock tiene Flora 1?”</li><li>“¿Qué salidas hubo a Medrano?”</li><li>“¿Cuánto consumo interno hubo?”</li><li>“¿Qué movimientos hubo hoy?”</li><li>“¿Cuánto se descartó esta semana?”</li></ul></article>
       <article class="panel help-card"><h3>Números por voz</h3><ul><li>Podés decir “Flora 3”, “Flora tres” o si el teléfono escribe “Flora III”.</li><li>También entiende camas dichas como “cama cuatro”, “cama doce”, etc.</li></ul></article>
       <article class="panel help-card"><h3>Control del micrófono</h3><ul><li>“Cerrar micrófono”</li><li>“Apagar micrófono”</li><li>“Dejar de escuchar”</li><li>También podés tocar nuevamente el botón 🎙️.</li></ul></article>
     </section>`;
@@ -1771,6 +1772,119 @@ function voiceNextHarvestDate(r,baseDate){
   if(diff(baseDate,harvestDate)>0)harvestDate=add(harvestDate,77);
   return harvestDate;
 }
+
+function voiceCycleNumberFromText(text){
+  const m=normalizeVoiceText(text).match(/ciclo\s*(?:numero\s*)?(\d{1,3})/);
+  return m?Number(m[1]):null;
+}
+function voiceHasExplicitDate(text){
+  const clean=normalizeVoiceText(text);
+  if(/\b(hoy|ayer|anteayer|manana|pasado manana)\b/.test(clean))return true;
+  if(/\b(domingo|lunes|martes|miercoles|jueves|viernes|sabado)\b/.test(clean))return true;
+  if(/\b\d{1,2}\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)\b/.test(clean))return true;
+  if(/\b\d{1,2}\s+(?:del\s+)?\d{1,2}(?:\s+(?:del\s+)?\d{2,4})?\b/.test(clean))return true;
+  return false;
+}
+function voiceStockDateRange(text){
+  const clean=normalizeVoiceText(text), base=today();
+  if(clean.includes('esta semana')){
+    const weekday=(base.getDay()+6)%7;
+    return {start:add(base,-weekday),end:add(base,6-weekday),label:'esta semana'};
+  }
+  if(clean.includes('semana pasada')){
+    const weekday=(base.getDay()+6)%7;
+    return {start:add(base,-weekday-7),end:add(base,-weekday-1),label:'la semana pasada'};
+  }
+  if(voiceHasExplicitDate(clean)){
+    const d=voiceDateFromText(clean);return {start:d,end:d,label:`el ${nice(d)}`};
+  }
+  return null;
+}
+function voiceMovementDateValue(m){
+  if(!m.fecha)return null;
+  try{return parse(m.fecha)}catch(_){return null}
+}
+function voiceStockGeneticFromText(text){
+  const clean=normalizeVoiceText(text);
+  const candidates=[];
+  state.stockItems.forEach(i=>{if(i.nombre_historico)candidates.push({label:i.nombre_historico,key:normalizeVoiceText(i.nombre_historico)});});
+  state.geneticas.forEach(g=>{
+    if(g.nombre)candidates.push({label:g.nombre,key:normalizeVoiceText(g.nombre)});
+    if(g.nomenclatura)candidates.push({label:g.nomenclatura,key:normalizeVoiceText(g.nomenclatura)});
+  });
+  const unique=[...new Map(candidates.filter(x=>x.key).map(x=>[x.key,x])).values()].sort((a,b)=>b.key.length-a.key.length);
+  return unique.find(x=>new RegExp(`(^|\\s)${x.key.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(\\s|$)`).test(clean))||null;
+}
+function voiceStockItemMatches(item,genetic){
+  if(!genetic)return true;
+  const names=[item.nombre_historico,state.geneticas.find(g=>String(g.id)===String(item.genetica_id))?.nombre,state.geneticas.find(g=>String(g.id)===String(item.genetica_id))?.nomenclatura].filter(Boolean).map(normalizeVoiceText);
+  return names.includes(genetic.key);
+}
+function executeVoiceStockQuery(rawText){
+  const text=normalizeVoiceText(rawText);
+  const stockWords=['stock','existencia','existencias','disponible','disponibles','queda','quedan','movimiento','movimientos','salida','salidas','entrada','entradas','ajuste','ajustes','medrano','consumo interno','descarte','descarto','descartado'];
+  if(!stockWords.some(w=>text.includes(w)))return null;
+
+  const room=voiceRoomFromText(text,{allowContext:false});
+  const cycleNumber=voiceCycleNumberFromText(text);
+  const genetic=voiceStockGeneticFromText(text);
+  const range=voiceStockDateRange(text);
+  const wantsMovements=text.includes('movimiento')||text.includes('salida')||text.includes('entrada')||text.includes('ajuste')||text.includes('medrano')||text.includes('consumo interno')||text.includes('descarte')||text.includes('descarto')||text.includes('descartado');
+
+  if(wantsMovements){
+    let moves=[...state.stockMovements];
+    if(room){const ids=new Set(state.stockCycles.filter(c=>c.sala===room).map(c=>String(c.id)));moves=moves.filter(m=>ids.has(String(m.ciclo_id)));}
+    if(cycleNumber!==null){const ids=new Set(state.stockCycles.filter(c=>(!room||c.sala===room)&&Number(c.ciclo)===cycleNumber).map(c=>String(c.id)));moves=moves.filter(m=>ids.has(String(m.ciclo_id)));}
+    if(genetic)moves=moves.filter(m=>{
+      const item=state.stockItems.find(i=>String(i.id)===String(m.existencia_id));
+      const key=normalizeVoiceText(m.nombre_historico||item?.nombre_historico||stockMovementTitle(m));
+      return key===genetic.key||voiceStockItemMatches(item||{},genetic);
+    });
+    let type=null,destination=null;
+    if(text.includes('salida'))type='salida';
+    else if(text.includes('entrada'))type='entrada';
+    else if(text.includes('ajuste'))type='ajuste';
+    if(text.includes('medrano'))destination='medrano';
+    else if(text.includes('consumo interno'))destination='consumo interno';
+    else if(text.includes('descarte')||text.includes('descarto')||text.includes('descartado'))destination='descarte';
+    if(type)moves=moves.filter(m=>normalizeVoiceText(m.tipo||'')===type);
+    if(destination)moves=moves.filter(m=>normalizeVoiceText(m.destino||'').includes(destination));
+    if(range)moves=moves.filter(m=>{const d=voiceMovementDateValue(m);return d&&diff(range.start,d)<=0&&diff(d,range.end)<=0;});
+    moves.sort((a,b)=>String(b.fecha||'').localeCompare(String(a.fecha||''))||String(b.created_at||'').localeCompare(String(a.created_at||'')));
+    const total=moves.reduce((sum,m)=>sum+(Number(m.gramos)||0),0);
+    const scope=[room,cycleNumber!==null?`ciclo ${cycleNumber}`:null,genetic?.label,range?.label].filter(Boolean).join(' · ');
+    if(!moves.length)return {ok:true,message:`No encontré movimientos${scope?` para ${scope}`:''}${destination?` con destino ${destination}`:''}.`};
+    const details=moves.slice(0,6).map(m=>{
+      const c=state.stockCycles.find(x=>String(x.id)===String(m.ciclo_id));
+      return `${stockMovementDate(m)} · ${c?`${c.sala} ciclo ${c.ciclo} · `:''}${stockMovementTitle(m)} · ${m.tipo}${m.destino?` a ${m.destino}`:''} · ${formatGrams(m.gramos)}`;
+    });
+    return {ok:true,message:`Encontré ${moves.length} movimiento${moves.length===1?'':'s'}${scope?` (${scope})`:''}, por ${formatGrams(total)} en total. ${voiceList(details,6)}.`};
+  }
+
+  let cycles=state.stockCycles.filter(c=>(!room||c.sala===room)&&(cycleNumber===null||Number(c.ciclo)===cycleNumber));
+  if((room||cycleNumber!==null)&&!cycles.length)return {ok:true,message:`No encontré stock para ${[room,cycleNumber!==null?`ciclo ${cycleNumber}`:null].filter(Boolean).join(' · ')}.`};
+  if(!room&&cycleNumber!==null){
+    const byCycle=cycles.reduce((acc,c)=>{acc[c.sala]=(acc[c.sala]||0)+stockCycleCurrent(c);return acc;},{});
+    const parts=Object.entries(byCycle).map(([sala,total])=>`${sala}: ${formatGrams(total)}`);
+    if(!genetic)return {ok:true,message:`Stock actual del ciclo ${cycleNumber}: ${parts.join('; ')||'sin stock cargado'}.`};
+  }
+  const cycleIds=new Set(cycles.map(c=>String(c.id)));
+  const items=state.stockItems.filter(i=>cycleIds.has(String(i.ciclo_id))&&voiceStockItemMatches(i,genetic));
+  const total=items.reduce((sum,i)=>sum+stockItemCurrent(i),0);
+  const scope=[genetic?.label,room,cycleNumber!==null?`ciclo ${cycleNumber}`:null].filter(Boolean).join(' · ');
+  if(genetic){
+    if(!items.length)return {ok:true,message:`No encontré stock cargado de ${genetic.label}${room?` en ${room}`:''}${cycleNumber!==null?` ciclo ${cycleNumber}`:''}.`};
+    const breakdown=[];
+    for(const i of items){const c=state.stockCycles.find(x=>String(x.id)===String(i.ciclo_id));const cur=stockItemCurrent(i);if(cur>0)breakdown.push(`${c?.sala||'Sala'} ciclo ${c?.ciclo??'—'}: ${formatGrams(cur)}`);}
+    return {ok:true,message:`Stock actual de ${genetic.label}${room?` en ${room}`:''}${cycleNumber!==null?` ciclo ${cycleNumber}`:''}: ${formatGrams(total)}${breakdown.length?`. ${voiceList(breakdown,8)}`:''}.`};
+  }
+  if(room&&cycleNumber!==null)return {ok:true,message:`Stock actual de ${room}, ciclo ${cycleNumber}: ${formatGrams(total)}.`};
+  if(room)return {ok:true,message:`Stock actual de ${room}: ${formatGrams(total)}.`};
+  const grand=state.stockCycles.reduce((sum,c)=>sum+stockCycleCurrent(c),0);
+  const byRoom=['Flora 1','Flora 2','Flora 3'].map(r=>`${r}: ${formatGrams(state.stockCycles.filter(c=>c.sala===r).reduce((sum,c)=>sum+stockCycleCurrent(c),0))}`);
+  return {ok:true,message:`Stock total actual en Palestina: ${formatGrams(grand)}. ${byRoom.join('; ')}.`};
+}
+
 function executeVoiceRoomQuery(rawText){
   const text=normalizeVoiceText(rawText);
   const explicitRoom=voiceRoomFromText(text,{allowContext:false});
@@ -1889,7 +2003,7 @@ function executeGlobalVoiceQuery(rawText){
   // Toda consulta es global: no depende de la ventana activa.
   // Los futuros comandos que MODIFIQUEN datos se resolverán aparte y sí deberán
   // validar la sección activa antes de ofrecer una confirmación.
-  const handlers=[executeVoiceRoomQuery,executeVoiceTaskQuery];
+  const handlers=[executeVoiceStockQuery,executeVoiceRoomQuery,executeVoiceTaskQuery];
   for(const handler of handlers){
     const result=handler(rawText);
     if(result)return result;
@@ -2011,5 +2125,5 @@ $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.0').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.1').catch(console.error));
 }
