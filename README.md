@@ -569,3 +569,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Se elimina el botón Ejemplos del panel del micrófono.
 - Se agrega la solapa Ayuda con instructivo de voz y comandos actualmente disponibles, organizados por navegación, tareas, fechas y salas.
 - Las consultas siguen siendo globales; las modificaciones por voz continúan deshabilitadas.
+
+
+## V3.13.9 — Ayuda junto a Config/Salir
+- La sección Ayuda se retiró de la barra principal de navegación.
+- Administradores: Ayuda queda en el encabezado junto a Config.
+- Otros roles: Ayuda queda en el encabezado junto a Salir.
+- Sin cambios en comandos de voz, consultas ni datos.
