@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.13.0';
+const APP_VERSION='3.13.1';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1576,7 +1576,7 @@ try{
 }
 
 
-// V3.12.5 — Voz: navegación en modo continuo. Sin botones separados de dictado.
+// V3.13.1 — Voz: consultas con respuesta persistente separada del estado de escucha.
 const VoiceRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
 let voiceRecognition=null;
 let voiceListening=false;
@@ -1587,13 +1587,20 @@ let voiceFatalError=false;
 function normalizeVoiceText(value=''){
   return value.toLocaleLowerCase('es-AR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
 }
-function showVoicePanel(status='Comandos de voz',message=''){
+function showVoicePanel(status='Micrófono apagado',message=''){
   const panel=$('voice-panel');
   if(!panel)return;
   panel.hidden=false;
   $('voice-status').textContent=status;
   if(message)$('voice-transcript').textContent=message;
 }
+function showVoiceResponse(message=''){
+  const box=$('voice-response'), text=$('voice-response-text');
+  if(!box||!text)return;
+  text.textContent=message;
+  box.hidden=!message;
+}
+function closeVoiceResponse(){const box=$('voice-response');if(box)box.hidden=true;}
 function setVoiceButtonActive(active){
   const button=$('voice-button');
   if(!button)return;
@@ -1776,12 +1783,12 @@ function beginVoiceRecognition(options={}){
   voiceRecognition.lang='es-AR';voiceRecognition.interimResults=true;voiceRecognition.continuous=false;voiceRecognition.maxAlternatives=1;
   voiceRecognition.onstart=()=>{
     voiceListening=true;
-    if(continuous){voiceContinuousMode=true;setVoiceButtonActive(true);showVoicePanel('Micrófono activo','Podés dar varios comandos seguidos. Decí “cerrar micrófono” o tocá el botón para apagarlo.');}
+    if(continuous){voiceContinuousMode=true;setVoiceButtonActive(true);showVoicePanel('Escuchando…','Podés hablar cuando quieras.');}
   };
   voiceRecognition.onresult=event=>{
     let transcript='';let finalText='';
     for(let i=event.resultIndex;i<event.results.length;i++){transcript+=event.results[i][0].transcript;if(event.results[i].isFinal)finalText+=event.results[i][0].transcript;}
-    $('voice-transcript').textContent=transcript||'Escuchando…';
+    $('voice-transcript').textContent=transcript?`Escuché: “${transcript}”`:'Escuchando…';
     if(finalText){
       const clean=finalText.trim();
       if(isVoiceStopCommand(clean)){
@@ -1789,7 +1796,7 @@ function beginVoiceRecognition(options={}){
         stopVoiceRecognition({hidePanel:false,message:'Listo. Dejé de escuchar.'});
         return;
       }
-      const result=executeVoiceCommand(clean);$('voice-status').textContent=result.ok?'Listo · sigo escuchando':'No pude realizarlo · sigo escuchando';$('voice-transcript').textContent=`${result.message} ${voiceContinuousMode?'Podés decir otro comando.':''}`.trim();
+      const result=executeVoiceCommand(clean);$('voice-status').textContent=voiceContinuousMode?'Escuchando…':'Micrófono apagado'; $('voice-transcript').textContent=voiceContinuousMode?'Podés decir otro comando.':''; showVoiceResponse(result.message);
     }
   };
   voiceRecognition.onerror=event=>{
@@ -1797,7 +1804,7 @@ function beginVoiceRecognition(options={}){
     if(['not-allowed','service-not-allowed','audio-capture'].includes(event.error)){
       voiceFatalError=true;voiceContinuousMode=false;setVoiceButtonActive(false);
     }
-    showVoicePanel(event.error==='no-speech'&&voiceContinuousMode?'Micrófono activo':'No se pudo escuchar',messages[event.error]||`Error de reconocimiento: ${event.error}.`);
+    showVoicePanel(event.error==='no-speech'&&voiceContinuousMode?'Escuchando…':'No se pudo escuchar',messages[event.error]||`Error de reconocimiento: ${event.error}.`);
   };
   voiceRecognition.onend=()=>{
     voiceListening=false;voiceRecognition=null;
@@ -1818,8 +1825,9 @@ $('voice-retry')?.addEventListener('click',()=>{if(voiceContinuousMode)stopVoice
 $('voice-close')?.addEventListener('click',closeVoicePanel);
 $('voice-cancel')?.addEventListener('click',closeVoicePanel);
 $('voice-help-button')?.addEventListener('click',toggleVoiceHelp);
+$('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.13.0').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.13.1').catch(console.error));
 }

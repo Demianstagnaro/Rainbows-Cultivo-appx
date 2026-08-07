@@ -508,7 +508,7 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - No cambia la lógica de Supabase ni los datos.
 
 
-## V3.13.0 — Voz etapa 3: consultas Tareas/Hoy
+## V3.13.1 — Voz etapa 3: consultas Tareas/Hoy
 - Consultas por voz de tareas sin modificar datos.
 - Permite preguntar por tareas del día visible, pendientes, realizadas, por sala y por empleado.
 - El micrófono continuo permanece activo después de responder.
