@@ -647,3 +647,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Las respuestas extensas se resumen oralmente y mantienen el detalle completo en pantalla.
 - Las respuestas ambiguas de genéticas leen un aviso corto y dejan las opciones completas visibles para elegir.
 - El micrófono continuo sigue pausándose durante la lectura y se retoma automáticamente al finalizar.
+
+
+## V3.14.8 — Prioridad de consultas de tareas
+- Corrige una colisión por voz donde frases como ‘qué tareas quedaron pendientes’ podían interpretarse como consulta de Stock por contener ‘quedan/quedaron’.
+- Las consultas explícitas de tareas ahora tienen prioridad sobre Stock.
+- Stock ignora frases que mencionan claramente tareas, pendientes o responsables.
+- No cambia ninguna lógica de datos ni permisos.

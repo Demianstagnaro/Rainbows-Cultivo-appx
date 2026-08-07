@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.14.7';
+const APP_VERSION='3.14.8';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1970,6 +1970,9 @@ function voiceStockItemMatches(item,genetic){
 }
 function executeVoiceStockQuery(rawText){
   const text=normalizeVoiceText(rawText);
+  // Si la frase habla explícitamente de tareas, no debe caer nunca en Stock aunque diga 'queda/quedan'.
+  const taskWords=['tarea','tareas','pendiente','pendientes','realizada','realizadas','completada','completadas','responsable','responsables','quien hizo','quienes hicieron'];
+  if(taskWords.some(w=>text.includes(w)))return null;
   const stockWords=['stock','existencia','existencias','disponible','disponibles','queda','quedan','movimiento','movimientos','salida','salidas','entrada','entradas','ajuste','ajustes','medrano','consumo interno','descarte','descarto','descartado'];
   if(!stockWords.some(w=>text.includes(w)))return null;
 
@@ -2310,7 +2313,7 @@ function executeGlobalVoiceQuery(rawText){
   // Toda consulta es global: no depende de la ventana activa.
   // Los futuros comandos que MODIFIQUEN datos se resolverán aparte y sí deberán
   // validar la sección activa antes de ofrecer una confirmación.
-  const handlers=[executeVoiceHarvestQuery,executeVoiceStockQuery,executeVoiceRoomQuery,executeVoiceTaskQuery,executeVoiceGeneticQuery];
+  const handlers=[executeVoiceTaskQuery,executeVoiceHarvestQuery,executeVoiceStockQuery,executeVoiceRoomQuery,executeVoiceGeneticQuery];
   for(const handler of handlers){
     const result=handler(rawText);
     if(result)return result;
@@ -2446,5 +2449,5 @@ $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.7').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.8').catch(console.error));
 }
