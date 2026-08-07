@@ -620,3 +620,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Permite listar genéticas activas, archivadas y filtrar por THC/CBD/CBG.
 - Mantiene consultas globales desde cualquier pantalla y no habilita modificaciones por voz.
 - Actualiza Ayuda con ejemplos de consultas de Genéticas.
+
+
+## V3.14.5 — Reconocimiento mejorado de genéticas por voz
+- Las consultas por voz comparan automáticamente contra las genéticas reales cargadas en Supabase.
+- Reconoce nombre, nomenclatura y nomenclaturas deletreadas (por ejemplo, MCV2 / “eme ce uve dos”).
+- Tolera pequeñas diferencias de transcripción mediante coincidencia aproximada.
+- Si dos genéticas resultan demasiado parecidas, no adivina: pide aclarar el nombre o la nomenclatura.
+- La mejora se aplica a consultas de Genéticas, Stock Palestina y Cosechas.

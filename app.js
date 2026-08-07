@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.14.4';
+const APP_VERSION='3.14.5';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1806,16 +1806,97 @@ function voiceMovementDateValue(m){
   if(!m.fecha)return null;
   try{return parse(m.fecha)}catch(_){return null}
 }
-function voiceStockGeneticFromText(text){
-  const clean=normalizeVoiceText(text);
+function voiceLevenshtein(a='',b=''){
+  a=String(a);b=String(b);
+  if(a===b)return 0;
+  if(!a.length)return b.length;if(!b.length)return a.length;
+  const prev=Array.from({length:b.length+1},(_,i)=>i),cur=new Array(b.length+1);
+  for(let i=1;i<=a.length;i++){
+    cur[0]=i;
+    for(let j=1;j<=b.length;j++)cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+(a[i-1]===b[j-1]?0:1));
+    for(let j=0;j<=b.length;j++)prev[j]=cur[j];
+  }
+  return prev[b.length];
+}
+function voiceSimilarity(a,b){
+  const aa=normalizeVoiceText(a).replace(/\s+/g,''),bb=normalizeVoiceText(b).replace(/\s+/g,'');
+  if(!aa||!bb)return 0;
+  return 1-(voiceLevenshtein(aa,bb)/Math.max(aa.length,bb.length));
+}
+function voiceCodeSpokenAliases(code=''){
+  const raw=String(code||'').trim();if(!raw)return[];
+  const letterNames={a:'a',b:'be',c:'ce',d:'de',e:'e',f:'efe',g:'ge',h:'hache',i:'i',j:'jota',k:'ka',l:'ele',m:'eme',n:'ene',o:'o',p:'pe',q:'cu',r:'erre',s:'ese',t:'te',u:'u',v:'uve',w:'doble ve',x:'equis',y:'ye',z:'zeta'};
+  const chars=[...raw.toLowerCase().replace(/[^a-z0-9]/g,'')];
+  if(!chars.length)return[];
+  const spoken=chars.map(ch=>/\d/.test(ch)?ch:(letterNames[ch]||ch)).join(' ');
+  const separated=chars.join(' ');
+  const aliases=[raw,spoken,separated,chars.join('')];
+  if(/[v]/i.test(raw))aliases.push(spoken.replace(/\buve\b/g,'ve'));
+  if(/[w]/i.test(raw))aliases.push(spoken.replace(/\bdoble ve\b/g,'doble u'));
+  return aliases;
+}
+function voiceGeneticAliasKeys(name='',code=''){
+  const aliases=[];
+  const rawName=String(name||'').trim();
+  if(rawName){
+    aliases.push(rawName);
+    aliases.push(rawName.replace(/([a-záéíóúñ])([A-ZÁÉÍÓÚÑ])/g,'$1 $2'));
+    aliases.push(rawName.replace(/[\s_-]+/g,''));
+  }
+  aliases.push(...voiceCodeSpokenAliases(code));
+  return [...new Set(aliases.map(normalizeVoiceText).filter(Boolean))];
+}
+function voiceGeneticResolver(text,{extraNames=[]}={}){
+  const clean=normalizeVoiceText(text),queryTokens=clean.split(' ').filter(Boolean);
   const candidates=[];
-  state.stockItems.forEach(i=>{if(i.nombre_historico)candidates.push({label:i.nombre_historico,key:normalizeVoiceText(i.nombre_historico)});});
-  state.geneticas.forEach(g=>{
-    if(g.nombre)candidates.push({label:g.nombre,key:normalizeVoiceText(g.nombre)});
-    if(g.nomenclatura)candidates.push({label:g.nomenclatura,key:normalizeVoiceText(g.nomenclatura)});
-  });
-  const unique=[...new Map(candidates.filter(x=>x.key).map(x=>[x.key,x])).values()].sort((a,b)=>b.key.length-a.key.length);
-  return unique.find(x=>new RegExp(`(^|\\s)${x.key.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(\\s|$)`).test(clean))||null;
+  for(const g of state.geneticas){
+    const keys=voiceGeneticAliasKeys(g.nombre,g.nomenclatura);
+    if(keys.length)candidates.push({genetic:g,label:g.nombre||g.nomenclatura,key:normalizeVoiceText(g.nombre||g.nomenclatura),keys});
+  }
+  for(const name of extraNames){
+    const label=String(name||'').trim();if(!label)continue;
+    const key=normalizeVoiceText(label);
+    if(!key)continue;
+    const existing=candidates.find(c=>c.keys.includes(key));
+    if(!existing)candidates.push({genetic:null,label,key,keys:voiceGeneticAliasKeys(label,'')});
+  }
+  // Coincidencia exacta primero: nombre, nomenclatura y nomenclatura deletreada.
+  for(const c of candidates){
+    const exact=c.keys.find(k=>new RegExp(`(^|\\s)${k.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')}(\\s|$)`).test(clean));
+    if(exact)return {match:{...c,key:exact},ambiguous:false,score:1};
+  }
+  // Si no hay coincidencia exacta, toleramos pequeños errores del reconocimiento.
+  const scored=[];
+  for(const c of candidates){
+    let best=0,bestKey=c.key;
+    for(const key of c.keys){
+      const n=Math.max(1,key.split(' ').length);
+      for(let size=Math.max(1,n-1);size<=Math.min(queryTokens.length,n+1);size++){
+        for(let i=0;i+size<=queryTokens.length;i++){
+          const chunk=queryTokens.slice(i,i+size).join(' ');
+          if(chunk.length<3)continue;
+          const score=voiceSimilarity(key,chunk);
+          if(score>best){best=score;bestKey=key;}
+        }
+      }
+    }
+    if(best>=0.72)scored.push({candidate:{...c,key:bestKey},score:best});
+  }
+  scored.sort((a,b)=>b.score-a.score);
+  if(!scored.length)return {match:null,ambiguous:false,score:0};
+  const best=scored[0],second=scored[1];
+  if(second&&second.score>=0.72&&(best.score-second.score)<0.07&&String(best.candidate.genetic?.id||best.candidate.label)!==String(second.candidate.genetic?.id||second.candidate.label)){
+    const suggestions=[...new Map(scored.slice(0,3).map(x=>[String(x.candidate.genetic?.id||x.candidate.label),x.candidate.label])).values()];
+    return {match:null,ambiguous:true,score:best.score,suggestions};
+  }
+  return {match:best.candidate,ambiguous:false,score:best.score};
+}
+function voiceGeneticAmbiguityMessage(result){
+  return result?.ambiguous?`No estoy seguro de qué genética quisiste decir. Las más parecidas son: ${voiceList(result.suggestions||[],3)}. Decime el nombre o la nomenclatura.`:null;
+}
+function voiceStockGeneticFromText(text){
+  const extra=state.stockItems.map(i=>i.nombre_historico).filter(Boolean);
+  return voiceGeneticResolver(text,{extraNames:extra});
 }
 function voiceStockItemMatches(item,genetic){
   if(!genetic)return true;
@@ -1829,7 +1910,9 @@ function executeVoiceStockQuery(rawText){
 
   const room=voiceRoomFromText(text,{allowContext:false});
   const cycleNumber=voiceCycleNumberFromText(text);
-  const genetic=voiceStockGeneticFromText(text);
+  const geneticResult=voiceStockGeneticFromText(text);
+  const ambiguity=voiceGeneticAmbiguityMessage(geneticResult);if(ambiguity)return {ok:true,message:ambiguity};
+  const genetic=geneticResult.match;
   const range=voiceStockDateRange(text);
   const wantsMovements=text.includes('movimiento')||text.includes('salida')||text.includes('entrada')||text.includes('ajuste')||text.includes('medrano')||text.includes('consumo interno')||text.includes('descarte')||text.includes('descarto')||text.includes('descartado');
 
@@ -1897,14 +1980,8 @@ function voiceHarvestYearFromText(text){
   return null;
 }
 function voiceHarvestGeneticFromText(text){
-  const clean=normalizeVoiceText(text),candidates=[];
-  state.cosechaDetalles.forEach(d=>{if(d.nombre_historico)candidates.push({label:d.nombre_historico,key:normalizeVoiceText(d.nombre_historico)});});
-  state.geneticas.forEach(g=>{
-    if(g.nombre)candidates.push({label:g.nombre,key:normalizeVoiceText(g.nombre)});
-    if(g.nomenclatura)candidates.push({label:g.nomenclatura,key:normalizeVoiceText(g.nomenclatura)});
-  });
-  const unique=[...new Map(candidates.filter(x=>x.key).map(x=>[x.key,x])).values()].sort((a,b)=>b.key.length-a.key.length);
-  return unique.find(x=>new RegExp(`(^|\\s)${x.key.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')}(\\s|$)`).test(clean))||null;
+  const extra=state.cosechaDetalles.map(d=>d.nombre_historico).filter(Boolean);
+  return voiceGeneticResolver(text,{extraNames:extra});
 }
 function voiceHarvestDetailMatches(row,genetic){
   if(!genetic)return true;
@@ -1925,7 +2002,9 @@ function executeVoiceHarvestQuery(rawText){
   const room=voiceRoomFromText(text,{allowContext:false});
   const cycleNumber=voiceCycleNumberFromText(text);
   const year=voiceHarvestYearFromText(text);
-  const genetic=voiceHarvestGeneticFromText(text);
+  const geneticResult=voiceHarvestGeneticFromText(text);
+  const ambiguity=voiceGeneticAmbiguityMessage(geneticResult);if(ambiguity)return {ok:true,message:ambiguity};
+  const genetic=geneticResult.match;
   const wantsLast=text.includes('ultima cosecha')||text.includes('ultimo ciclo')||text.includes('cosecha mas reciente')||text.includes('ultima que se cosecho');
   const wantsTopGenetic=(text.includes('genetica')||text.includes('variedad'))&&(text.includes('mas produjo')||text.includes('produjo mas')||text.includes('mayor produccion')||text.includes('rindio mas'));
   const wantsDeviation=text.includes('desvio')||text.includes('respecto de la meta')||text.includes('contra la meta')||text.includes('sobre la meta');
@@ -1985,22 +2064,16 @@ function executeVoiceHarvestQuery(rawText){
 
 
 function voiceGeneticFromText(text){
-  const clean=normalizeVoiceText(text);
-  const candidates=[];
-  state.geneticas.forEach(g=>{
-    if(g.nombre)candidates.push({genetic:g,label:g.nombre,key:normalizeVoiceText(g.nombre)});
-    if(g.nomenclatura)candidates.push({genetic:g,label:g.nomenclatura,key:normalizeVoiceText(g.nomenclatura)});
-  });
-  const unique=[...new Map(candidates.filter(x=>x.key).map(x=>[`${x.genetic.id}|${x.key}`,x])).values()]
-    .sort((a,b)=>b.key.length-a.key.length);
-  return unique.find(x=>new RegExp(`(^|\\s)${x.key.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(\\s|$)`).test(clean))||null;
+  return voiceGeneticResolver(text);
 }
 function voiceGeneticLabel(g){
   return g.nomenclatura?`${g.nombre} (${g.nomenclatura})`:g.nombre;
 }
 function executeVoiceGeneticQuery(rawText){
   const text=normalizeVoiceText(rawText);
-  const genetic=voiceGeneticFromText(text);
+  const geneticResult=voiceGeneticFromText(text);
+  const ambiguity=voiceGeneticAmbiguityMessage(geneticResult);if(ambiguity)return {ok:true,message:ambiguity};
+  const genetic=geneticResult.match;
   const geneticWords=['genetica','geneticas','nomenclatura','linaje','cannabinoide','cannabinoides','indica','sativa','genotipo','variedad','variedades'];
   const looksLikeQuery=geneticWords.some(w=>text.includes(w))||Boolean(genetic);
   if(!looksLikeQuery)return null;
@@ -2305,5 +2378,5 @@ $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.4').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.5').catch(console.error));
 }
