@@ -531,3 +531,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Agrega consultas del croquis actual por cama/genética y cantidad actual de plantas/camas.
 - Las consultas de croquis describen la asignación actual; no se presenta como histórica porque no existe historial fechado de planta/cama.
 - No modifica datos ni escribe en Supabase.
+
+
+## V3.13.4 — Ayuda de voz realmente contextual
+- Corrige la lista de `Ejemplos` para que se regenere cada vez que cambia la vista activa.
+- Si la ayuda queda abierta al navegar entre Hoy, Calendario, Salas, Genéticas, Cosechas, Stock o Configuración, su contenido se actualiza automáticamente.
+- También se actualiza al entrar o salir de una sala concreta, para mostrar ejemplos específicos de esa sala.
+- No cambia consultas, reconocimiento de voz ni datos de Supabase.
