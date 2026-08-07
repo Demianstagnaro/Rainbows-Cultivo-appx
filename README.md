@@ -454,14 +454,14 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - No requiere cambios en Supabase.
 
 
-## V3.11.7 — Corrección real del desplazamiento del logo
+## V3.12.2 — Corrección real del desplazamiento del logo
 
 - Se reemplazó `transform: translateX(4px)`, que interfería con el escalado previo del logo.
 - El logo Rainbows ahora se desplaza 4 px a la derecha mediante `position: relative; left: 4px`.
 - No se modifica “Cultivo”, los botones ni la estructura del encabezado.
 
 
-## V3.12.0 — Voz, etapa 1
+## V3.12.2 — Voz, etapa 1
 - Botón flotante de micrófono.
 - Reconocimiento de voz configurado en español de Argentina (`es-AR`).
 - Transcripción visible antes/durante la interpretación.
@@ -471,8 +471,7 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Esta etapa no modifica datos ni realiza escrituras en Supabase.
 
 
-## V3.12.1 — Botón de voz fijo en Calendario móvil
-- Se corrigió el desborde horizontal de la grilla mensual del Calendario en pantallas angostas.
-- Las siete columnas ahora pueden comprimirse correctamente sin ensanchar el viewport.
-- Esto mantiene el botón flotante del micrófono visible en la esquina inferior derecha también dentro de Calendario.
-- No se modificaron comandos de voz, Supabase, tareas, cosechas, stock ni backups.
+## V3.12.2
+- Restaurado el diseño legible del calendario móvil.
+- El calendario usa desplazamiento horizontal interno en pantallas angostas, sin ensanchar toda la página.
+- El botón de voz permanece fijo y visible.
