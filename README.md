@@ -498,3 +498,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - El dictado puntual en campos de texto se conserva y no guarda automáticamente.
 - No se modificó ninguna lógica de Supabase, tareas, cosechas, stock ni backups.
 - Actualiza APP_VERSION, referencias de `app.js`/`styles.css` y caché del service worker.
+
+
+## V3.12.5 — Micrófono continuo simplificado
+
+- Elimina los botones separados `🎙️ Dictar` de los campos de texto.
+- Mantiene el micrófono flotante en modo continuo para comandos de voz.
+- Se conserva el cierre por segundo toque o por comandos como `cerrar micrófono`.
+- No cambia la lógica de Supabase ni los datos.

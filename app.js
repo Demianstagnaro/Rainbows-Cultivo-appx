@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.12.4';
+const APP_VERSION='3.12.5';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1576,13 +1576,12 @@ try{
 }
 
 
-// V3.12.4 — Voz: navegación en modo continuo + dictado puntual. No guarda automáticamente.
+// V3.12.5 — Voz: navegación en modo continuo. Sin botones separados de dictado.
 const VoiceRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
 let voiceRecognition=null;
 let voiceListening=false;
 let voiceContinuousMode=false;
 let voiceRestartTimer=null;
-let voiceRecognitionOptions={};
 let voiceFatalError=false;
 
 function normalizeVoiceText(value=''){
@@ -1609,7 +1608,6 @@ function stopVoiceRecognition({hidePanel=false,message='Micrófono cerrado.'}={}
   if(voiceRecognition){try{voiceRecognition.onend=null;voiceRecognition.stop()}catch(_){} voiceRecognition=null;}
   voiceListening=false;
   setVoiceButtonActive(false);
-  document.querySelectorAll('.voice-dictate-button.listening').forEach(b=>b.classList.remove('listening'));
   const panel=$('voice-panel');
   if(panel){
     if(hidePanel)panel.hidden=true;
@@ -1667,15 +1665,6 @@ function executeVoiceNavigation(rawText){
   }
   return {ok:false,message:`Entendí: “${rawText}”, pero todavía no reconozco ese comando. Probá “Abrir Calendario”, “Ir a Flora 2”, “Ir a mañana” o “Volver a hoy”.`};
 }
-function appendVoiceText(target,text){
-  if(!target||!text)return;
-  const current=target.value||'';
-  const spacer=current&& !/\s$/.test(current)?' ':'';
-  target.value=`${current}${spacer}${text}`;
-  target.dispatchEvent(new Event('input',{bubbles:true}));
-  target.focus();
-  try{target.setSelectionRange(target.value.length,target.value.length)}catch(_){}
-}
 function isVoiceStopCommand(text=''){
   const clean=normalizeVoiceText(text);
   return ['cerrar microfono','cerrar el microfono','apagar microfono','apagar el microfono','dejar de escuchar','para de escuchar','parar de escuchar','detener microfono','detener el microfono'].some(command=>clean.includes(command));
@@ -1691,17 +1680,13 @@ function beginVoiceRecognition(options={}){
   if(!VoiceRecognition){showVoicePanel('Voz no disponible','Este navegador no ofrece reconocimiento de voz. La app sigue funcionando normalmente de forma manual.');return;}
   if(voiceListening)return;
   if(!state.session){showVoicePanel('Iniciá sesión','Los comandos de voz están disponibles después de ingresar.');return;}
-  const dictationTarget=options.target||null;
-  const dictationLabel=options.label||'campo de texto';
-  const continuous=Boolean(options.continuous&&!dictationTarget);
-  voiceRecognitionOptions={target:dictationTarget,label:dictationLabel,continuous};
+  const continuous=Boolean(options.continuous);
   voiceFatalError=false;
   voiceRecognition=new VoiceRecognition();
   voiceRecognition.lang='es-AR';voiceRecognition.interimResults=true;voiceRecognition.continuous=false;voiceRecognition.maxAlternatives=1;
   voiceRecognition.onstart=()=>{
     voiceListening=true;
     if(continuous){voiceContinuousMode=true;setVoiceButtonActive(true);showVoicePanel('Micrófono activo','Podés dar varios comandos seguidos. Decí “cerrar micrófono” o tocá el botón para apagarlo.');}
-    else{document.querySelectorAll('.voice-dictate-button.listening').forEach(b=>b.classList.remove('listening'));showVoicePanel(`Dictando en ${dictationLabel}`,'Hablá normalmente. El texto quedará escrito para que lo revises.');}
   };
   voiceRecognition.onresult=event=>{
     let transcript='';let finalText='';
@@ -1709,13 +1694,12 @@ function beginVoiceRecognition(options={}){
     $('voice-transcript').textContent=transcript||'Escuchando…';
     if(finalText){
       const clean=finalText.trim();
-      if(!dictationTarget&&isVoiceStopCommand(clean)){
+      if(isVoiceStopCommand(clean)){
         $('voice-status').textContent='Micrófono apagado';$('voice-transcript').textContent='Listo. Dejé de escuchar.';
         stopVoiceRecognition({hidePanel:false,message:'Listo. Dejé de escuchar.'});
         return;
       }
-      if(dictationTarget){appendVoiceText(dictationTarget,clean);$('voice-status').textContent='Dictado agregado';$('voice-transcript').textContent=`Escribí: “${clean}”. Revisalo antes de guardar.`;}
-      else{const result=executeVoiceNavigation(clean);$('voice-status').textContent=result.ok?'Comando realizado · sigo escuchando':'No pude realizarlo · sigo escuchando';$('voice-transcript').textContent=`${result.message} ${voiceContinuousMode?'Podés decir otro comando.':''}`.trim();}
+      const result=executeVoiceNavigation(clean);$('voice-status').textContent=result.ok?'Comando realizado · sigo escuchando':'No pude realizarlo · sigo escuchando';$('voice-transcript').textContent=`${result.message} ${voiceContinuousMode?'Podés decir otro comando.':''}`.trim();
     }
   };
   voiceRecognition.onerror=event=>{
@@ -1727,34 +1711,15 @@ function beginVoiceRecognition(options={}){
   };
   voiceRecognition.onend=()=>{
     voiceListening=false;voiceRecognition=null;
-    document.querySelectorAll('.voice-dictate-button.listening').forEach(b=>b.classList.remove('listening'));
-    if(voiceContinuousMode&&!voiceFatalError){setVoiceButtonActive(true);scheduleVoiceRestart();}
-    else if(!dictationTarget){setVoiceButtonActive(false);}
+      if(voiceContinuousMode&&!voiceFatalError){setVoiceButtonActive(true);scheduleVoiceRestart();}
+    else{setVoiceButtonActive(false);}
   };
   try{voiceRecognition.start()}catch(error){console.error(error);voiceListening=false;if(continuous)scheduleVoiceRestart();else showVoicePanel('No se pudo iniciar','Cerrá cualquier otra escucha activa y probá nuevamente.');}
 }
-function startVoiceRecognition(options={}){
-  if(options.target){
-    if(voiceContinuousMode)stopVoiceRecognition({hidePanel:false,message:'Pausé los comandos para dictar en el campo.'});
-    beginVoiceRecognition(options);
-    return;
-  }
+function startVoiceRecognition(){
   if(voiceContinuousMode||voiceListening){stopVoiceRecognition({hidePanel:false,message:'Micrófono cerrado. Tocá el botón cuando quieras volver a activarlo.'});return;}
   voiceContinuousMode=true;
   beginVoiceRecognition({continuous:true});
-}
-function installVoiceDictationButtons(){
-  const fields=[
-    ['task-detail','Detalle'],['general-task-detail','Detalle'],['bed-notes','Observaciones'],['plant-notes','Observaciones'],
-    ['harvest-notes','Observaciones'],['stock-movement-notes','Observaciones'],['genetic-lineage','Linaje']
-  ];
-  for(const [id,label] of fields){
-    const target=$(id);if(!target||target.dataset.voiceDictationReady)continue;
-    target.dataset.voiceDictationReady='1';
-    const button=document.createElement('button');button.type='button';button.className='voice-dictate-button secondary compact-button';button.innerHTML='🎙️ Dictar';button.setAttribute('aria-label',`Dictar ${label}`);
-    button.addEventListener('click',()=>{button.classList.add('listening');startVoiceRecognition({target,label});});
-    target.insertAdjacentElement('afterend',button);
-  }
 }
 
 $('voice-button')?.setAttribute('aria-pressed','false');
@@ -1763,8 +1728,7 @@ $('voice-retry')?.addEventListener('click',()=>{if(voiceContinuousMode)stopVoice
 $('voice-close')?.addEventListener('click',closeVoicePanel);
 $('voice-cancel')?.addEventListener('click',closeVoicePanel);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
-installVoiceDictationButtons();
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.12.4').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.12.5').catch(console.error));
 }
