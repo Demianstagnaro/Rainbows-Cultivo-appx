@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.13.9';
+const APP_VERSION='3.14.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1773,42 +1773,73 @@ function voiceNextHarvestDate(r,baseDate){
 }
 function executeVoiceRoomQuery(rawText){
   const text=normalizeVoiceText(rawText);
-  const room=voiceRoomFromText(text,{allowContext:true});
-  if(!room)return null;
-  const r=rr(room);
-  if(!r)return null;
+  const explicitRoom=voiceRoomFromText(text,{allowContext:false});
+  const room=explicitRoom;
   const bedNumber=voiceBedNumberFromText(text);
+  const floraRules=rules.filter(r=>r.type==='flora');
 
-  if(bedNumber!==null&&(text.includes('genetica')||text.includes('que hay')||text.includes('plantas hay')||text.includes('tiene la cama'))){
-    if(r.type!=='flora')return {ok:true,message:`${room} no usa el croquis de camas de las salas de flora.`};
-    return {ok:true,...voiceGeneticSummaryForBed(room,bedNumber)};
+  const wantsBed=bedNumber!==null&&(text.includes('genetica')||text.includes('que hay')||text.includes('plantas hay')||text.includes('tiene la cama'));
+  const wantsPlants=text.includes('cuantas plantas')||text.includes('cantidad de plantas');
+  const wantsBeds=text.includes('cuantas camas')||text.includes('cantidad de camas');
+  const wantsHarvest=text.includes('cuando')&&(text.includes('cosecha')||text.includes('cosechar'));
+  const wantsFloraStart=text.includes('cuando')&&(text.includes('empieza flora')||text.includes('inicio flora')||text.includes('pasa a flora'));
+  const wantsTransplant=text.includes('cuando')&&(text.includes('trasplante')||text.includes('entra a la sala'));
+  const wantsStatus=text.includes('semana')||text.includes('ciclo')||text.includes('estado')||text.includes('en que esta')||text.includes('en que estan')||text.includes('como esta')||text.includes('como estan');
+  const looksLikeRoomQuery=wantsBed||wantsPlants||wantsBeds||wantsHarvest||wantsFloraStart||wantsTransplant||wantsStatus;
+  if(!looksLikeRoomQuery)return null;
+
+  const selectedRules=room?[rr(room)].filter(Boolean):floraRules;
+  if(room&&!selectedRules.length)return null;
+
+  if(wantsBed){
+    const targetRules=selectedRules.filter(r=>r.type==='flora');
+    if(room&&targetRules.length===0)return {ok:true,message:`${room} no usa el croquis de camas de las salas de flora.`};
+    const answers=targetRules.map(r=>voiceGeneticSummaryForBed(r.name,bedNumber).message);
+    return {ok:true,message:answers.join(' ')};
   }
 
-  if((text.includes('cuantas plantas')||text.includes('cantidad de plantas'))&&r.type==='flora'){
-    const bs=beds(room),all=bs.flatMap(plants),occupied=all.filter(p=>p.ocupada);
-    return {ok:true,message:`Actualmente ${room} tiene ${occupied.length} planta${occupied.length===1?'':'s'} ocupando ${bs.filter(b=>plants(b).some(p=>p.ocupada)).length} de ${bs.length} camas.`};
+  if(wantsPlants){
+    const targetRules=selectedRules.filter(r=>r.type==='flora');
+    if(room&&targetRules.length===0)return {ok:true,message:`${room} no usa el croquis de plantas de las salas de flora.`};
+    const answers=targetRules.map(r=>{
+      const bs=beds(r.name),all=bs.flatMap(plants),occupied=all.filter(p=>p.ocupada),used=bs.filter(b=>plants(b).some(p=>p.ocupada)).length;
+      return `${r.name}: ${occupied.length} planta${occupied.length===1?'':'s'} en ${used} de ${bs.length} camas`;
+    });
+    return {ok:true,message:`Actualmente, ${answers.join('; ')}.`};
   }
-  if((text.includes('cuantas camas')||text.includes('cantidad de camas'))&&r.type==='flora'){
-    const bs=beds(room),used=bs.filter(b=>plants(b).some(p=>p.ocupada)).length;
-    return {ok:true,message:`${room} tiene ${bs.length} camas en total y actualmente ${used} tienen plantas.`};
+
+  if(wantsBeds){
+    const targetRules=selectedRules.filter(r=>r.type==='flora');
+    if(room&&targetRules.length===0)return {ok:true,message:`${room} no usa camas de las salas de flora.`};
+    const answers=targetRules.map(r=>{
+      const bs=beds(r.name),used=bs.filter(b=>plants(b).some(p=>p.ocupada)).length;
+      return `${r.name}: ${bs.length} camas, ${used} con plantas`;
+    });
+    return {ok:true,message:answers.join('; ')+'.'};
   }
 
   const d=voiceDateFromText(text);
-  if(text.includes('cuando')&&(text.includes('cosecha')||text.includes('cosechar'))&&r.type==='flora'){
-    const h=voiceNextHarvestDate(r,today());
-    return {ok:true,message:`La próxima cosecha programada de ${room} es el ${nice(h)}, correspondiente al ciclo ${cycleNumber(r,h)}.`};
+  if(wantsHarvest){
+    const targetRules=selectedRules.filter(r=>r.type==='flora');
+    if(room&&targetRules.length===0)return {ok:true,message:`${room} no tiene ciclos de cosecha de floración.`};
+    const answers=targetRules.map(r=>{const h=voiceNextHarvestDate(r,today());return `${r.name}: ${nice(h)} (ciclo ${cycleNumber(r,h)})`;});
+    return {ok:true,message:`Próxima cosecha programada: ${answers.join('; ')}.`};
   }
-  if(text.includes('cuando')&&(text.includes('empieza flora')||text.includes('inicio flora')||text.includes('pasa a flora'))&&r.type==='flora'){
-    let fl=cycle(r,today()).fl;if(diff(today(),fl)>0)fl=add(fl,77);
-    return {ok:true,message:`El próximo inicio de floración de ${room} es el ${nice(fl)}, ciclo ${cycleNumber(r,fl)}.`};
+  if(wantsFloraStart){
+    const targetRules=selectedRules.filter(r=>r.type==='flora');
+    if(room&&targetRules.length===0)return {ok:true,message:`${room} no tiene inicio de floración por ciclo.`};
+    const answers=targetRules.map(r=>{let fl=cycle(r,today()).fl;if(diff(today(),fl)>0)fl=add(fl,77);return `${r.name}: ${nice(fl)} (ciclo ${cycleNumber(r,fl)})`;});
+    return {ok:true,message:`Próximo inicio de floración: ${answers.join('; ')}.`};
   }
-  if(text.includes('cuando')&&(text.includes('trasplante')||text.includes('entra a la sala'))&&r.type==='flora'){
-    let tr=cycle(r,today()).tr;if(diff(today(),tr)>0)tr=add(tr,77);
-    return {ok:true,message:`El próximo trasplante a ${room} es el ${nice(tr)}, ciclo ${cycleNumber(r,tr)}.`};
+  if(wantsTransplant){
+    const targetRules=selectedRules.filter(r=>r.type==='flora');
+    if(room&&targetRules.length===0)return {ok:true,message:`${room} no usa el trasplante cíclico de las salas de flora.`};
+    const answers=targetRules.map(r=>{let tr=cycle(r,today()).tr;if(diff(today(),tr)>0)tr=add(tr,77);return `${r.name}: ${nice(tr)} (ciclo ${cycleNumber(r,tr)})`;});
+    return {ok:true,message:`Próximo trasplante: ${answers.join('; ')}.`};
   }
-  if(text.includes('semana')||text.includes('ciclo')||text.includes('estado')||text.includes('en que esta')||text.includes('como esta')){
-    if(r.type==='flora')return {ok:true,message:`El ${nice(d)}, ${room} está en ${roomStatus(r,d)}.`};
-    return {ok:true,message:`El ${nice(d)}, ${room} está en estado: ${roomStatus(r,d)}.`};
+  if(wantsStatus){
+    const answers=selectedRules.map(r=>`${r.name}: ${roomStatus(r,d)}`);
+    return {ok:true,message:`El ${nice(d)}, ${answers.join('; ')}.`};
   }
   return null;
 }
@@ -1980,5 +2011,5 @@ $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.13.9').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.0').catch(console.error));
 }

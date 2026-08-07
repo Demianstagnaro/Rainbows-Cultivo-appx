@@ -576,3 +576,13 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Administradores: Ayuda queda en el encabezado junto a Config.
 - Otros roles: Ayuda queda en el encabezado junto a Salir.
 - Sin cambios en comandos de voz, consultas ni datos.
+
+
+## V3.14.0 — Consultas de cultivo completamente globales
+- Las consultas de voz ya no dependen de estar dentro de Salas ni de una Flora concreta.
+- Si la pregunta nombra una sala, responde sobre esa sala desde cualquier ventana.
+- Si una consulta de sala no nombra ninguna Flora, responde en conjunto por Flora 1, Flora 2 y Flora 3 cuando corresponde.
+- Ejemplos globales: próxima cosecha, inicio de flora, trasplante, estado/semana/ciclo, cantidad de plantas/camas y genética por cama.
+- Las tareas ya continúan funcionando globalmente por fecha, sala y responsable.
+- La sección activa queda reservada como contexto para futuras MODIFICACIONES por voz, que requerirán confirmación.
+- Sin cambios en Supabase ni en datos.
