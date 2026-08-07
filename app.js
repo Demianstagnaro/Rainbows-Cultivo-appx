@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.13.1';
+const APP_VERSION='3.13.2';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1636,9 +1636,41 @@ function voiceCurrentDate(){
   return today();
 }
 function voiceDateFromText(text){
-  if(text.includes('manana'))return add(today(),1);
-  if(text.includes('ayer'))return add(today(),-1);
-  if(text.includes('hoy'))return today();
+  const clean=normalizeVoiceText(text);
+  const base=today();
+  if(clean.includes('pasado manana'))return add(base,2);
+  if(clean.includes('anteayer'))return add(base,-2);
+  if(clean.includes('manana'))return add(base,1);
+  if(clean.includes('ayer'))return add(base,-1);
+  if(clean.includes('hoy'))return base;
+
+  const months={enero:0,febrero:1,marzo:2,abril:3,mayo:4,junio:5,julio:6,agosto:7,septiembre:8,setiembre:8,octubre:9,noviembre:10,diciembre:11};
+  let m=clean.match(/(?:el\s+)?(\d{1,2})\s+de\s+(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|setiembre|octubre|noviembre|diciembre)(?:\s+de\s+(\d{4}))?/);
+  if(m){
+    const day=Number(m[1]),month=months[m[2]],year=m[3]?Number(m[3]):base.getFullYear();
+    const d=new Date(year,month,day);d.setHours(0,0,0,0);
+    if(d.getDate()===day&&d.getMonth()===month)return d;
+  }
+  m=clean.match(/(?:el\s+)?(\d{1,2})\s+(?:del\s+)?(\d{1,2})(?:\s+(?:del\s+)?(\d{2,4}))?/);
+  if(m){
+    const day=Number(m[1]),month=Number(m[2])-1;let year=m[3]?Number(m[3]):base.getFullYear();
+    if(year<100)year+=2000;
+    const d=new Date(year,month,day);d.setHours(0,0,0,0);
+    if(d.getDate()===day&&d.getMonth()===month)return d;
+  }
+
+  const weekdays={domingo:0,lunes:1,martes:2,miercoles:3,jueves:4,viernes:5,sabado:6};
+  const weekdayName=Object.keys(weekdays).find(name=>new RegExp(`(^|\s)${name}(\s|$)`).test(clean));
+  if(weekdayName){
+    const target=weekdays[weekdayName];
+    const explicitPast=/(pasado|anterior|ultimo|ultima|habia|hubo|hicieron|hizo|realizadas?)/.test(clean);
+    const explicitNext=/(proximo|proxima|que viene|siguiente)/.test(clean);
+    let delta=(target-base.getDay()+7)%7;
+    if(explicitPast){delta=-((base.getDay()-target+7)%7||7)}
+    else if(explicitNext){delta=delta||7}
+    else if(delta===0){delta=0}
+    return add(base,delta);
+  }
   return voiceCurrentDate();
 }
 function voiceRoomFromText(text){
@@ -1829,5 +1861,5 @@ $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.13.1').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.13.2').catch(console.error));
 }

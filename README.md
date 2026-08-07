@@ -514,3 +514,12 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - El micrófono continuo permanece activo después de responder.
 - Se agregó ayuda contextual con ejemplos desde el panel de voz.
 - La edición/dictado de detalles no se reintrodujo en esta versión; se integrará después con el micrófono continuo, sin botón separado.
+
+
+## V3.13.2 — Consultas de tareas por fecha hablada
+- Las consultas de tareas resuelven la fecha mencionada en la orden, sin depender de la fecha abierta en la interfaz.
+- Reconoce `hoy`, `ayer`, `anteayer`, `mañana` y `pasado mañana`.
+- Reconoce días de la semana; expresiones como `lunes pasado` buscan hacia atrás y `próximo lunes` hacia adelante.
+- También reconoce fechas explícitas como `12 de agosto`, `12 de agosto de 2026` y `12/8/2026`.
+- Si la frase no menciona una fecha, conserva el comportamiento anterior y consulta el día actualmente visible.
+- La respuesta siempre muestra la fecha exacta interpretada para que el usuario pueda verificarla.
