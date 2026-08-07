@@ -639,3 +639,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Al terminar de hablar, el modo de escucha continua se reanuda automáticamente.
 - Si la lectura está desactivada, el comportamiento permanece igual que en V3.14.5.
 - No modifica datos ni agrega escrituras por voz.
+
+
+## V3.14.7 — Lectura inteligente de respuestas de voz
+
+- Las respuestas breves y las respuestas múltiples breves se leen completas.
+- Las respuestas extensas se resumen oralmente y mantienen el detalle completo en pantalla.
+- Las respuestas ambiguas de genéticas leen un aviso corto y dejan las opciones completas visibles para elegir.
+- El micrófono continuo sigue pausándose durante la lectura y se retoma automáticamente al finalizar.

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.14.6';
+const APP_VERSION='3.14.7';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1639,12 +1639,42 @@ function showVoicePanel(status='Micrófono apagado',message=''){
   $('voice-status').textContent=status;
   if(message)$('voice-transcript').textContent=message;
 }
+function voiceSpeechText(message=''){
+  const clean=String(message||'').trim();
+  if(!clean)return '';
+  const normalized=normalizeVoiceText(clean);
+  // Si la respuesta pide desambiguar, no leemos una lista larga de opciones como
+  // si fuera una respuesta definitiva. Las opciones completas quedan en pantalla.
+  if(normalized.includes('no estoy seguro de que genetica quisiste decir')){
+    return 'No estoy seguro de qué genética quisiste decir. Mirá las opciones en pantalla y decime el nombre o la nomenclatura.';
+  }
+  // Las respuestas normales (incluidas varias salas) se leen completas mientras
+  // sigan siendo razonablemente breves.
+  if(clean.length<=320)return clean;
+
+  // Para respuestas extensas conservamos todo el detalle visualmente, pero leemos
+  // solo una síntesis para que el modo continuo no resulte pesado.
+  const sentences=clean.split(/(?<=[.!?])\s+/).filter(Boolean);
+  if(sentences.length>1 && sentences[0].length<=230){
+    return `${sentences[0]} Te dejo el detalle completo en pantalla.`;
+  }
+  const colon=clean.indexOf(':');
+  if(colon>0 && colon<=180){
+    return `${clean.slice(0,colon)}. Te dejo el detalle completo en pantalla.`;
+  }
+  const semicolon=clean.indexOf(';');
+  if(semicolon>0 && semicolon<=220){
+    return `${clean.slice(0,semicolon)}. Te dejo el detalle completo en pantalla.`;
+  }
+  const cut=clean.slice(0,220).replace(/\s+\S*$/,'').replace(/[,:;.-]+$/,'').trim();
+  return `${cut}. Te dejo el detalle completo en pantalla.`;
+}
 function showVoiceResponse(message=''){
   const box=$('voice-response'), text=$('voice-response-text');
   if(!box||!text)return;
   text.textContent=message;
   box.hidden=!message;
-  if(message&&voiceSpeechEnabled)speakVoiceResponse(message);
+  if(message&&voiceSpeechEnabled)speakVoiceResponse(voiceSpeechText(message));
 }
 function syncVoiceSpeechToggle(){
   const input=$('voice-speech-toggle');
@@ -2416,5 +2446,5 @@ $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.6').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.7').catch(console.error));
 }
