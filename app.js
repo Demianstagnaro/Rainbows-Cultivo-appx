@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.14.1';
+const APP_VERSION='3.14.2';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2010,7 +2010,18 @@ function executeGlobalVoiceQuery(rawText){
   }
   return null;
 }
+function isExplicitVoiceNavigation(rawText){
+  const text=normalizeVoiceText(rawText);
+  // Los verbos explícitos de navegación tienen prioridad sobre las consultas.
+  // Evitamos usar "mostrar" acá porque puede significar consulta (ej. "mostrar stock de Flora 1").
+  const navVerb=/(^|\s)(ir a|abrir|abrime|entra a|entrar a|llevame a)(\s|$)/.test(text);
+  if(!navVerb)return false;
+  const destinations=['hoy','inicio','calendario','salas','sala','geneticas','genetica','cosechas','cosecha','stock palestina','stock','ayuda','instructivo','configuracion','config'];
+  if(destinations.some(label=>text.includes(label)))return true;
+  return /flora\s*(1|2|3)|veges|madres|esquejes/.test(text);
+}
 function executeVoiceCommand(rawText){
+  if(isExplicitVoiceNavigation(rawText))return executeVoiceNavigation(rawText);
   const globalQuery=executeGlobalVoiceQuery(rawText);
   if(globalQuery)return globalQuery;
   return executeVoiceNavigation(rawText);
@@ -2125,5 +2136,5 @@ $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.1').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.2').catch(console.error));
 }

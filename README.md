@@ -596,3 +596,9 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Admite filtros de fechas habladas y rangos “esta semana” / “semana pasada”.
 - Las respuestas reutilizan la misma lógica de saldo (`stockItemCurrent`) que la pantalla Stock Palestina.
 - No se habilitaron modificaciones de stock por voz.
+
+
+## V3.14.2 — Prioridad de navegación por voz
+- Los comandos explícitos `ir a`, `abrir`, `abrime`, `entrar a` y `llevame a` se resuelven antes que las consultas globales.
+- Corrige la colisión donde `ir a stock` devolvía el stock disponible en vez de abrir Stock Palestina.
+- Las consultas como `cuánto stock hay` y `qué salidas hubo` siguen funcionando igual.
