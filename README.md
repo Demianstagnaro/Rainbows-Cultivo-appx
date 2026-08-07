@@ -538,3 +538,13 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Si la ayuda queda abierta al navegar entre Hoy, Calendario, Salas, Genéticas, Cosechas, Stock o Configuración, su contenido se actualiza automáticamente.
 - También se actualiza al entrar o salir de una sala concreta, para mostrar ejemplos específicos de esa sala.
 - No cambia consultas, reconocimiento de voz ni datos de Supabase.
+
+
+## V3.13.5 — Consultas de voz globales
+
+- Las consultas de Tareas/Hoy y Salas funcionan desde cualquier ventana de la app.
+- La ventana activa ya no limita qué información se puede consultar.
+- Si una consulta de sala omite el nombre estando dentro de una sala, la sala abierta se usa solo como contexto opcional.
+- La ayuda de voz aclara qué consultas son globales y separa navegación.
+- Se deja preparada la arquitectura para que futuras modificaciones sean contextuales a su sección y requieran confirmación.
+- Sin cambios en Supabase ni en la lógica de datos.

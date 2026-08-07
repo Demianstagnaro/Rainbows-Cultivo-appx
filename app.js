@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.13.4';
+const APP_VERSION='3.13.5';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1673,9 +1673,14 @@ function voiceDateFromText(text){
   }
   return voiceCurrentDate();
 }
-function voiceRoomFromText(text){
+function voiceRoomFromText(text,{allowContext=false}={}){
   const match=text.match(/flora\s*(1|2|3)|veges|madres|esquejes|sala de trabajo/);
-  if(!match)return null;
+  if(!match){
+    // Las consultas son globales. La sala abierta solo se usa como contexto opcional
+    // cuando el usuario omite el nombre de la sala.
+    if(allowContext&&state.view==='rooms'&&state.room)return state.room;
+    return null;
+  }
   const token=match[0];
   if(token.startsWith('flora'))return `Flora ${match[1]}`;
   if(token==='sala de trabajo')return 'Sala de trabajo';
@@ -1728,7 +1733,7 @@ function voiceNextHarvestDate(r,baseDate){
 }
 function executeVoiceRoomQuery(rawText){
   const text=normalizeVoiceText(rawText);
-  const room=voiceRoomFromText(text);
+  const room=voiceRoomFromText(text,{allowContext:true});
   if(!room)return null;
   const r=rr(room);
   if(!r)return null;
@@ -1800,19 +1805,25 @@ function executeVoiceTaskQuery(rawText){
   return {ok:true,message:`El ${nice(d)}${room?` en ${room}`:''} hay ${ts.length} tarea${ts.length===1?'':'s'}: ${completed} realizada${completed===1?'':'s'} y ${pending} pendiente${pending===1?'':'s'}. ${voiceList(ts.map(voiceTaskLabel))}.`};
 }
 function voiceHelpExamples(){
-  const global=['Abrir Calendario','Ir a Flora 2','Ir a mañana','Volver a hoy','¿Qué tareas hay hoy?','¿Qué tareas están pendientes?'];
-  if(state.view==='today')return [...global,'¿Qué tareas hay hoy en Flora 1?','¿Qué hizo Cone hoy?'];
-  if(state.view==='calendar')return [...global,'¿Qué tareas hay este día?','¿Qué tareas están pendientes en Flora 2?'];
-  if(state.view==='rooms')return [...global,`¿En qué semana está ${state.room||'Flora 1'}?`,`¿Cuándo se cosecha ${state.room||'Flora 1'}?`,`¿Qué genética hay en la cama 4 de ${state.room||'Flora 1'}?`,`¿Cuántas plantas hay en ${state.room||'Flora 1'}?`,`¿Qué tareas están pendientes ${state.room?`en ${state.room}`:'en Flora 1'}?`];
-  if(state.view==='stock')return [...global,'Próximamente: consultas de stock por voz'];
-  if(state.view==='harvests')return [...global,'Próximamente: consultas de cosechas por voz'];
-  if(state.view==='genetics')return [...global,'Próximamente: consultas de genéticas por voz'];
-  return global;
+  // Las consultas de este bloque funcionan desde cualquier ventana.
+  return {
+    queries:[
+      '¿Qué tareas hay hoy?',
+      '¿Qué tareas están pendientes mañana en Flora 2?',
+      '¿Qué hizo Cone ayer?',
+      '¿En qué semana está Flora 1?',
+      '¿Cuándo se cosecha Flora 2?',
+      '¿Qué genética hay en la cama 4 de Flora 3?',
+      '¿Cuántas plantas hay en Flora 1?'
+    ],
+    navigation:['Abrir Calendario','Ir a Flora 2','Ir a mañana','Volver a hoy']
+  };
 }
 function renderVoiceHelp(){
   const help=$('voice-help');
   if(!help||help.hidden)return;
-  help.innerHTML=`<strong>Ejemplos que podés decir</strong><ul>${voiceHelpExamples().map(x=>`<li>${x}</li>`).join('')}</ul>`;
+  const examples=voiceHelpExamples();
+  help.innerHTML=`<strong>Consultas · desde cualquier sección</strong><ul>${examples.queries.map(x=>`<li>${x}</li>`).join('')}</ul><strong>Navegación</strong><ul>${examples.navigation.map(x=>`<li>${x}</li>`).join('')}</ul>`;
 }
 function toggleVoiceHelp(){
   const help=$('voice-help');
@@ -1821,11 +1832,20 @@ function toggleVoiceHelp(){
   help.hidden=!opening;
   if(opening)renderVoiceHelp();
 }
+function executeGlobalVoiceQuery(rawText){
+  // Toda consulta es global: no depende de la ventana activa.
+  // Los futuros comandos que MODIFIQUEN datos se resolverán aparte y sí deberán
+  // validar la sección activa antes de ofrecer una confirmación.
+  const handlers=[executeVoiceRoomQuery,executeVoiceTaskQuery];
+  for(const handler of handlers){
+    const result=handler(rawText);
+    if(result)return result;
+  }
+  return null;
+}
 function executeVoiceCommand(rawText){
-  const roomQuery=executeVoiceRoomQuery(rawText);
-  if(roomQuery)return roomQuery;
-  const query=executeVoiceTaskQuery(rawText);
-  if(query)return query;
+  const globalQuery=executeGlobalVoiceQuery(rawText);
+  if(globalQuery)return globalQuery;
   return executeVoiceNavigation(rawText);
 }
 function executeVoiceNavigation(rawText){
@@ -1938,5 +1958,5 @@ $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.13.4').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.13.5').catch(console.error));
 }
