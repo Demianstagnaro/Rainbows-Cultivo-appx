@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.13.2';
+const APP_VERSION='3.13.3';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1697,6 +1697,76 @@ function voiceList(items,limit=8){
   const text=shown.join(', ');
   return items.length>limit?`${text}, y ${items.length-limit} más`:text;
 }
+function voiceBedNumberFromText(text){
+  const m=normalizeVoiceText(text).match(/cama\s*(?:numero\s*)?(\d{1,2})/);
+  return m?Number(m[1]):null;
+}
+function voiceGeneticSummaryForBed(roomName,bedNumber){
+  const room=sr(roomName);
+  if(!room)return {message:`No encontré ${roomName} en la base de salas.`};
+  const bed=state.camas.find(c=>String(c.sala_id)===String(room.id)&&Number(c.numero)===Number(bedNumber));
+  if(!bed)return {message:`No encontré la cama ${bedNumber} de ${roomName}.`};
+  const occupied=plants(bed).filter(p=>p.ocupada);
+  if(!occupied.length)return {message:`La cama ${bedNumber} de ${roomName} está vacía.`};
+  const counts=new Map();
+  let noGenetic=0;
+  for(const plant of occupied){
+    const genetic=state.geneticas.find(g=>String(g.id)===String(plant.genetica_id));
+    if(!genetic){noGenetic++;continue;}
+    const label=genetic.nomenclatura?`${genetic.nomenclatura} (${genetic.nombre})`:genetic.nombre;
+    counts.set(label,(counts.get(label)||0)+1);
+  }
+  const parts=[...counts.entries()].map(([name,count])=>`${name}: ${count} planta${count===1?'':'s'}`);
+  if(noGenetic)parts.push(`sin genética asignada: ${noGenetic}`);
+  return {message:`En la cama ${bedNumber} de ${roomName} hay ${occupied.length} planta${occupied.length===1?'':'s'}: ${parts.join(', ')}.`};
+}
+function voiceNextHarvestDate(r,baseDate){
+  let c=cycle(r,baseDate);
+  let harvestDate=add(c.fl,56);
+  if(diff(baseDate,harvestDate)>0)harvestDate=add(harvestDate,77);
+  return harvestDate;
+}
+function executeVoiceRoomQuery(rawText){
+  const text=normalizeVoiceText(rawText);
+  const room=voiceRoomFromText(text);
+  if(!room)return null;
+  const r=rr(room);
+  if(!r)return null;
+  const bedNumber=voiceBedNumberFromText(text);
+
+  if(bedNumber!==null&&(text.includes('genetica')||text.includes('que hay')||text.includes('plantas hay')||text.includes('tiene la cama'))){
+    if(r.type!=='flora')return {ok:true,message:`${room} no usa el croquis de camas de las salas de flora.`};
+    return {ok:true,...voiceGeneticSummaryForBed(room,bedNumber)};
+  }
+
+  if((text.includes('cuantas plantas')||text.includes('cantidad de plantas'))&&r.type==='flora'){
+    const bs=beds(room),all=bs.flatMap(plants),occupied=all.filter(p=>p.ocupada);
+    return {ok:true,message:`Actualmente ${room} tiene ${occupied.length} planta${occupied.length===1?'':'s'} ocupando ${bs.filter(b=>plants(b).some(p=>p.ocupada)).length} de ${bs.length} camas.`};
+  }
+  if((text.includes('cuantas camas')||text.includes('cantidad de camas'))&&r.type==='flora'){
+    const bs=beds(room),used=bs.filter(b=>plants(b).some(p=>p.ocupada)).length;
+    return {ok:true,message:`${room} tiene ${bs.length} camas en total y actualmente ${used} tienen plantas.`};
+  }
+
+  const d=voiceDateFromText(text);
+  if(text.includes('cuando')&&(text.includes('cosecha')||text.includes('cosechar'))&&r.type==='flora'){
+    const h=voiceNextHarvestDate(r,today());
+    return {ok:true,message:`La próxima cosecha programada de ${room} es el ${nice(h)}, correspondiente al ciclo ${cycleNumber(r,h)}.`};
+  }
+  if(text.includes('cuando')&&(text.includes('empieza flora')||text.includes('inicio flora')||text.includes('pasa a flora'))&&r.type==='flora'){
+    let fl=cycle(r,today()).fl;if(diff(today(),fl)>0)fl=add(fl,77);
+    return {ok:true,message:`El próximo inicio de floración de ${room} es el ${nice(fl)}, ciclo ${cycleNumber(r,fl)}.`};
+  }
+  if(text.includes('cuando')&&(text.includes('trasplante')||text.includes('entra a la sala'))&&r.type==='flora'){
+    let tr=cycle(r,today()).tr;if(diff(today(),tr)>0)tr=add(tr,77);
+    return {ok:true,message:`El próximo trasplante a ${room} es el ${nice(tr)}, ciclo ${cycleNumber(r,tr)}.`};
+  }
+  if(text.includes('semana')||text.includes('ciclo')||text.includes('estado')||text.includes('en que esta')||text.includes('como esta')){
+    if(r.type==='flora')return {ok:true,message:`El ${nice(d)}, ${room} está en ${roomStatus(r,d)}.`};
+    return {ok:true,message:`El ${nice(d)}, ${room} está en estado: ${roomStatus(r,d)}.`};
+  }
+  return null;
+}
 function executeVoiceTaskQuery(rawText){
   const text=normalizeVoiceText(rawText);
   const queryWords=['que tarea','que tareas','tareas hay','tareas tengo','tareas estan','pendiente','pendientes','que hizo','que hizo hoy','que hizo ayer','que tiene','que hay'];
@@ -1733,7 +1803,7 @@ function voiceHelpExamples(){
   const global=['Abrir Calendario','Ir a Flora 2','Ir a mañana','Volver a hoy','¿Qué tareas hay hoy?','¿Qué tareas están pendientes?'];
   if(state.view==='today')return [...global,'¿Qué tareas hay hoy en Flora 1?','¿Qué hizo Cone hoy?'];
   if(state.view==='calendar')return [...global,'¿Qué tareas hay este día?','¿Qué tareas están pendientes en Flora 2?'];
-  if(state.view==='rooms')return [...global,`¿Qué tareas hay ${state.room?`en ${state.room}`:'en Flora 1'}?`,`¿Qué tareas están pendientes ${state.room?`en ${state.room}`:'en Flora 1'}?`];
+  if(state.view==='rooms')return [...global,`¿En qué semana está ${state.room||'Flora 1'}?`,`¿Cuándo se cosecha ${state.room||'Flora 1'}?`,`¿Qué genética hay en la cama 4 de ${state.room||'Flora 1'}?`,`¿Cuántas plantas hay en ${state.room||'Flora 1'}?`,`¿Qué tareas están pendientes ${state.room?`en ${state.room}`:'en Flora 1'}?`];
   if(state.view==='stock')return [...global,'Próximamente: consultas de stock por voz'];
   if(state.view==='harvests')return [...global,'Próximamente: consultas de cosechas por voz'];
   if(state.view==='genetics')return [...global,'Próximamente: consultas de genéticas por voz'];
@@ -1747,6 +1817,8 @@ function toggleVoiceHelp(){
   if(opening)help.innerHTML=`<strong>Ejemplos que podés decir</strong><ul>${voiceHelpExamples().map(x=>`<li>${x}</li>`).join('')}</ul>`;
 }
 function executeVoiceCommand(rawText){
+  const roomQuery=executeVoiceRoomQuery(rawText);
+  if(roomQuery)return roomQuery;
   const query=executeVoiceTaskQuery(rawText);
   if(query)return query;
   return executeVoiceNavigation(rawText);

@@ -523,3 +523,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - También reconoce fechas explícitas como `12 de agosto`, `12 de agosto de 2026` y `12/8/2026`.
 - Si la frase no menciona una fecha, conserva el comportamiento anterior y consulta el día actualmente visible.
 - La respuesta siempre muestra la fecha exacta interpretada para que el usuario pueda verificarla.
+
+
+## V3.13.3 — Consultas de Salas por voz
+- Agrega consultas de estado, semana y ciclo por sala y por fecha hablada.
+- Permite consultar próxima cosecha, próximo inicio de flora y próximo trasplante de Flora 1, 2 y 3.
+- Agrega consultas del croquis actual por cama/genética y cantidad actual de plantas/camas.
+- Las consultas de croquis describen la asignación actual; no se presenta como histórica porque no existe historial fechado de planta/cama.
+- No modifica datos ni escribe en Supabase.
