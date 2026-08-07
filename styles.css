@@ -751,3 +751,7 @@ body{
   .calendar{grid-template-columns:repeat(7,minmax(92px,1fr));overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;padding-bottom:6px}
   .calendar .day-cell{min-width:0}
 }
+
+/* V3.12.3 — dictado por voz en campos de texto */
+.voice-dictate-button{margin-top:8px;align-self:flex-start}.voice-dictate-button.listening{animation:voice-pulse 1.15s infinite}
+@media(max-width:600px){.voice-dictate-button{min-height:40px;padding:8px 12px}}

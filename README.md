@@ -475,3 +475,14 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Restaurado el diseño legible del calendario móvil.
 - El calendario usa desplazamiento horizontal interno en pantallas angostas, sin ensanchar toda la página.
 - El botón de voz permanece fijo y visible.
+
+
+## V3.12.3 — Voz, etapa 2: dictado en campos de texto
+
+- Mantiene intacta la navegación por voz validada en V3.12.2.
+- Agrega botón `🎙️ Dictar` en Detalle, Observaciones y Linaje.
+- El reconocimiento usa `es-AR` y escribe el texto reconocido dentro del campo.
+- Si el campo ya tenía texto, el dictado se agrega al final sin borrar lo anterior.
+- El usuario debe revisar y usar el botón Guardar habitual: el dictado por sí solo no guarda ni escribe en Supabase.
+- No modifica tareas, cosechas, stock, genéticas ni croquis automáticamente.
+- Actualiza APP_VERSION, referencias de `app.js`/`styles.css` y caché del service worker.

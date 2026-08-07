@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.12.2';
+const APP_VERSION='3.12.3';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1576,7 +1576,7 @@ try{
 }
 
 
-// V3.12.2 — Voz etapa 1: transcripción y navegación. No modifica datos ni escribe en Supabase.
+// V3.12.3 — Voz etapa 2: navegación + dictado en campos de texto. No guarda automáticamente.
 const VoiceRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
 let voiceRecognition=null;
 let voiceListening=false;
@@ -1647,30 +1647,59 @@ function executeVoiceNavigation(rawText){
   }
   return {ok:false,message:`Entendí: “${rawText}”, pero todavía no reconozco ese comando. Probá “Abrir Calendario”, “Ir a Flora 2”, “Ir a mañana” o “Volver a hoy”.`};
 }
-function startVoiceRecognition(){
+function appendVoiceText(target,text){
+  if(!target||!text)return;
+  const current=target.value||'';
+  const spacer=current&& !/\s$/.test(current)?' ':'';
+  target.value=`${current}${spacer}${text}`;
+  target.dispatchEvent(new Event('input',{bubbles:true}));
+  target.focus();
+  try{target.setSelectionRange(target.value.length,target.value.length)}catch(_){}
+}
+function startVoiceRecognition(options={}){
   if(!VoiceRecognition){showVoicePanel('Voz no disponible','Este navegador no ofrece reconocimiento de voz. La app sigue funcionando normalmente de forma manual.');return;}
   if(voiceListening)return;
   if(!state.session){showVoicePanel('Iniciá sesión','Los comandos de voz están disponibles después de ingresar.');return;}
+  const dictationTarget=options.target||null;
+  const dictationLabel=options.label||'campo de texto';
   voiceRecognition=new VoiceRecognition();
   voiceRecognition.lang='es-AR';voiceRecognition.interimResults=true;voiceRecognition.continuous=false;voiceRecognition.maxAlternatives=1;
-  voiceRecognition.onstart=()=>{voiceListening=true;$('voice-button')?.classList.add('listening');showVoicePanel('Escuchando…','Decí un comando.');};
+  voiceRecognition.onstart=()=>{voiceListening=true;$('voice-button')?.classList.add('listening');showVoicePanel(dictationTarget?`Dictando en ${dictationLabel}`:'Escuchando…',dictationTarget?'Hablá normalmente. El texto quedará escrito para que lo revises.':'Decí un comando.');};
   voiceRecognition.onresult=event=>{
     let transcript='';let finalText='';
     for(let i=event.resultIndex;i<event.results.length;i++){transcript+=event.results[i][0].transcript;if(event.results[i].isFinal)finalText+=event.results[i][0].transcript;}
     $('voice-transcript').textContent=transcript||'Escuchando…';
-    if(finalText){const result=executeVoiceNavigation(finalText.trim());$('voice-status').textContent=result.ok?'Comando realizado':'No pude realizarlo';$('voice-transcript').textContent=result.message;}
+    if(finalText){
+      const clean=finalText.trim();
+      if(dictationTarget){appendVoiceText(dictationTarget,clean);$('voice-status').textContent='Dictado agregado';$('voice-transcript').textContent=`Escribí: “${clean}”. Revisalo antes de guardar.`;}
+      else{const result=executeVoiceNavigation(clean);$('voice-status').textContent=result.ok?'Comando realizado':'No pude realizarlo';$('voice-transcript').textContent=result.message;}
+    }
   };
   voiceRecognition.onerror=event=>{const messages={'not-allowed':'No se concedió permiso para usar el micrófono.','service-not-allowed':'El navegador bloqueó el servicio de reconocimiento de voz.','no-speech':'No escuché ninguna instrucción.','audio-capture':'No se encontró un micrófono disponible.','network':'El reconocimiento de voz no pudo conectarse.'};showVoicePanel('No se pudo escuchar',messages[event.error]||`Error de reconocimiento: ${event.error}.`);};
-  voiceRecognition.onend=()=>{voiceListening=false;$('voice-button')?.classList.remove('listening');};
+  voiceRecognition.onend=()=>{voiceListening=false;$('voice-button')?.classList.remove('listening');document.querySelectorAll('.voice-dictate-button.listening').forEach(b=>b.classList.remove('listening'));};
   try{voiceRecognition.start()}catch(error){console.error(error);showVoicePanel('No se pudo iniciar','Cerrá cualquier otra escucha activa y probá nuevamente.');}
 }
+function installVoiceDictationButtons(){
+  const fields=[
+    ['task-detail','Detalle'],['general-task-detail','Detalle'],['bed-notes','Observaciones'],['plant-notes','Observaciones'],
+    ['harvest-notes','Observaciones'],['stock-movement-notes','Observaciones'],['genetic-lineage','Linaje']
+  ];
+  for(const [id,label] of fields){
+    const target=$(id);if(!target||target.dataset.voiceDictationReady)continue;
+    target.dataset.voiceDictationReady='1';
+    const button=document.createElement('button');button.type='button';button.className='voice-dictate-button secondary compact-button';button.innerHTML='🎙️ Dictar';button.setAttribute('aria-label',`Dictar ${label}`);
+    button.addEventListener('click',()=>{button.classList.add('listening');startVoiceRecognition({target,label});});
+    target.insertAdjacentElement('afterend',button);
+  }
+}
 
-$('voice-button')?.addEventListener('click',startVoiceRecognition);
-$('voice-retry')?.addEventListener('click',startVoiceRecognition);
+$('voice-button')?.addEventListener('click',()=>startVoiceRecognition());
+$('voice-retry')?.addEventListener('click',()=>startVoiceRecognition());
 $('voice-close')?.addEventListener('click',closeVoicePanel);
 $('voice-cancel')?.addEventListener('click',closeVoicePanel);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
+installVoiceDictationButtons();
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.12.2').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.12.3').catch(console.error));
 }
