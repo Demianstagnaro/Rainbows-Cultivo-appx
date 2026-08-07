@@ -548,3 +548,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - La ayuda de voz aclara qué consultas son globales y separa navegación.
 - Se deja preparada la arquitectura para que futuras modificaciones sean contextuales a su sección y requieran confirmación.
 - Sin cambios en Supabase ni en la lógica de datos.
+
+
+## V3.13.6 — Normalización de números en voz
+
+- Reconoce como equivalentes `Flora 3`, `Flora tres` y `Flora III` (también Flora 1/I/uno y Flora 2/II/dos).
+- Normaliza números hablados del 1 al 31 para consultas de camas y fechas simples.
+- No cambia la lógica de consultas ni escribe en Supabase.

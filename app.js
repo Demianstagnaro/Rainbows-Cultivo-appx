@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.13.5';
+const APP_VERSION='3.13.6';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1585,7 +1585,18 @@ let voiceRestartTimer=null;
 let voiceFatalError=false;
 
 function normalizeVoiceText(value=''){
-  return value.toLocaleLowerCase('es-AR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+  let clean=value.toLocaleLowerCase('es-AR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+  // El reconocimiento puede devolver números hablados o romanos. Normalizamos las variantes
+  // más habituales antes de interpretar comandos/consultas para que, por ejemplo,
+  // “Flora tres”, “Flora III” y “Flora 3” sean equivalentes.
+  const words={
+    uno:'1',una:'1',dos:'2',tres:'3',cuatro:'4',cinco:'5',seis:'6',siete:'7',ocho:'8',nueve:'9',diez:'10',
+    once:'11',doce:'12',trece:'13',catorce:'14',quince:'15',dieciseis:'16',diecisiete:'17',dieciocho:'18',diecinueve:'19',
+    veinte:'20',veintiuno:'21',veintidos:'22',veintitres:'23',veinticuatro:'24',veinticinco:'25',veintiseis:'26',veintisiete:'27',veintiocho:'28',veintinueve:'29',treinta:'30',treintaiuno:'31'
+  };
+  clean=clean.replace(/\b(flora)\s+(iii|ii|i)\b/g,(_,name,roman)=>`${name} ${{i:'1',ii:'2',iii:'3'}[roman]}`);
+  clean=clean.replace(/\b(uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte|veintiuno|veintidos|veintitres|veinticuatro|veinticinco|veintiseis|veintisiete|veintiocho|veintinueve|treinta|treintaiuno)\b/g,m=>words[m]||m);
+  return clean;
 }
 function showVoicePanel(status='Micrófono apagado',message=''){
   const panel=$('voice-panel');
