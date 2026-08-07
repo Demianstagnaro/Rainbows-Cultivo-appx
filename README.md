@@ -611,3 +611,12 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Mantiene “cuándo se cosecha” dentro de las consultas de calendario de Salas.
 - No habilita cargas ni ediciones de cosechas por voz.
 - Actualiza APP_VERSION, referencias de `app.js`/`styles.css` y caché del service worker.
+
+
+## V3.14.4 — Consultas globales de Genéticas por voz
+
+- Agrega consultas globales por nombre o nomenclatura de genética.
+- Permite consultar nomenclatura, linaje, cannabinoides, genotipo y estado.
+- Permite listar genéticas activas, archivadas y filtrar por THC/CBD/CBG.
+- Mantiene consultas globales desde cualquier pantalla y no habilita modificaciones por voz.
+- Actualiza Ayuda con ejemplos de consultas de Genéticas.

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.14.3';
+const APP_VERSION='3.14.4';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -870,6 +870,7 @@ function renderHelp(){
       <article class="panel help-card"><h3>Flora 3 · croquis</h3><ul><li>“¿Qué genética hay en la cama 4 de Flora 3?”</li><li>“¿Cuántas plantas hay en Flora 3?”</li><li>“¿Cuántas camas tiene Flora 3?”</li></ul></article>
       <article class="panel help-card"><h3>Stock Palestina · desde cualquier pantalla</h3><ul><li>“¿Cuánto stock total hay?”</li><li>“¿Cuánto stock hay de GomuGomu?”</li><li>“¿Cuánto queda del ciclo 9 de Flora 2?”</li><li>“¿Qué stock tiene Flora 1?”</li><li>“¿Qué salidas hubo a Medrano?”</li><li>“¿Cuánto consumo interno hubo?”</li><li>“¿Qué movimientos hubo hoy?”</li><li>“¿Cuánto se descartó esta semana?”</li></ul></article>
       <article class="panel help-card"><h3>Cosechas · desde cualquier pantalla</h3><ul><li>“¿Cuánto produjo Flora 1 ciclo 8?”</li><li>“¿Cuál fue la última cosecha de Flora 3?”</li><li>“¿Qué genética produjo más en el ciclo 8 de Flora 2?”</li><li>“¿Cuánto produjo GomuGomu en 2026?”</li><li>“¿Cuál fue el desvío respecto de la meta en Flora 1 ciclo 8?”</li><li>“¿Cuánto cosechó Flora 2 en 2026?”</li></ul></article>
+      <article class="panel help-card"><h3>Genéticas · desde cualquier pantalla</h3><ul><li>“¿Cuál es la nomenclatura de Mandarin Cookies?”</li><li>“¿Cuál es el linaje de GomuGomu?”</li><li>“¿Qué cannabinoides tiene GomuGomu?”</li><li>“¿Cuál es el genotipo de GomuGomu?”</li><li>“¿Qué genéticas están activas?”</li><li>“¿Qué genéticas tienen CBD?”</li><li>“¿Qué genéticas están archivadas?”</li></ul></article>
       <article class="panel help-card"><h3>Números por voz</h3><ul><li>Podés decir “Flora 3”, “Flora tres” o si el teléfono escribe “Flora III”.</li><li>También entiende camas dichas como “cama cuatro”, “cama doce”, etc.</li></ul></article>
       <article class="panel help-card"><h3>Control del micrófono</h3><ul><li>“Cerrar micrófono”</li><li>“Apagar micrófono”</li><li>“Dejar de escuchar”</li><li>También podés tocar nuevamente el botón 🎙️.</li></ul></article>
     </section>`;
@@ -1982,6 +1983,77 @@ function executeVoiceHarvestQuery(rawText){
   return {ok:true,message:`Encontré ${hs.length} cosecha${hs.length===1?'':'s'}${scope?` para ${scope}`:''}, con ${formatGrams(total)} en total. ${voiceList(breakdown,8)}.`};
 }
 
+
+function voiceGeneticFromText(text){
+  const clean=normalizeVoiceText(text);
+  const candidates=[];
+  state.geneticas.forEach(g=>{
+    if(g.nombre)candidates.push({genetic:g,label:g.nombre,key:normalizeVoiceText(g.nombre)});
+    if(g.nomenclatura)candidates.push({genetic:g,label:g.nomenclatura,key:normalizeVoiceText(g.nomenclatura)});
+  });
+  const unique=[...new Map(candidates.filter(x=>x.key).map(x=>[`${x.genetic.id}|${x.key}`,x])).values()]
+    .sort((a,b)=>b.key.length-a.key.length);
+  return unique.find(x=>new RegExp(`(^|\\s)${x.key.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(\\s|$)`).test(clean))||null;
+}
+function voiceGeneticLabel(g){
+  return g.nomenclatura?`${g.nombre} (${g.nomenclatura})`:g.nombre;
+}
+function executeVoiceGeneticQuery(rawText){
+  const text=normalizeVoiceText(rawText);
+  const genetic=voiceGeneticFromText(text);
+  const geneticWords=['genetica','geneticas','nomenclatura','linaje','cannabinoide','cannabinoides','indica','sativa','genotipo','variedad','variedades'];
+  const looksLikeQuery=geneticWords.some(w=>text.includes(w))||Boolean(genetic);
+  if(!looksLikeQuery)return null;
+
+  // Evitamos tomar consultas ya pertenecientes al croquis o a cosechas.
+  if(text.includes('cama')&&(text.includes('genetica')||text.includes('que hay')))return null;
+  if((text.includes('produjo')||text.includes('produccion')||text.includes('cosecha'))&&(text.includes('genetica')||genetic))return null;
+
+  const wantsActive=text.includes('activas')||text.includes('activa');
+  const wantsArchived=text.includes('archivadas')||text.includes('archivada');
+  const cannabinoidTokens=['thc','cbd','cbg'];
+  const requestedCannabinoids=cannabinoidTokens.filter(c=>new RegExp(`(^|\\s)${c}(\\s|$)`).test(text));
+
+  if(!genetic){
+    let rows=[...state.geneticas];
+    if(wantsActive)rows=rows.filter(g=>g.activa!==false);
+    if(wantsArchived)rows=rows.filter(g=>g.activa===false);
+    if(requestedCannabinoids.length){
+      rows=rows.filter(g=>{const value=normalizeVoiceText(g.cannabinoides||'');return requestedCannabinoids.every(c=>value.includes(c));});
+    }
+    rows.sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||''),'es',{sensitivity:'base'}));
+    if(!rows.length){
+      const filter=[wantsActive?'activas':null,wantsArchived?'archivadas':null,requestedCannabinoids.length?`con ${requestedCannabinoids.join(' + ').toUpperCase()}`:null].filter(Boolean).join(' ');
+      return {ok:true,message:`No encontré genéticas ${filter||'con esos filtros'}.`};
+    }
+    const labels=rows.map(voiceGeneticLabel);
+    const scope=[wantsActive?'activas':null,wantsArchived?'archivadas':null,requestedCannabinoids.length?`con ${requestedCannabinoids.join(' + ').toUpperCase()}`:null].filter(Boolean).join(' ');
+    return {ok:true,message:`Genéticas ${scope||'cargadas'}: ${voiceList(labels,12)}.`};
+  }
+
+  const g=genetic.genetic;
+  const name=voiceGeneticLabel(g);
+  if(text.includes('nomenclatura')||text.includes('codigo')||text.includes('abreviatura'))
+    return {ok:true,message:`La nomenclatura de ${g.nombre} es ${g.nomenclatura||'no registrada'}.`};
+  if(text.includes('linaje'))
+    return {ok:true,message:`El linaje de ${name} es ${g.linaje||'no registrado'}.`};
+  if(text.includes('cannabinoide')||text.includes('cannabinoides')||requestedCannabinoids.length)
+    return {ok:true,message:`Los cannabinoides de ${name} son ${g.cannabinoides||'no registrados'}.`};
+  if(text.includes('indica')||text.includes('sativa')||text.includes('genotipo'))
+    return {ok:true,message:`El genotipo de ${name} es ${formatGenotype(g)}.`};
+  if(text.includes('estado')||wantsActive||wantsArchived)
+    return {ok:true,message:`${name} está ${g.activa===false?'archivada':'activa'}.`};
+
+  const parts=[
+    `nomenclatura ${g.nomenclatura||'no registrada'}`,
+    `linaje ${g.linaje||'no registrado'}`,
+    `cannabinoides ${g.cannabinoides||'no registrados'}`,
+    `genotipo ${formatGenotype(g)}`,
+    `estado ${g.activa===false?'archivada':'activa'}`
+  ];
+  return {ok:true,message:`${g.nombre}: ${parts.join('; ')}.`};
+}
+
 function executeVoiceRoomQuery(rawText){
   const text=normalizeVoiceText(rawText);
   const explicitRoom=voiceRoomFromText(text,{allowContext:false});
@@ -2100,7 +2172,7 @@ function executeGlobalVoiceQuery(rawText){
   // Toda consulta es global: no depende de la ventana activa.
   // Los futuros comandos que MODIFIQUEN datos se resolverán aparte y sí deberán
   // validar la sección activa antes de ofrecer una confirmación.
-  const handlers=[executeVoiceHarvestQuery,executeVoiceStockQuery,executeVoiceRoomQuery,executeVoiceTaskQuery];
+  const handlers=[executeVoiceHarvestQuery,executeVoiceStockQuery,executeVoiceRoomQuery,executeVoiceTaskQuery,executeVoiceGeneticQuery];
   for(const handler of handlers){
     const result=handler(rawText);
     if(result)return result;
@@ -2233,5 +2305,5 @@ $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.3').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.4').catch(console.error));
 }
