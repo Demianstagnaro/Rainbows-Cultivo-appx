@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.14.5';
+const APP_VERSION='3.14.6';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1615,6 +1615,8 @@ let voiceListening=false;
 let voiceContinuousMode=false;
 let voiceRestartTimer=null;
 let voiceFatalError=false;
+let voiceSpeaking=false;
+let voiceSpeechEnabled=localStorage.getItem('rainbows_voice_speech')==='1';
 
 function normalizeVoiceText(value=''){
   let clean=value.toLocaleLowerCase('es-AR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
@@ -1642,6 +1644,38 @@ function showVoiceResponse(message=''){
   if(!box||!text)return;
   text.textContent=message;
   box.hidden=!message;
+  if(message&&voiceSpeechEnabled)speakVoiceResponse(message);
+}
+function syncVoiceSpeechToggle(){
+  const input=$('voice-speech-toggle');
+  if(input)input.checked=voiceSpeechEnabled;
+}
+function stopVoiceSpeech({resume=true}={}){
+  if('speechSynthesis' in window)window.speechSynthesis.cancel();
+  const wasSpeaking=voiceSpeaking;
+  voiceSpeaking=false;
+  if(resume&&wasSpeaking&&voiceContinuousMode&&!voiceFatalError)scheduleVoiceRestart();
+}
+function speakVoiceResponse(message=''){
+  if(!voiceSpeechEnabled||!message||!('speechSynthesis' in window))return;
+  if(window.speechSynthesis.speaking||window.speechSynthesis.pending)window.speechSynthesis.cancel();
+  voiceSpeaking=true;
+  if(voiceRestartTimer){clearTimeout(voiceRestartTimer);voiceRestartTimer=null;}
+  if(voiceRecognition&&voiceListening){try{voiceRecognition.stop()}catch(_){}}
+  const utterance=new SpeechSynthesisUtterance(message);
+  utterance.lang='es-AR';
+  utterance.rate=1;
+  utterance.onstart=()=>{
+    voiceSpeaking=true;
+    if(voiceContinuousMode){$('voice-status').textContent='Respondiendo…';setVoiceButtonActive(true);}
+  };
+  const finish=()=>{
+    voiceSpeaking=false;
+    if(voiceContinuousMode&&!voiceFatalError){$('voice-status').textContent='Escuchando…';scheduleVoiceRestart();}
+  };
+  utterance.onend=finish;
+  utterance.onerror=finish;
+  window.speechSynthesis.speak(utterance);
 }
 function closeVoiceResponse(){const box=$('voice-response');if(box)box.hidden=true;}
 function setVoiceButtonActive(active){
@@ -1652,6 +1686,7 @@ function setVoiceButtonActive(active){
   button.title=active?'Micrófono activo · tocar para apagar':'Comandos de voz';
 }
 function stopVoiceRecognition({hidePanel=false,message='Micrófono cerrado.'}={}){
+  stopVoiceSpeech({resume:false});
   voiceContinuousMode=false;
   voiceFatalError=false;
   if(voiceRestartTimer){clearTimeout(voiceRestartTimer);voiceRestartTimer=null;}
@@ -2317,7 +2352,7 @@ function isVoiceStopCommand(text=''){
   return ['cerrar microfono','cerrar el microfono','apagar microfono','apagar el microfono','dejar de escuchar','para de escuchar','parar de escuchar','detener microfono','detener el microfono'].some(command=>clean.includes(command));
 }
 function scheduleVoiceRestart(){
-  if(!voiceContinuousMode||voiceFatalError||voiceRestartTimer)return;
+  if(!voiceContinuousMode||voiceFatalError||voiceRestartTimer||voiceSpeaking)return;
   voiceRestartTimer=setTimeout(()=>{
     voiceRestartTimer=null;
     if(voiceContinuousMode&&!voiceListening)beginVoiceRecognition({continuous:true});
@@ -2358,7 +2393,8 @@ function beginVoiceRecognition(options={}){
   };
   voiceRecognition.onend=()=>{
     voiceListening=false;voiceRecognition=null;
-      if(voiceContinuousMode&&!voiceFatalError){setVoiceButtonActive(true);scheduleVoiceRestart();}
+      if(voiceContinuousMode&&!voiceFatalError&&!voiceSpeaking){setVoiceButtonActive(true);scheduleVoiceRestart();}
+      else if(voiceSpeaking){setVoiceButtonActive(true);}
     else{setVoiceButtonActive(false);}
   };
   try{voiceRecognition.start()}catch(error){console.error(error);voiceListening=false;if(continuous)scheduleVoiceRestart();else showVoicePanel('No se pudo iniciar','Cerrá cualquier otra escucha activa y probá nuevamente.');}
@@ -2370,13 +2406,15 @@ function startVoiceRecognition(){
 }
 
 $('voice-button')?.setAttribute('aria-pressed','false');
+syncVoiceSpeechToggle();
 $('voice-button')?.addEventListener('click',()=>startVoiceRecognition());
 $('voice-retry')?.addEventListener('click',()=>{if(voiceContinuousMode)stopVoiceRecognition({hidePanel:false});startVoiceRecognition();});
 $('voice-close')?.addEventListener('click',closeVoicePanel);
+$('voice-speech-toggle')?.addEventListener('change',e=>{voiceSpeechEnabled=Boolean(e.target.checked);localStorage.setItem('rainbows_voice_speech',voiceSpeechEnabled?'1':'0');if(!voiceSpeechEnabled)stopVoiceSpeech();});
 $('voice-cancel')?.addEventListener('click',closeVoicePanel);
 $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.5').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.6').catch(console.error));
 }

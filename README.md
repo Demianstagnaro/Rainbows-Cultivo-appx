@@ -628,3 +628,14 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Tolera pequeñas diferencias de transcripción mediante coincidencia aproximada.
 - Si dos genéticas resultan demasiado parecidas, no adivina: pide aclarar el nombre o la nomenclatura.
 - La mejora se aplica a consultas de Genéticas, Stock Palestina y Cosechas.
+
+
+## V3.14.6 — Respuestas habladas opcionales
+
+- Agrega la opción `Leer respuestas en voz alta` al panel de voz.
+- La preferencia queda guardada localmente en el dispositivo.
+- Usa SpeechSynthesis con idioma `es-AR` cuando está disponible.
+- Mientras Rainbows lee una respuesta, pausa el reconocimiento para evitar que el micrófono escuche la propia voz de la app.
+- Al terminar de hablar, el modo de escucha continua se reanuda automáticamente.
+- Si la lectura está desactivada, el comportamiento permanece igual que en V3.14.5.
+- No modifica datos ni agrega escrituras por voz.
