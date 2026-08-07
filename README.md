@@ -555,3 +555,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Reconoce como equivalentes `Flora 3`, `Flora tres` y `Flora III` (también Flora 1/I/uno y Flora 2/II/dos).
 - Normaliza números hablados del 1 al 31 para consultas de camas y fechas simples.
 - No cambia la lógica de consultas ni escribe en Supabase.
+
+
+## V3.13.7 — Consulta de responsables por fecha
+- Agrega consultas por voz como "¿Quién hizo las tareas de hoy?".
+- Admite cualquier fecha ya soportada por el parser: ayer, anteayer, días de la semana y fechas concretas.
+- También admite filtro por sala, por ejemplo "¿Quién hizo las tareas ayer en Flora 2?".
+- La respuesta muestra cada tarea realizada junto con la persona o personas registradas.
+- Si una tarea figura realizada pero no tiene responsable asociado, lo indica explícitamente.

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.13.6';
+const APP_VERSION='3.13.7';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1785,7 +1785,7 @@ function executeVoiceRoomQuery(rawText){
 }
 function executeVoiceTaskQuery(rawText){
   const text=normalizeVoiceText(rawText);
-  const queryWords=['que tarea','que tareas','tareas hay','tareas tengo','tareas estan','pendiente','pendientes','que hizo','que hizo hoy','que hizo ayer','que tiene','que hay'];
+  const queryWords=['que tarea','que tareas','tareas hay','tareas tengo','tareas estan','pendiente','pendientes','que hizo','que hizo hoy','que hizo ayer','quien hizo','quienes hicieron','que tiene','que hay'];
   const looksLikeQuery=queryWords.some(x=>text.includes(x))||text.startsWith('cuantas tareas')||text.startsWith('cuantos pendientes');
   if(!looksLikeQuery)return null;
   const d=voiceDateFromText(text);
@@ -1794,11 +1794,21 @@ function executeVoiceTaskQuery(rawText){
   let ts=tasks(d);
   if(room)ts=ts.filter(t=>t.room===room);
   const wantsPending=text.includes('pendiente')||text.includes('faltan')||text.includes('falta hacer');
+  const wantsWho=text.includes('quien hizo')||text.includes('quienes hicieron')||text.includes('quien realizo')||text.includes('quienes realizaron');
   const wantsDone=text.includes('realizada')||text.includes('realizadas')||text.includes('completada')||text.includes('completadas')||text.includes('que hizo');
   if(employee){
     const byEmployee=ts.filter(t=>done(t)&&names(t).some(n=>normalizeVoiceText(n)===normalizeVoiceText(employee.nombre)));
     if(!byEmployee.length)return {ok:true,message:`${employee.nombre} no figura como responsable de tareas realizadas el ${nice(d)}${room?` en ${room}`:''}.`};
     return {ok:true,message:`${employee.nombre} realizó ${byEmployee.length} tarea${byEmployee.length===1?'':'s'} el ${nice(d)}${room?` en ${room}`:''}: ${voiceList(byEmployee.map(voiceTaskLabel))}.`};
+  }
+  if(wantsWho){
+    const completed=ts.filter(done);
+    if(!completed.length)return {ok:true,message:`No hay tareas realizadas registradas el ${nice(d)}${room?` en ${room}`:''}.`};
+    const detail=completed.map(t=>{
+      const responsible=names(t);
+      return `${voiceTaskLabel(t)}: ${responsible.length?voiceList(responsible,6):'sin responsable registrado'}`;
+    });
+    return {ok:true,message:`Responsables de las tareas realizadas el ${nice(d)}${room?` en ${room}`:''}: ${voiceList(detail,10)}.`};
   }
   if(wantsPending){
     const pending=ts.filter(t=>!done(t));
@@ -1969,5 +1979,5 @@ $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.13.5').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.13.7').catch(console.error));
 }
