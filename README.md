@@ -506,3 +506,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Mantiene el micrófono flotante en modo continuo para comandos de voz.
 - Se conserva el cierre por segundo toque o por comandos como `cerrar micrófono`.
 - No cambia la lógica de Supabase ni los datos.
+
+
+## V3.13.0 — Voz etapa 3: consultas Tareas/Hoy
+- Consultas por voz de tareas sin modificar datos.
+- Permite preguntar por tareas del día visible, pendientes, realizadas, por sala y por empleado.
+- El micrófono continuo permanece activo después de responder.
+- Se agregó ayuda contextual con ejemplos desde el panel de voz.
+- La edición/dictado de detalles no se reintrodujo en esta versión; se integrará después con el micrófono continuo, sin botón separado.

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.12.5';
+const APP_VERSION='3.13.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1622,6 +1622,96 @@ function setVoiceView(view){
   render();
   return true;
 }
+function voiceCurrentDate(){
+  if(state.view==='calendar'&&state.day)return state.day;
+  if(state.view==='rooms'&&state.room)return state.roomDay||today();
+  if(state.view==='today')return state.todayDay||today();
+  return today();
+}
+function voiceDateFromText(text){
+  if(text.includes('manana'))return add(today(),1);
+  if(text.includes('ayer'))return add(today(),-1);
+  if(text.includes('hoy'))return today();
+  return voiceCurrentDate();
+}
+function voiceRoomFromText(text){
+  const match=text.match(/flora\s*(1|2|3)|veges|madres|esquejes|sala de trabajo/);
+  if(!match)return null;
+  const token=match[0];
+  if(token.startsWith('flora'))return `Flora ${match[1]}`;
+  if(token==='sala de trabajo')return 'Sala de trabajo';
+  return token.charAt(0).toUpperCase()+token.slice(1);
+}
+function voiceEmployeeFromText(text){
+  const normalized=normalizeVoiceText(text);
+  return state.empleados.find(e=>{
+    const name=normalizeVoiceText(e.nombre||'');
+    return name&&new RegExp(`(^|\\s)${name.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')}(\\s|$)`).test(normalized);
+  })||null;
+}
+function voiceTaskLabel(t){
+  return `${t.task}${t.room?` en ${t.room}`:''}`;
+}
+function voiceList(items,limit=8){
+  if(!items.length)return '';
+  const shown=items.slice(0,limit);
+  const text=shown.join(', ');
+  return items.length>limit?`${text}, y ${items.length-limit} más`:text;
+}
+function executeVoiceTaskQuery(rawText){
+  const text=normalizeVoiceText(rawText);
+  const queryWords=['que tarea','que tareas','tareas hay','tareas tengo','tareas estan','pendiente','pendientes','que hizo','que hizo hoy','que hizo ayer','que tiene','que hay'];
+  const looksLikeQuery=queryWords.some(x=>text.includes(x))||text.startsWith('cuantas tareas')||text.startsWith('cuantos pendientes');
+  if(!looksLikeQuery)return null;
+  const d=voiceDateFromText(text);
+  const room=voiceRoomFromText(text);
+  const employee=voiceEmployeeFromText(text);
+  let ts=tasks(d);
+  if(room)ts=ts.filter(t=>t.room===room);
+  const wantsPending=text.includes('pendiente')||text.includes('faltan')||text.includes('falta hacer');
+  const wantsDone=text.includes('realizada')||text.includes('realizadas')||text.includes('completada')||text.includes('completadas')||text.includes('que hizo');
+  if(employee){
+    const byEmployee=ts.filter(t=>done(t)&&names(t).some(n=>normalizeVoiceText(n)===normalizeVoiceText(employee.nombre)));
+    if(!byEmployee.length)return {ok:true,message:`${employee.nombre} no figura como responsable de tareas realizadas el ${nice(d)}${room?` en ${room}`:''}.`};
+    return {ok:true,message:`${employee.nombre} realizó ${byEmployee.length} tarea${byEmployee.length===1?'':'s'} el ${nice(d)}${room?` en ${room}`:''}: ${voiceList(byEmployee.map(voiceTaskLabel))}.`};
+  }
+  if(wantsPending){
+    const pending=ts.filter(t=>!done(t));
+    if(!pending.length)return {ok:true,message:`No hay tareas pendientes el ${nice(d)}${room?` en ${room}`:''}.`};
+    return {ok:true,message:`Hay ${pending.length} tarea${pending.length===1?'':'s'} pendiente${pending.length===1?'':'s'} el ${nice(d)}${room?` en ${room}`:''}: ${voiceList(pending.map(voiceTaskLabel))}.`};
+  }
+  if(wantsDone){
+    const completed=ts.filter(done);
+    if(!completed.length)return {ok:true,message:`No hay tareas realizadas registradas el ${nice(d)}${room?` en ${room}`:''}.`};
+    return {ok:true,message:`Hay ${completed.length} tarea${completed.length===1?'':'s'} realizada${completed.length===1?'':'s'} el ${nice(d)}${room?` en ${room}`:''}: ${voiceList(completed.map(voiceTaskLabel))}.`};
+  }
+  if(!ts.length)return {ok:true,message:`No hay tareas programadas el ${nice(d)}${room?` en ${room}`:''}.`};
+  const completed=ts.filter(done).length;
+  const pending=ts.length-completed;
+  return {ok:true,message:`El ${nice(d)}${room?` en ${room}`:''} hay ${ts.length} tarea${ts.length===1?'':'s'}: ${completed} realizada${completed===1?'':'s'} y ${pending} pendiente${pending===1?'':'s'}. ${voiceList(ts.map(voiceTaskLabel))}.`};
+}
+function voiceHelpExamples(){
+  const global=['Abrir Calendario','Ir a Flora 2','Ir a mañana','Volver a hoy','¿Qué tareas hay hoy?','¿Qué tareas están pendientes?'];
+  if(state.view==='today')return [...global,'¿Qué tareas hay hoy en Flora 1?','¿Qué hizo Cone hoy?'];
+  if(state.view==='calendar')return [...global,'¿Qué tareas hay este día?','¿Qué tareas están pendientes en Flora 2?'];
+  if(state.view==='rooms')return [...global,`¿Qué tareas hay ${state.room?`en ${state.room}`:'en Flora 1'}?`,`¿Qué tareas están pendientes ${state.room?`en ${state.room}`:'en Flora 1'}?`];
+  if(state.view==='stock')return [...global,'Próximamente: consultas de stock por voz'];
+  if(state.view==='harvests')return [...global,'Próximamente: consultas de cosechas por voz'];
+  if(state.view==='genetics')return [...global,'Próximamente: consultas de genéticas por voz'];
+  return global;
+}
+function toggleVoiceHelp(){
+  const help=$('voice-help');
+  if(!help)return;
+  const opening=help.hidden;
+  help.hidden=!opening;
+  if(opening)help.innerHTML=`<strong>Ejemplos que podés decir</strong><ul>${voiceHelpExamples().map(x=>`<li>${x}</li>`).join('')}</ul>`;
+}
+function executeVoiceCommand(rawText){
+  const query=executeVoiceTaskQuery(rawText);
+  if(query)return query;
+  return executeVoiceNavigation(rawText);
+}
 function executeVoiceNavigation(rawText){
   const text=normalizeVoiceText(rawText);
   if(text.includes('volver a hoy')){
@@ -1699,7 +1789,7 @@ function beginVoiceRecognition(options={}){
         stopVoiceRecognition({hidePanel:false,message:'Listo. Dejé de escuchar.'});
         return;
       }
-      const result=executeVoiceNavigation(clean);$('voice-status').textContent=result.ok?'Comando realizado · sigo escuchando':'No pude realizarlo · sigo escuchando';$('voice-transcript').textContent=`${result.message} ${voiceContinuousMode?'Podés decir otro comando.':''}`.trim();
+      const result=executeVoiceCommand(clean);$('voice-status').textContent=result.ok?'Listo · sigo escuchando':'No pude realizarlo · sigo escuchando';$('voice-transcript').textContent=`${result.message} ${voiceContinuousMode?'Podés decir otro comando.':''}`.trim();
     }
   };
   voiceRecognition.onerror=event=>{
@@ -1727,8 +1817,9 @@ $('voice-button')?.addEventListener('click',()=>startVoiceRecognition());
 $('voice-retry')?.addEventListener('click',()=>{if(voiceContinuousMode)stopVoiceRecognition({hidePanel:false});startVoiceRecognition();});
 $('voice-close')?.addEventListener('click',closeVoicePanel);
 $('voice-cancel')?.addEventListener('click',closeVoicePanel);
+$('voice-help-button')?.addEventListener('click',toggleVoiceHelp);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.12.5').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.13.0').catch(console.error));
 }

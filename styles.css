@@ -752,3 +752,5 @@ body{
   .calendar .day-cell{min-width:0}
 }
 
+
+.voice-help{margin:10px 0 12px;padding:12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.035);font-size:13px;line-height:1.45}.voice-help ul{margin:8px 0 0;padding-left:20px}.voice-help li+li{margin-top:5px}
