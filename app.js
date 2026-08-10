@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.15.5';
+const APP_VERSION='3.15.6';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2497,7 +2497,7 @@ function voiceCreateTaskNameFromText(rawText){
   for(const [key,label] of known)if(text.includes(key))return label;
   let candidate=text
     .replace(/\b(agregar|agrega|anadir|añadir|crear|crea|programar|programa|nueva|nuevo)\b/g,' ')
-    .replace(/\btarea(s)?\b/g,' ')
+    .replace(/\b(tarea(s)?|general(es)?)\b/g,' ')
     .replace(/\b(hoy|ayer|anteayer|manana|pasado manana)\b/g,' ')
     .replace(/\b(lunes|martes|miercoles|jueves|viernes|sabado|domingo)( pasado| proximo| siguiente)?\b/g,' ')
     .replace(/\b(el|para|en|de|del|la|una|un)\b/g,' ')
@@ -2512,9 +2512,20 @@ function executeVoiceCreateTaskAction(rawText){
   const action=/(^|\s)(agregar|agrega|anadir|añadir|crear|crea|programar|programa|nueva tarea|nuevo tarea)(\s|$)/.test(text);
   if(!action)return null;
   if(!canEditTasks())return {ok:true,message:'Tu usuario no tiene permiso para crear tareas.'};
+
+  const explicitGeneral=/\b(tarea\s+general|tareas\s+generales|general)\b/.test(text);
+  if(explicitGeneral){
+    if(state.view!=='today')return {ok:true,message:'Las tareas generales se administran desde Hoy. Abrí Hoy y repetí la orden para evitar crear algo en la sección equivocada.'};
+    const name=voiceCreateTaskNameFromText(rawText);
+    if(!name)return {ok:true,message:'Entendí que querés crear una tarea general, pero no pude identificar el nombre. Decime por ejemplo: “Crear tarea general revisar matafuegos”.'};
+    openGeneralTask(null);
+    $('general-task-name').value=name;
+    return {ok:true,message:`Preparé la tarea general “${name}”. Revisá el nombre y el detalle y tocá Guardar para crearla.`};
+  }
+
   if(!(state.view==='today'||state.view==='calendar'))return {ok:true,message:'Para crear una tarea por voz, abrí Hoy o Calendario. Las modificaciones se hacen desde la sección correspondiente para evitar errores.'};
   const room=voiceRoomFromText(text,{allowContext:false});
-  if(!room)return {ok:true,message:'Entendí que querés crear una tarea, pero me falta la sala. Decime por ejemplo: “Agregar fumigación mañana en Flora 2”.'};
+  if(!room)return {ok:true,message:'Entendí que querés crear una tarea, pero no indicaste una sala ni dijiste “tarea general”. Decime por ejemplo: “Agregar fumigación mañana en Flora 2” o “Crear tarea general revisar matafuegos”.'};
   const name=voiceCreateTaskNameFromText(rawText);
   if(!name)return {ok:true,message:'Entendí la sala, pero no pude identificar el nombre de la tarea. Decime por ejemplo: “Agregar limpieza mañana en Veges”.'};
   const d=voiceHasExplicitDate(text)?voiceDateFromText(text):(voiceTaskActionDate()||today());
@@ -2691,5 +2702,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.5').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.6').catch(console.error));
 }

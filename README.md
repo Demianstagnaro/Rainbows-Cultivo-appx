@@ -703,3 +703,12 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Requiere identificar sala y nombre de tarea; la fecha puede indicarse por voz o toma la fecha visible.
 - Abre el formulario normal precompletado y nunca guarda automáticamente.
 - Mantiene las consultas globales y las modificaciones contextuales.
+
+
+## V3.15.6 — Tareas generales por voz
+- Permite crear tareas generales por voz solo cuando la orden dice explícitamente `tarea general` o `general`.
+- No interpreta automáticamente una tarea sin sala como general: pide aclaración para evitar errores.
+- Las tareas generales se preparan únicamente desde Hoy, donde se administran actualmente.
+- Abre el formulario existente con el nombre precargado y requiere Guardar manualmente.
+- Mantiene tareas por sala con fecha y sala obligatorias.
+- Actualiza versión y caché del service worker.
