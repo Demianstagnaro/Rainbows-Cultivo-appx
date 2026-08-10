@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.2';
+const APP_VERSION='3.16.3';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2727,20 +2727,43 @@ function mobileVoiceLooksRelevant(rawText='',confidence=0){
   if(!text||isVoiceStopCommand(text))return true;
   const words=text.split(/\s+/).filter(Boolean);
   if(words.length<2)return false;
-  const strong=[
+
+  const domainTokens=[
     'tarea','tareas','pendiente','pendientes','realizada','realizadas','responsable','responsables',
     'flora','veges','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
     'cama','camas','planta','plantas','semana','ciclo','riego','fumigacion','poda','enmienda','mantenimiento',
-    'abrir','abrime','entrar','llevame','mostrar','completar','crear','agregar','programar','reprogramar','mover','cancelar','anular',
-    'cuando','cuanto','cuanta','cuantos','cuantas','quien','quienes','cual','cuales','hoy','ayer','manana',
-    'hizo','hicieron','queda','quedan','quedo','produjo','produccion','desvio','meta','salida','salidas','movimiento','movimientos',
     'medrano','consumo','descarte','nomenclatura','linaje','genotipo','cannabinoide','cannabinoides','thc','cbd','cbg'
   ];
-  const hasStrong=strong.some(token=>text.includes(token));
-  // Chrome Android a veces devuelve confidence=0 incluso para frases correctas; por eso
-  // la confianza ayuda cuando existe, pero nunca es el único criterio.
-  if(voiceInputSensitivity==='low')return hasStrong && (confidence===0 || confidence>=0.22);
-  return hasStrong || confidence>=0.48;
+  const intentTokens=[
+    'abrir','abrime','entrar','llevame','mostrar','ir a','volver',
+    'completar','crear','agregar','programar','reprogramar','mover','cancelar','anular',
+    'cuando','cuanto','cuanta','cuantos','cuantas','quien','quienes','cual','cuales','que ','en que',
+    'hizo','hicieron','queda','quedan','quedo','produjo','produccion','desvio','meta','salida','salidas','movimiento','movimientos'
+  ];
+  const temporalTokens=['hoy','ayer','manana','anteayer','pasado manana','lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+  const domainMatches=domainTokens.filter(token=>text.includes(token)).length;
+  const hasIntent=intentTokens.some(token=>text.includes(token));
+  const hasTemporal=temporalTokens.some(token=>text.includes(token));
+
+  if(voiceInputSensitivity==='low'){
+    // En móvil la escucha permanece abierta para no perder el inicio de la frase. Por eso
+    // "Baja" filtra después de transcribir: exige una frase coherente, no una palabra suelta
+    // captada desde lejos. Aceptamos intención + tema, o al menos dos señales claras del dominio.
+    const exactShortCommand=[
+      'abrir ayuda','abrir calendario','abrir salas','abrir cosechas','abrir stock','abrir geneticas','abrir configuracion',
+      'ir a ayuda','ir a calendario','ir a salas','ir a cosechas','ir a stock','ir a geneticas','volver a hoy'
+    ].some(command=>text===command);
+    if(exactShortCommand)return true;
+    if(words.length<3)return false;
+    const coherent=(hasIntent&&domainMatches>=1)||(domainMatches>=2)||(domainMatches>=1&&hasTemporal&&words.length>=4);
+    if(!coherent)return false;
+    // Cuando Chrome informa una confianza real, usamos un piso algo mayor. Si devuelve 0,
+    // cosa frecuente en Android, no bloqueamos por confianza para no rechazar frases correctas.
+    return confidence===0||confidence>=0.32;
+  }
+
+  const hasDomain=domainMatches>0;
+  return hasDomain||hasIntent||confidence>=0.48;
 }
 function voiceGateThreshold(){
   const mobile=isLikelyMobileVoiceDevice();
@@ -2960,5 +2983,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.2').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.3').catch(console.error));
 }

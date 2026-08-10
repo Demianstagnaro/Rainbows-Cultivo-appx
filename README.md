@@ -746,3 +746,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Alta conserva el comportamiento anterior.
 - En escritorio Normal/Baja conservan el filtro previo por nivel ambiente, donde funcionaba bien.
 - Actualiza APP_VERSION, referencias y caché a 3.16.2.
+
+
+## V3.16.3 — Baja menos sensible en móvil
+- Mantiene la escucha móvil continua sin timing de V3.16.2.
+- Endurece únicamente la sensibilidad Baja en celular: descarta palabras sueltas y fragmentos lejanos.
+- Exige una combinación coherente de intención + vocabulario de Rainbows antes de ejecutar una frase.
+- Mantiene Normal y Alta sin cambios funcionales.
+- Actualiza APP_VERSION, referencias y caché a 3.16.3.
