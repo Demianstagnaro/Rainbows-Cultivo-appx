@@ -2726,7 +2726,7 @@ function voiceGateThreshold(){
   return mobile?Math.max(0.012,voiceGateAmbient*1.35+0.0025):Math.max(0.024,voiceGateAmbient*1.9+0.006);
 }
 function voiceGateSustainMs(){
-  if(isLikelyMobileVoiceDevice())return voiceInputSensitivity==='low'?70:40;
+  if(isLikelyMobileVoiceDevice())return voiceInputSensitivity==='low'?35:20;
   return voiceInputSensitivity==='low'?95:55;
 }
 async function ensureVoiceGate(){
@@ -2783,7 +2783,16 @@ async function waitForVoiceActivity(){
       if(now-voiceGateAboveSince>=voiceGateSustainMs()){
         voiceGateWaiting=false;voiceGateAboveSince=0;voiceGateFrame=null;
         $('voice-status').textContent='Escuchando…';
-        beginVoiceRecognition({continuous:true,gated:true});
+        // En muchos móviles Web Audio y SpeechRecognition no pueden capturar el
+        // micrófono al mismo tiempo. Soltamos el stream del detector antes de
+        // iniciar el reconocimiento; en escritorio lo conservamos porque allí
+        // la convivencia funciona bien y evita reabrir el micrófono cada frase.
+        if(isLikelyMobileVoiceDevice()){
+          stopVoiceGate({closeStream:true});
+          setTimeout(()=>beginVoiceRecognition({continuous:true,gated:true}),35);
+        }else{
+          beginVoiceRecognition({continuous:true,gated:true});
+        }
         return;
       }
     }else{
@@ -2877,5 +2886,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.8').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.0').catch(console.error));
 }
