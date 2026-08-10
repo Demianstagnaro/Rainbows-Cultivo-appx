@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.14.8';
+const APP_VERSION='3.14.9';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -262,6 +262,11 @@ function openWorker(t,kind='dated',preselected=[]){
   state.pending=t;
   state.pendingKind=kind;
   state.selected=new Set(preselected);
+  const summary=$('worker-task-summary');
+  if(summary){
+    const taskDate=t.date?parse(t.date):(state.todayDay||today());
+    summary.textContent=`${t.task}${t.room?` · ${t.room}`:''}${taskDate?` · ${nice(taskDate)}`:''}`;
+  }
   const container=$('worker-options');
   container.innerHTML='';
 
@@ -849,7 +854,7 @@ function renderHelp(){
     <section class="panel help-hero">
       <h2>Comandos de voz</h2>
       <p>El micrófono funciona en modo continuo: tocá el botón 🎙️ una vez, hablá normalmente y seguí dando órdenes. Para apagarlo, tocá el botón otra vez o decí <strong>“cerrar micrófono”</strong>.</p>
-      <div class="help-rule"><strong>Regla actual:</strong> las consultas se pueden hacer desde cualquier parte de la app. Las modificaciones por voz todavía no están habilitadas.</div>
+      <div class="help-rule"><strong>Regla actual:</strong> las consultas se pueden hacer desde cualquier parte de la app. Las modificaciones por voz son contextuales y siempre requieren confirmación antes de guardar.</div>
     </section>
     <section class="help-grid">
       <article class="panel help-card"><h3>Generales · navegación</h3><ul>
@@ -859,6 +864,7 @@ function renderHelp(){
       <article class="panel help-card"><h3>Tareas · desde cualquier pantalla</h3><ul>
         <li>“¿Qué tareas hay hoy?”</li><li>“¿Qué tareas están pendientes mañana?”</li><li>“¿Qué tareas hay mañana en Flora 2?”</li><li>“¿Qué tareas se hicieron ayer?”</li><li>“¿Qué hizo Cone hoy?”</li><li>“¿Quién hizo las tareas de hoy?”</li><li>“¿Quién hizo las tareas del 10 de agosto?”</li><li>“¿Quién hizo las tareas ayer en Flora 2?”</li>
       </ul></article>
+      <article class="panel help-card"><h3>Tareas · completar por voz</h3><ul><li>Disponible desde Hoy o desde un día concreto abierto en Calendario.</li><li>“Completar fumigación de Flora 2”</li><li>“Marcar como hecha la poda de Flora 1”</li><li>“Completar riego de Flora 3, lo hicieron Cone y Pata”</li><li>Rainbows abre una confirmación con los responsables. Nada se guarda hasta tocar Guardar.</li></ul></article>
       <article class="panel help-card"><h3>Fechas que entiende</h3><ul>
         <li>Hoy, ayer, anteayer, mañana y pasado mañana.</li><li>“Lunes”, “martes pasado”, “próximo miércoles”.</li><li>“10 de agosto” o “5 de agosto de 2026”.</li><li>Si no decís una fecha, usa el día que estás viendo en la app.</li>
       </ul></article>
@@ -2309,6 +2315,63 @@ function executeVoiceTaskQuery(rawText){
   const pending=ts.length-completed;
   return {ok:true,message:`El ${nice(d)}${room?` en ${room}`:''} hay ${ts.length} tarea${ts.length===1?'':'s'}: ${completed} realizada${completed===1?'':'s'} y ${pending} pendiente${pending===1?'':'s'}. ${voiceList(ts.map(voiceTaskLabel))}.`};
 }
+function voiceTaskActionDate(){
+  if(state.view==='today')return state.todayDay||today();
+  if(state.view==='calendar'&&state.day)return state.day;
+  return null;
+}
+function voiceEmployeesFromText(text){
+  const clean=normalizeVoiceText(text);
+  return state.empleados.filter(e=>{
+    const name=normalizeVoiceText(e.nombre||'');
+    return name&&new RegExp(`(^|\\s)${name.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')}(\\s|$)`).test(clean);
+  });
+}
+function voiceTaskActionMatch(text,d){
+  const room=voiceRoomFromText(text,{allowContext:false});
+  const pending=tasks(d).filter(t=>!done(t)&&(!room||t.room===room));
+  if(!pending.length)return {matches:[],room};
+  const commandWords=new Set(['completar','completa','complete','marcar','marca','como','hecha','hecho','realizada','realizado','terminar','termina','finalizar','finaliza','tarea','la','el','de','del','en','por','favor']);
+  const queryTokens=normalizeVoiceText(text).split(' ').filter(x=>x&&!commandWords.has(x)&&!/^flora$|^[123]$/.test(x));
+  const scored=pending.map(t=>{
+    const label=normalizeVoiceText(t.task||'');
+    let score=0;
+    if(label&&text.includes(label))score=1;
+    else{
+      const taskTokens=label.split(' ').filter(Boolean);
+      if(taskTokens.length){
+        const hits=taskTokens.filter(tok=>queryTokens.includes(tok)).length;
+        score=Math.max(score,hits/taskTokens.length);
+      }
+      for(let size=Math.max(1,taskTokens.length-1);size<=Math.min(queryTokens.length,taskTokens.length+1);size++){
+        for(let i=0;i+size<=queryTokens.length;i++)score=Math.max(score,voiceSimilarity(label,queryTokens.slice(i,i+size).join(' ')));
+      }
+    }
+    return {task:t,score};
+  }).filter(x=>x.score>=0.58).sort((a,b)=>b.score-a.score);
+  if(!scored.length)return {matches:[],room};
+  const best=scored[0].score;
+  return {matches:scored.filter(x=>best-x.score<0.08).map(x=>x.task),room};
+}
+function executeVoiceTaskAction(rawText){
+  const text=normalizeVoiceText(rawText);
+  const action=/(^|\s)(completar|completa|complete|marcar como hecha|marcar como hecho|marcar realizada|marcar realizado|terminar|termina|finalizar|finaliza)(\s|$)/.test(text);
+  if(!action)return null;
+  if(!text.includes('tarea')&&!['riego','fumigacion','poda','enmienda','mantenimiento','calibrar','calibracion','schwazzing','redes','knf','esquejes'].some(w=>text.includes(w)))return null;
+  if(!canComplete())return {ok:true,message:'Tu usuario no tiene permiso para completar tareas.'};
+  const d=voiceTaskActionDate();
+  if(!d)return {ok:true,message:'Para completar una tarea por voz, abrí Hoy o una fecha concreta del Calendario. Las modificaciones se hacen desde la sección correspondiente para evitar errores.'};
+  const spoken=voiceDateFromText(text);
+  const hasDate=/\b(hoy|ayer|anteayer|manana|pasado manana|lunes|martes|miercoles|jueves|viernes|sabado|domingo|\d{1,2}\s+de\s+)/.test(text);
+  if(hasDate&&!same(spoken,d))return {ok:true,message:`Estás viendo ${nice(d)}, pero entendí una orden para ${nice(spoken)}. Abrí primero ese día y volvé a dar la orden.`};
+  const {matches}=voiceTaskActionMatch(text,d);
+  if(!matches.length)return {ok:true,message:`No encontré una tarea pendiente que coincida con esa orden el ${nice(d)}.`};
+  if(matches.length>1)return {ok:true,message:`Encontré más de una tarea posible el ${nice(d)}: ${voiceList(matches.map(voiceTaskLabel),6)}. Decime la tarea y la sala para evitar modificar la equivocada.`};
+  const task=matches[0];
+  const employees=voiceEmployeesFromText(text);
+  openWorker(task,'dated',employees.map(e=>e.id));
+  return {ok:true,message:`Preparé para completar ${task.task} de ${task.room} del ${nice(d)}${employees.length?` y seleccioné a ${voiceList(employees.map(e=>e.nombre),6)} como responsables`:''}. Revisá la confirmación y tocá Guardar para registrar el cambio.`};
+}
 function executeGlobalVoiceQuery(rawText){
   // Toda consulta es global: no depende de la ventana activa.
   // Los futuros comandos que MODIFIQUEN datos se resolverán aparte y sí deberán
@@ -2332,6 +2395,8 @@ function isExplicitVoiceNavigation(rawText){
 }
 function executeVoiceCommand(rawText){
   if(isExplicitVoiceNavigation(rawText))return executeVoiceNavigation(rawText);
+  const taskAction=executeVoiceTaskAction(rawText);
+  if(taskAction)return taskAction;
   const globalQuery=executeGlobalVoiceQuery(rawText);
   if(globalQuery)return globalQuery;
   return executeVoiceNavigation(rawText);
@@ -2449,5 +2514,5 @@ $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.8').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.9').catch(console.error));
 }

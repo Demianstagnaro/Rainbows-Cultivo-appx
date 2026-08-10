@@ -654,3 +654,14 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Las consultas explícitas de tareas ahora tienen prioridad sobre Stock.
 - Stock ignora frases que mencionan claramente tareas, pendientes o responsables.
 - No cambia ninguna lógica de datos ni permisos.
+
+
+## V3.14.9 — Completar tareas por voz con confirmación
+- Primer comando de voz que prepara una modificación de datos.
+- Solo funciona desde Hoy o desde una fecha concreta abierta en Calendario.
+- Comandos como “completar fumigación de Flora 2” identifican una tarea pendiente del día visible.
+- Si se mencionan responsables por nombre, quedan preseleccionados.
+- Siempre abre el diálogo existente de responsables y requiere tocar Guardar antes de escribir en Supabase.
+- Si hay varias tareas posibles, no adivina: pide especificar tarea y sala.
+- Si la orden menciona una fecha distinta de la que está abierta, no modifica nada y pide abrir primero ese día.
+- Las consultas siguen siendo globales; las modificaciones por voz son contextuales.
