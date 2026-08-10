@@ -727,3 +727,12 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - El umbral se adapta al ruido constante del ambiente; Baja exige una señal más clara/cercana.
 - La preferencia queda guardada por dispositivo.
 - No cambia la lógica de comandos, consultas ni escrituras en Supabase.
+
+
+## V3.16.1 — Respuesta más rápida del filtro de voz
+
+- Conserva el nivel de ruido ambiente aprendido entre frases en Normal/Baja.
+- Evita recalibrar desde cero después de cada comando, especialmente en móvil.
+- Reduce la calibración posterior a 35 ms en móvil y el traspaso al reconocimiento a 10 ms.
+- Mantiene el filtro previo de ruido y el comportamiento de sensibilidad Alta.
+- Corrige APP_VERSION, referencias y caché a 3.16.1.

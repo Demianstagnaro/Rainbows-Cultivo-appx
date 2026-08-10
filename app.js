@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.15.8';
+const APP_VERSION='3.16.1';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1684,6 +1684,7 @@ let voiceGateContext=null;
 let voiceGateAnalyser=null;
 let voiceGateFrame=null;
 let voiceGateAmbient=0.012;
+let voiceGateAmbientReady=false;
 let voiceGateAboveSince=0;
 let voiceGateCalibratingUntil=0;
 let voiceGateWaiting=false;
@@ -2743,7 +2744,10 @@ async function ensureVoiceGate(){
     voiceGateAnalyser.fftSize=512;
     voiceGateAnalyser.smoothingTimeConstant=0.25;
     source.connect(voiceGateAnalyser);
-    voiceGateAmbient=0.012;
+    // Conservamos el piso de ruido aprendido entre frases. En móvil el stream
+    // debe cerrarse antes de SpeechRecognition, pero recalibrar desde cero en
+    // cada vuelta hacía lenta toda la experiencia.
+    if(!voiceGateAmbientReady)voiceGateAmbient=0.012;
     return true;
   }catch(error){
     console.warn('No se pudo iniciar detector de voz',error);
@@ -2766,7 +2770,9 @@ async function waitForVoiceActivity(){
   stopVoiceGate({closeStream:false});
   voiceGateWaiting=true;
   voiceGateAboveSince=0;
-  voiceGateCalibratingUntil=performance.now()+(isLikelyMobileVoiceDevice()?220:400);
+  const mobile=isLikelyMobileVoiceDevice();
+  const calibrationMs=voiceGateAmbientReady?(mobile?35:90):(mobile?150:300);
+  voiceGateCalibratingUntil=performance.now()+calibrationMs;
   $('voice-status').textContent='Esperando tu voz…';
   $('voice-transcript').textContent='El ruido ambiente no debería abrir una frase hasta que hables cerca del teléfono.';
   const tick=()=>{
@@ -2774,6 +2780,7 @@ async function waitForVoiceActivity(){
     const now=performance.now();
     const rms=voiceGateRms();
     const calibrating=now<voiceGateCalibratingUntil;
+    if(!calibrating)voiceGateAmbientReady=true;
     const threshold=voiceGateThreshold();
     if(calibrating){
       voiceGateAmbient=voiceGateAmbient*0.88+rms*0.12;
@@ -2789,7 +2796,7 @@ async function waitForVoiceActivity(){
         // la convivencia funciona bien y evita reabrir el micrófono cada frase.
         if(isLikelyMobileVoiceDevice()){
           stopVoiceGate({closeStream:true});
-          setTimeout(()=>beginVoiceRecognition({continuous:true,gated:true}),35);
+          setTimeout(()=>beginVoiceRecognition({continuous:true,gated:true}),10);
         }else{
           beginVoiceRecognition({continuous:true,gated:true});
         }
