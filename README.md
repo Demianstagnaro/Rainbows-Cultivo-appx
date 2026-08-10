@@ -754,3 +754,9 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Exige una combinación coherente de intención + vocabulario de Rainbows antes de ejecutar una frase.
 - Mantiene Normal y Alta sin cambios funcionales.
 - Actualiza APP_VERSION, referencias y caché a 3.16.3.
+
+
+## V3.16.4 — Navegación a Hoy en sensibilidad Baja
+- Corrige el filtro móvil estricto para reconocer explícitamente `Ir a hoy`, `Abrir hoy`, `Ir a inicio` y `Abrir inicio`.
+- Mantiene sin cambios el filtrado de ruido y la sensibilidad Baja de V3.16.3.
+- Actualiza APP_VERSION, referencias y caché a 3.16.4.

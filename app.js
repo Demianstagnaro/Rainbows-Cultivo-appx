@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.3';
+const APP_VERSION='3.16.4';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2750,8 +2750,8 @@ function mobileVoiceLooksRelevant(rawText='',confidence=0){
     // "Baja" filtra después de transcribir: exige una frase coherente, no una palabra suelta
     // captada desde lejos. Aceptamos intención + tema, o al menos dos señales claras del dominio.
     const exactShortCommand=[
-      'abrir ayuda','abrir calendario','abrir salas','abrir cosechas','abrir stock','abrir geneticas','abrir configuracion',
-      'ir a ayuda','ir a calendario','ir a salas','ir a cosechas','ir a stock','ir a geneticas','volver a hoy'
+      'abrir hoy','abrir inicio','abrir ayuda','abrir calendario','abrir salas','abrir cosechas','abrir stock','abrir geneticas','abrir configuracion',
+      'ir a hoy','ir a inicio','ir a ayuda','ir a calendario','ir a salas','ir a cosechas','ir a stock','ir a geneticas','volver a hoy'
     ].some(command=>text===command);
     if(exactShortCommand)return true;
     if(words.length<3)return false;
@@ -2983,5 +2983,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.3').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.4').catch(console.error));
 }
