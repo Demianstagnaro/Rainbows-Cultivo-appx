@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.15.3';
+const APP_VERSION='3.15.4';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1683,7 +1683,7 @@ function normalizeVoiceText(value=''){
   // Alias fonéticos de salas. “Veges” suele llegar desde el reconocimiento como “vejes”,
   // “vejez”, “veces” u otras variantes cercanas. Las unificamos antes de interpretar
   // navegación, consultas y acciones para que todas las funciones usen la misma sala.
-  clean=clean.replace(/\b(veges|vejes|vegez|bejes|begez|veyes|beyes|veggies|veggie)\b/g,'veges');
+  clean=clean.replace(/\b(veges|vejes|vejez|vegez|bejes|begez|veyes|beyes|veggies|veggie)\b/g,'veges');
   // El reconocimiento puede devolver números hablados o romanos. Normalizamos las variantes
   // más habituales antes de interpretar comandos/consultas para que, por ejemplo,
   // “Flora tres”, “Flora III” y “Flora 3” sean equivalentes.

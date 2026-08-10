@@ -690,3 +690,9 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Se eliminan `veces` y `vejez` como alias de Veges para evitar falsos positivos.
 - Se mantienen variantes fonéticas cercanas y seguras: Veges, Vejes, Vegez, Bejes, Begez, Veyes/Beyes y variantes `veggie(s)`.
 - No se modifica ninguna otra lógica de voz, datos ni Supabase.
+
+
+## V3.15.4 — Vejez como alias de Veges
+- Se reincorpora `vejez` como alias de voz para la sala Veges porque es una transcripción frecuente del reconocimiento en uso real.
+- Se mantiene `veces` excluido para evitar falsos positivos con una palabra común.
+- No se modifican otras funciones de voz ni lógica de datos.
