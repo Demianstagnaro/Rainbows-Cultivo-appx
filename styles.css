@@ -761,3 +761,6 @@ body{
 .help-hero h2{margin-top:0}.help-hero p{line-height:1.55}.help-rule{margin-top:12px;padding:12px 14px;border:1px solid rgba(249,115,22,.35);border-radius:12px;background:rgba(249,115,22,.08);line-height:1.45}.help-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.help-card{margin:0}.help-card h3{margin:0 0 10px}.help-card ul{margin:0;padding-left:20px;line-height:1.55}.help-card li+li{margin-top:6px}@media(max-width:760px){.help-grid{grid-template-columns:1fr}}
 
 .voice-speech-option{display:flex;align-items:center;gap:8px;margin:10px 0 2px;color:var(--muted);font-size:13px;cursor:pointer}.voice-speech-option input{width:16px;height:16px;accent-color:var(--accent)}
+
+/* V3.15.0 · Mejor reconocimiento de empleados + detener lectura */
+.voice-response-controls{display:flex;align-items:center;gap:8px}.voice-speech-stop{padding:6px 10px;font-size:12px}.voice-speech-stop[hidden]{display:none}

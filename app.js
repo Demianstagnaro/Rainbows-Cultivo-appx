@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.14.9';
+const APP_VERSION='3.15.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1690,7 +1690,8 @@ function stopVoiceSpeech({resume=true}={}){
   if('speechSynthesis' in window)window.speechSynthesis.cancel();
   const wasSpeaking=voiceSpeaking;
   voiceSpeaking=false;
-  if(resume&&wasSpeaking&&voiceContinuousMode&&!voiceFatalError)scheduleVoiceRestart();
+  const stopBtn=$('voice-speech-stop');if(stopBtn)stopBtn.hidden=true;
+  if(resume&&wasSpeaking&&voiceContinuousMode&&!voiceFatalError){$('voice-status').textContent='Escuchando…';scheduleVoiceRestart();}
 }
 function speakVoiceResponse(message=''){
   if(!voiceSpeechEnabled||!message||!('speechSynthesis' in window))return;
@@ -1703,10 +1704,12 @@ function speakVoiceResponse(message=''){
   utterance.rate=1;
   utterance.onstart=()=>{
     voiceSpeaking=true;
+    const stopBtn=$('voice-speech-stop');if(stopBtn)stopBtn.hidden=false;
     if(voiceContinuousMode){$('voice-status').textContent='Respondiendo…';setVoiceButtonActive(true);}
   };
   const finish=()=>{
     voiceSpeaking=false;
+    const stopBtn=$('voice-speech-stop');if(stopBtn)stopBtn.hidden=true;
     if(voiceContinuousMode&&!voiceFatalError){$('voice-status').textContent='Escuchando…';scheduleVoiceRestart();}
   };
   utterance.onend=finish;
@@ -1800,12 +1803,42 @@ function voiceRoomFromText(text,{allowContext=false}={}){
   if(token==='sala de trabajo')return 'Sala de trabajo';
   return token.charAt(0).toUpperCase()+token.slice(1);
 }
+function voiceEmployeeAliasKeys(name=''){
+  const key=normalizeVoiceText(name);
+  const known={
+    cone:['cone','coni','cony','kone'],
+    chomi:['chomi','chomy','yomi','chommy'],
+    pata:['pata'],
+    lua:['lua'],
+    mar:['mar'],
+    eric:['eric','erik','erick'],
+    tortu:['tortu','tortuga']
+  };
+  return [...new Set([key,...(known[key]||[])].map(normalizeVoiceText).filter(Boolean))];
+}
+function voiceEmployeeScore(text,employee){
+  const clean=normalizeVoiceText(text);
+  const tokens=clean.split(/\s+/).filter(Boolean);
+  let best=0;
+  for(const alias of voiceEmployeeAliasKeys(employee?.nombre||'')){
+    const re=new RegExp(`(^|\\s)${alias.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(\\s|$)`);
+    if(re.test(clean))return 1;
+    if(alias.length<4)continue;
+    for(let size=1;size<=Math.min(2,tokens.length);size++){
+      for(let i=0;i+size<=tokens.length;i++){
+        const chunk=tokens.slice(i,i+size).join(' ');
+        if(Math.abs(chunk.length-alias.length)>3)continue;
+        best=Math.max(best,voiceSimilarity(alias,chunk));
+      }
+    }
+  }
+  return best;
+}
 function voiceEmployeeFromText(text){
-  const normalized=normalizeVoiceText(text);
-  return state.empleados.find(e=>{
-    const name=normalizeVoiceText(e.nombre||'');
-    return name&&new RegExp(`(^|\\s)${name.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')}(\\s|$)`).test(normalized);
-  })||null;
+  const scored=state.empleados.map(e=>({e,score:voiceEmployeeScore(text,e)})).sort((a,b)=>b.score-a.score);
+  if(!scored.length||scored[0].score<0.72)return null;
+  if(scored[1]&&scored[1].score>=0.72&&scored[0].score-scored[1].score<0.08)return null;
+  return scored[0].e;
 }
 function voiceTaskLabel(t){
   return `${t.task}${t.room?` en ${t.room}`:''}`;
@@ -2321,11 +2354,15 @@ function voiceTaskActionDate(){
   return null;
 }
 function voiceEmployeesFromText(text){
-  const clean=normalizeVoiceText(text);
-  return state.empleados.filter(e=>{
-    const name=normalizeVoiceText(e.nombre||'');
-    return name&&new RegExp(`(^|\\s)${name.replace(/[.*+?^${}()|[\\]\\]/g,'\\$&')}(\\s|$)`).test(clean);
-  });
+  const scored=state.empleados.map(e=>({e,score:voiceEmployeeScore(text,e)})).filter(x=>x.score>=0.72).sort((a,b)=>b.score-a.score);
+  // Un mismo fragmento no debería elegir dos personas casi idénticas. En caso de
+  // duda dejamos que el usuario corrija responsables en el cuadro de confirmación.
+  const selected=[];
+  for(const item of scored){
+    if(selected.some(x=>normalizeVoiceText(x.e.nombre)===normalizeVoiceText(item.e.nombre)))continue;
+    selected.push(item);
+  }
+  return selected.map(x=>x.e);
 }
 function voiceTaskActionMatch(text,d){
   const room=voiceRoomFromText(text,{allowContext:false});
@@ -2511,8 +2548,9 @@ $('voice-close')?.addEventListener('click',closeVoicePanel);
 $('voice-speech-toggle')?.addEventListener('change',e=>{voiceSpeechEnabled=Boolean(e.target.checked);localStorage.setItem('rainbows_voice_speech',voiceSpeechEnabled?'1':'0');if(!voiceSpeechEnabled)stopVoiceSpeech();});
 $('voice-cancel')?.addEventListener('click',closeVoicePanel);
 $('voice-response-close')?.addEventListener('click',closeVoiceResponse);
+$('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:true}));
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.14.9').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.0').catch(console.error));
 }
