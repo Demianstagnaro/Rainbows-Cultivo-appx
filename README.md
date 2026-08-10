@@ -718,3 +718,12 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Reprogramar tareas desde Hoy/Calendario abre el formulario con la nueva fecha para revisión antes de Guardar.
 - Cancelar tareas desde Hoy/Calendario reutiliza la confirmación manual existente antes de modificar datos.
 - Si hay ambigüedad, falta fecha destino o la tarea está en otro día, Rainbows no adivina.
+
+
+## V3.15.8 — Sensibilidad ambiente del micrófono
+- Agrega Sensibilidad ambiente en Ayuda → Voz de Rainbows: Alta, Normal y Baja.
+- Alta conserva el comportamiento previo.
+- Normal y Baja usan Web Audio para medir el nivel ambiente y abrir SpeechRecognition solo al detectar una voz por encima del ruido sostenido brevemente.
+- El umbral se adapta al ruido constante del ambiente; Baja exige una señal más clara/cercana.
+- La preferencia queda guardada por dispositivo.
+- No cambia la lógica de comandos, consultas ni escrituras en Supabase.

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.15.6';
+const APP_VERSION='3.15.8';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -888,6 +888,7 @@ function renderHelp(){
         <label class="help-field"><span>Voz</span><select id="help-voice-select"></select></label>
         <label class="help-field"><span>Velocidad <strong id="help-voice-rate-value">1×</strong></span><input id="help-voice-rate" type="range" min="0.75" max="1.35" step="0.05"></label>
         <label class="help-voice-check"><input id="help-voice-enabled" type="checkbox"> <span>Leer respuestas en voz alta</span></label>
+        <label class="help-field"><span>Sensibilidad ambiente</span><select id="help-voice-sensitivity"><option value="high">Alta · como hasta ahora</option><option value="normal">Normal · filtra ruido ambiente</option><option value="low">Baja · más estricta</option></select></label>
         <button id="help-voice-test" class="secondary" type="button">Probar voz</button>
       </div>
       <p id="help-voice-note" class="muted small"></p>
@@ -1677,6 +1678,15 @@ let voiceSpeechEnabled=localStorage.getItem('rainbows_voice_speech')==='1';
 let voiceSpeechVoiceURI=localStorage.getItem('rainbows_voice_uri')||'';
 let voiceSpeechRate=Math.min(1.35,Math.max(0.75,Number(localStorage.getItem('rainbows_voice_rate')||1)||1));
 let voiceAvailableVoices=[];
+let voiceInputSensitivity=localStorage.getItem('rainbows_voice_input_sensitivity')||'high';
+let voiceGateStream=null;
+let voiceGateContext=null;
+let voiceGateAnalyser=null;
+let voiceGateFrame=null;
+let voiceGateAmbient=0.012;
+let voiceGateAboveSince=0;
+let voiceGateCalibratingUntil=0;
+let voiceGateWaiting=false;
 
 function normalizeVoiceText(value=''){
   let clean=value.toLocaleLowerCase('es-AR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
@@ -1721,14 +1731,16 @@ function populateHelpVoiceSelect(){
   const current=selectedVoice();if(current)select.value=current.voiceURI;
 }
 function setupHelpVoiceSettings(){
-  const enabled=$('help-voice-enabled'),rate=$('help-voice-rate'),rateValue=$('help-voice-rate-value'),select=$('help-voice-select'),test=$('help-voice-test'),note=$('help-voice-note');
+  const enabled=$('help-voice-enabled'),rate=$('help-voice-rate'),rateValue=$('help-voice-rate-value'),select=$('help-voice-select'),sensitivity=$('help-voice-sensitivity'),test=$('help-voice-test'),note=$('help-voice-note');
   if(enabled)enabled.checked=voiceSpeechEnabled;
   if(rate){rate.value=String(voiceSpeechRate);if(rateValue)rateValue.textContent=`${Number(voiceSpeechRate).toFixed(2).replace(/\.00$/,'').replace(/0$/,'')}×`;}
+  if(sensitivity)sensitivity.value=voiceInputSensitivity;
   populateHelpVoiceSelect();
-  if(note)note.textContent=('speechSynthesis' in window)?'Las voces disponibles dependen del teléfono, sistema operativo y navegador. Esta configuración se guarda solo en este dispositivo.':'Este navegador no ofrece lectura de voz.';
+  if(note)note.textContent=('speechSynthesis' in window)?'Las voces disponibles dependen del teléfono, sistema operativo y navegador. La sensibilidad Normal/Baja usa el nivel de sonido ambiente para evitar que ruidos lejanos abran frases falsas. Todo se guarda solo en este dispositivo.':'Este navegador no ofrece lectura de voz.';
   enabled?.addEventListener('change',e=>{voiceSpeechEnabled=Boolean(e.target.checked);localStorage.setItem('rainbows_voice_speech',voiceSpeechEnabled?'1':'0');syncVoiceSpeechToggle();if(!voiceSpeechEnabled)stopVoiceSpeech();});
   rate?.addEventListener('input',e=>{voiceSpeechRate=Number(e.target.value)||1;localStorage.setItem('rainbows_voice_rate',String(voiceSpeechRate));if(rateValue)rateValue.textContent=`${voiceSpeechRate.toFixed(2).replace(/\.00$/,'').replace(/0$/,'')}×`;});
   select?.addEventListener('change',e=>{voiceSpeechVoiceURI=e.target.value||'';localStorage.setItem('rainbows_voice_uri',voiceSpeechVoiceURI);});
+  sensitivity?.addEventListener('change',e=>setVoiceInputSensitivity(e.target.value));
   test?.addEventListener('click',()=>{const was=voiceSpeechEnabled;voiceSpeechEnabled=true;speakVoiceResponse('Hola. Esta es la voz de Rainbows.');voiceSpeechEnabled=was;});
 }
 function showVoicePanel(status='Micrófono apagado',message=''){
@@ -1824,6 +1836,7 @@ function stopVoiceRecognition({hidePanel=false,message='Micrófono cerrado.'}={}
   voiceContinuousMode=false;
   voiceFatalError=false;
   if(voiceRestartTimer){clearTimeout(voiceRestartTimer);voiceRestartTimer=null;}
+  stopVoiceGate({closeStream:true});
   if(voiceRecognition){try{voiceRecognition.onend=null;voiceRecognition.stop()}catch(_){} voiceRecognition=null;}
   voiceListening=false;
   setVoiceButtonActive(false);
@@ -2693,8 +2706,100 @@ function isVoiceStopCommand(text=''){
   const clean=normalizeVoiceText(text);
   return ['cerrar microfono','cerrar el microfono','apagar microfono','apagar el microfono','dejar de escuchar','para de escuchar','parar de escuchar','detener microfono','detener el microfono'].some(command=>clean.includes(command));
 }
+function stopVoiceGate({closeStream=false}={}){
+  voiceGateWaiting=false;
+  voiceGateAboveSince=0;
+  if(voiceGateFrame){cancelAnimationFrame(voiceGateFrame);voiceGateFrame=null;}
+  if(closeStream){
+    if(voiceGateStream){for(const track of voiceGateStream.getTracks())track.stop();voiceGateStream=null;}
+    if(voiceGateContext){try{voiceGateContext.close()}catch(_){} voiceGateContext=null;voiceGateAnalyser=null;}
+  }
+}
+function voiceGateThreshold(){
+  if(voiceInputSensitivity==='low')return Math.max(0.055,voiceGateAmbient*3.0+0.012);
+  return Math.max(0.030,voiceGateAmbient*2.1+0.008);
+}
+function voiceGateSustainMs(){return voiceInputSensitivity==='low'?110:65;}
+async function ensureVoiceGate(){
+  if(voiceGateAnalyser&&voiceGateStream)return true;
+  if(!navigator.mediaDevices?.getUserMedia)return false;
+  try{
+    voiceGateStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    const AudioCtx=window.AudioContext||window.webkitAudioContext;
+    if(!AudioCtx)return false;
+    voiceGateContext=new AudioCtx();
+    if(voiceGateContext.state==='suspended')await voiceGateContext.resume().catch(()=>{});
+    const source=voiceGateContext.createMediaStreamSource(voiceGateStream);
+    voiceGateAnalyser=voiceGateContext.createAnalyser();
+    voiceGateAnalyser.fftSize=512;
+    voiceGateAnalyser.smoothingTimeConstant=0.25;
+    source.connect(voiceGateAnalyser);
+    voiceGateAmbient=0.012;
+    return true;
+  }catch(error){
+    console.warn('No se pudo iniciar detector de voz',error);
+    return false;
+  }
+}
+function voiceGateRms(){
+  if(!voiceGateAnalyser)return 0;
+  const data=new Uint8Array(voiceGateAnalyser.fftSize);
+  voiceGateAnalyser.getByteTimeDomainData(data);
+  let sum=0;
+  for(const v of data){const x=(v-128)/128;sum+=x*x;}
+  return Math.sqrt(sum/data.length);
+}
+async function waitForVoiceActivity(){
+  if(!voiceContinuousMode||voiceFatalError||voiceSpeaking||voiceListening)return;
+  if(voiceInputSensitivity==='high'){scheduleVoiceRestart();return;}
+  const ready=await ensureVoiceGate();
+  if(!ready){showVoicePanel('Escuchando…','No pude usar el filtro de ruido en este dispositivo; sigo con sensibilidad Alta.');scheduleVoiceRestart();return;}
+  stopVoiceGate({closeStream:false});
+  voiceGateWaiting=true;
+  voiceGateAboveSince=0;
+  voiceGateCalibratingUntil=performance.now()+450;
+  $('voice-status').textContent='Esperando tu voz…';
+  $('voice-transcript').textContent='El ruido ambiente no debería abrir una frase hasta que hables cerca del teléfono.';
+  const tick=()=>{
+    if(!voiceGateWaiting||!voiceContinuousMode||voiceSpeaking||voiceListening){voiceGateFrame=null;return;}
+    const now=performance.now();
+    const rms=voiceGateRms();
+    const calibrating=now<voiceGateCalibratingUntil;
+    const threshold=voiceGateThreshold();
+    if(calibrating){
+      voiceGateAmbient=voiceGateAmbient*0.88+rms*0.12;
+      voiceGateAboveSince=0;
+    }else if(rms>=threshold){
+      if(!voiceGateAboveSince)voiceGateAboveSince=now;
+      if(now-voiceGateAboveSince>=voiceGateSustainMs()){
+        voiceGateWaiting=false;voiceGateAboveSince=0;voiceGateFrame=null;
+        $('voice-status').textContent='Escuchando…';
+        beginVoiceRecognition({continuous:true,gated:true});
+        return;
+      }
+    }else{
+      voiceGateAboveSince=0;
+      // Actualizamos lentamente el piso de ruido para adaptarnos a ventiladores constantes,
+      // pero solo cuando estamos por debajo del umbral de activación.
+      voiceGateAmbient=voiceGateAmbient*0.985+rms*0.015;
+    }
+    voiceGateFrame=requestAnimationFrame(tick);
+  };
+  voiceGateFrame=requestAnimationFrame(tick);
+}
+function setVoiceInputSensitivity(value='high'){
+  const next=['high','normal','low'].includes(value)?value:'high';
+  voiceInputSensitivity=next;
+  localStorage.setItem('rainbows_voice_input_sensitivity',next);
+  const select=$('help-voice-sensitivity');if(select)select.value=next;
+  if(!voiceContinuousMode)return;
+  if(voiceRecognition&&voiceListening){try{voiceRecognition.stop()}catch(_){} return;}
+  stopVoiceGate({closeStream:next==='high'});
+  if(next==='high')scheduleVoiceRestart();else waitForVoiceActivity();
+}
 function scheduleVoiceRestart(){
   if(!voiceContinuousMode||voiceFatalError||voiceRestartTimer||voiceSpeaking)return;
+  if(voiceInputSensitivity!=='high'){waitForVoiceActivity();return;}
   voiceRestartTimer=setTimeout(()=>{
     voiceRestartTimer=null;
     if(voiceContinuousMode&&!voiceListening)beginVoiceRecognition({continuous:true});
@@ -2735,16 +2840,18 @@ function beginVoiceRecognition(options={}){
   };
   voiceRecognition.onend=()=>{
     voiceListening=false;voiceRecognition=null;
-      if(voiceContinuousMode&&!voiceFatalError&&!voiceSpeaking){setVoiceButtonActive(true);scheduleVoiceRestart();}
+      if(voiceContinuousMode&&!voiceFatalError&&!voiceSpeaking){setVoiceButtonActive(true);if(voiceInputSensitivity==='high')scheduleVoiceRestart();else waitForVoiceActivity();}
       else if(voiceSpeaking){setVoiceButtonActive(true);}
     else{setVoiceButtonActive(false);}
   };
   try{voiceRecognition.start()}catch(error){console.error(error);voiceListening=false;if(continuous)scheduleVoiceRestart();else showVoicePanel('No se pudo iniciar','Cerrá cualquier otra escucha activa y probá nuevamente.');}
 }
 function startVoiceRecognition(){
-  if(voiceContinuousMode||voiceListening){stopVoiceRecognition({hidePanel:false,message:'Micrófono cerrado. Tocá el botón cuando quieras volver a activarlo.'});return;}
+  if(voiceContinuousMode||voiceListening||voiceGateWaiting){stopVoiceRecognition({hidePanel:false,message:'Micrófono cerrado. Tocá el botón cuando quieras volver a activarlo.'});return;}
   voiceContinuousMode=true;
-  beginVoiceRecognition({continuous:true});
+  setVoiceButtonActive(true);
+  showVoicePanel(voiceInputSensitivity==='high'?'Escuchando…':'Preparando filtro de ruido…','Podés hablar cuando quieras.');
+  if(voiceInputSensitivity==='high')beginVoiceRecognition({continuous:true});else waitForVoiceActivity();
 }
 
 $('voice-button')?.setAttribute('aria-pressed','false');
@@ -2761,5 +2868,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.7').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.8').catch(console.error));
 }
