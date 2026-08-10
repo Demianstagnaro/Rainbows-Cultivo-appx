@@ -678,3 +678,15 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Ayuda rediseñada con resumen inicial y lista completa desplegable.
 - Configuración de voz disponible para todos desde Ayuda: selector de voz, velocidad, prueba y lectura activada/desactivada.
 - La voz y velocidad elegidas se guardan por dispositivo.
+
+
+## V3.15.2 — Mejor reconocimiento de Veges por voz
+- Se agregaron alias fonéticos para la sala Veges (por ejemplo: vejes, vejez, veces y variantes similares).
+- La normalización se aplica a navegación, consultas y acciones por voz.
+- No se modificó la lógica de datos ni Supabase.
+
+
+## V3.15.3 — Alias conservadores para Veges por voz
+- Se eliminan `veces` y `vejez` como alias de Veges para evitar falsos positivos.
+- Se mantienen variantes fonéticas cercanas y seguras: Veges, Vejes, Vegez, Bejes, Begez, Veyes/Beyes y variantes `veggie(s)`.
+- No se modifica ninguna otra lógica de voz, datos ni Supabase.

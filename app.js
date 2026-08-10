@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.15.1';
+const APP_VERSION='3.15.3';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1680,6 +1680,10 @@ let voiceAvailableVoices=[];
 
 function normalizeVoiceText(value=''){
   let clean=value.toLocaleLowerCase('es-AR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+  // Alias fonéticos de salas. “Veges” suele llegar desde el reconocimiento como “vejes”,
+  // “vejez”, “veces” u otras variantes cercanas. Las unificamos antes de interpretar
+  // navegación, consultas y acciones para que todas las funciones usen la misma sala.
+  clean=clean.replace(/\b(veges|vejes|vegez|bejes|begez|veyes|beyes|veggies|veggie)\b/g,'veges');
   // El reconocimiento puede devolver números hablados o romanos. Normalizamos las variantes
   // más habituales antes de interpretar comandos/consultas para que, por ejemplo,
   // “Flora tres”, “Flora III” y “Flora 3” sean equivalentes.
@@ -2645,5 +2649,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.1').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.3').catch(console.error));
 }
