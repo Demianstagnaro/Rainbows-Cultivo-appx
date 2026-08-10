@@ -736,3 +736,13 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Reduce la calibración posterior a 35 ms en móvil y el traspaso al reconocimiento a 10 ms.
 - Mantiene el filtro previo de ruido y el comportamiento de sensibilidad Alta.
 - Corrige APP_VERSION, referencias y caché a 3.16.1.
+
+
+## V3.16.2 — Escucha móvil continua sin timing
+
+- En celular, Sensibilidad Normal/Baja deja de usar el gate previo de Web Audio que podía recortar el inicio de cada frase.
+- SpeechRecognition permanece continuo cuando el navegador lo permite y se reinicia en ~60 ms si Chrome corta la sesión.
+- Ruido/frases dudosas se descartan después del reconocimiento sin mostrar errores ni cerrar la escucha.
+- Alta conserva el comportamiento anterior.
+- En escritorio Normal/Baja conservan el filtro previo por nivel ambiente, donde funcionaba bien.
+- Actualiza APP_VERSION, referencias y caché a 3.16.2.

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.1';
+const APP_VERSION='3.16.2';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1737,7 +1737,7 @@ function setupHelpVoiceSettings(){
   if(rate){rate.value=String(voiceSpeechRate);if(rateValue)rateValue.textContent=`${Number(voiceSpeechRate).toFixed(2).replace(/\.00$/,'').replace(/0$/,'')}×`;}
   if(sensitivity)sensitivity.value=voiceInputSensitivity;
   populateHelpVoiceSelect();
-  if(note)note.textContent=('speechSynthesis' in window)?'Las voces disponibles dependen del teléfono, sistema operativo y navegador. La sensibilidad Normal/Baja usa el nivel de sonido ambiente para evitar que ruidos lejanos abran frases falsas. Todo se guarda solo en este dispositivo.':'Este navegador no ofrece lectura de voz.';
+  if(note)note.textContent=('speechSynthesis' in window)?'Las voces disponibles dependen del teléfono, sistema operativo y navegador. En celular, Normal/Baja mantienen la escucha lista y descartan ruido o frases dudosas sin obligarte a encontrar un timing. En computadora conservan el filtro por nivel ambiente. Todo se guarda solo en este dispositivo.':'Este navegador no ofrece lectura de voz.';
   enabled?.addEventListener('change',e=>{voiceSpeechEnabled=Boolean(e.target.checked);localStorage.setItem('rainbows_voice_speech',voiceSpeechEnabled?'1':'0');syncVoiceSpeechToggle();if(!voiceSpeechEnabled)stopVoiceSpeech();});
   rate?.addEventListener('input',e=>{voiceSpeechRate=Number(e.target.value)||1;localStorage.setItem('rainbows_voice_rate',String(voiceSpeechRate));if(rateValue)rateValue.textContent=`${voiceSpeechRate.toFixed(2).replace(/\.00$/,'').replace(/0$/,'')}×`;});
   select?.addEventListener('change',e=>{voiceSpeechVoiceURI=e.target.value||'';localStorage.setItem('rainbows_voice_uri',voiceSpeechVoiceURI);});
@@ -2719,6 +2719,29 @@ function stopVoiceGate({closeStream=false}={}){
 function isLikelyMobileVoiceDevice(){
   return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent||'') || Math.min(window.innerWidth||9999,window.innerHeight||9999)<820;
 }
+function useMobileContinuousVoiceFilter(){
+  return isLikelyMobileVoiceDevice() && voiceInputSensitivity!=='high';
+}
+function mobileVoiceLooksRelevant(rawText='',confidence=0){
+  const text=normalizeVoiceText(rawText);
+  if(!text||isVoiceStopCommand(text))return true;
+  const words=text.split(/\s+/).filter(Boolean);
+  if(words.length<2)return false;
+  const strong=[
+    'tarea','tareas','pendiente','pendientes','realizada','realizadas','responsable','responsables',
+    'flora','veges','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
+    'cama','camas','planta','plantas','semana','ciclo','riego','fumigacion','poda','enmienda','mantenimiento',
+    'abrir','abrime','entrar','llevame','mostrar','completar','crear','agregar','programar','reprogramar','mover','cancelar','anular',
+    'cuando','cuanto','cuanta','cuantos','cuantas','quien','quienes','cual','cuales','hoy','ayer','manana',
+    'hizo','hicieron','queda','quedan','quedo','produjo','produccion','desvio','meta','salida','salidas','movimiento','movimientos',
+    'medrano','consumo','descarte','nomenclatura','linaje','genotipo','cannabinoide','cannabinoides','thc','cbd','cbg'
+  ];
+  const hasStrong=strong.some(token=>text.includes(token));
+  // Chrome Android a veces devuelve confidence=0 incluso para frases correctas; por eso
+  // la confianza ayuda cuando existe, pero nunca es el único criterio.
+  if(voiceInputSensitivity==='low')return hasStrong && (confidence===0 || confidence>=0.22);
+  return hasStrong || confidence>=0.48;
+}
 function voiceGateThreshold(){
   const mobile=isLikelyMobileVoiceDevice();
   if(voiceInputSensitivity==='low'){
@@ -2765,6 +2788,16 @@ function voiceGateRms(){
 async function waitForVoiceActivity(){
   if(!voiceContinuousMode||voiceFatalError||voiceSpeaking||voiceListening)return;
   if(voiceInputSensitivity==='high'){scheduleVoiceRestart();return;}
+  // En celular no usamos el gate previo de Web Audio: iniciar SpeechRecognition después
+  // de detectar volumen recorta el comienzo de la frase y obliga a buscar el “timing”.
+  // Mantenemos el reconocimiento listo y filtramos resultados dudosos después.
+  if(useMobileContinuousVoiceFilter()){
+    stopVoiceGate({closeStream:true});
+    $('voice-status').textContent='Escuchando…';
+    $('voice-transcript').textContent='Podés hablar cuando quieras.';
+    beginVoiceRecognition({continuous:true,mobileFiltered:true});
+    return;
+  }
   const ready=await ensureVoiceGate();
   if(!ready){showVoicePanel('Escuchando…','No pude usar el filtro de ruido en este dispositivo; sigo con sensibilidad Alta.');scheduleVoiceRestart();return;}
   stopVoiceGate({closeStream:false});
@@ -2824,6 +2857,13 @@ function setVoiceInputSensitivity(value='high'){
 }
 function scheduleVoiceRestart(){
   if(!voiceContinuousMode||voiceFatalError||voiceRestartTimer||voiceSpeaking)return;
+  if(useMobileContinuousVoiceFilter()){
+    voiceRestartTimer=setTimeout(()=>{
+      voiceRestartTimer=null;
+      if(voiceContinuousMode&&!voiceListening)beginVoiceRecognition({continuous:true,mobileFiltered:true});
+    },60);
+    return;
+  }
   if(voiceInputSensitivity!=='high'){waitForVoiceActivity();return;}
   voiceRestartTimer=setTimeout(()=>{
     voiceRestartTimer=null;
@@ -2837,14 +2877,17 @@ function beginVoiceRecognition(options={}){
   const continuous=Boolean(options.continuous);
   voiceFatalError=false;
   voiceRecognition=new VoiceRecognition();
-  voiceRecognition.lang='es-AR';voiceRecognition.interimResults=true;voiceRecognition.continuous=false;voiceRecognition.maxAlternatives=1;
+  voiceRecognition.lang='es-AR';voiceRecognition.interimResults=true;voiceRecognition.continuous=Boolean(options.mobileFiltered);voiceRecognition.maxAlternatives=options.mobileFiltered?3:1;
   voiceRecognition.onstart=()=>{
     voiceListening=true;
     if(continuous){voiceContinuousMode=true;setVoiceButtonActive(true);showVoicePanel('Escuchando…','Podés hablar cuando quieras.');}
   };
   voiceRecognition.onresult=event=>{
-    let transcript='';let finalText='';
-    for(let i=event.resultIndex;i<event.results.length;i++){transcript+=event.results[i][0].transcript;if(event.results[i].isFinal)finalText+=event.results[i][0].transcript;}
+    let transcript='';let finalText='';let finalConfidence=0;
+    for(let i=event.resultIndex;i<event.results.length;i++){
+      transcript+=event.results[i][0].transcript;
+      if(event.results[i].isFinal){finalText+=event.results[i][0].transcript;finalConfidence=Math.max(finalConfidence,Number(event.results[i][0].confidence)||0);}
+    }
     $('voice-transcript').textContent=transcript?`Escuché: “${transcript}”`:'Escuchando…';
     if(finalText){
       const clean=finalText.trim();
@@ -2853,7 +2896,25 @@ function beginVoiceRecognition(options={}){
         stopVoiceRecognition({hidePanel:false,message:'Listo. Dejé de escuchar.'});
         return;
       }
-      const result=executeVoiceCommand(clean);$('voice-status').textContent=voiceContinuousMode?'Escuchando…':'Micrófono apagado'; $('voice-transcript').textContent=voiceContinuousMode?'Podés decir otro comando.':''; showVoiceResponse(result.message);
+      if(options.mobileFiltered&&!mobileVoiceLooksRelevant(clean,finalConfidence)){
+        // Ruido o conversación lejana sin vocabulario de Rainbows: no mostramos error,
+        // no respondemos y, sobre todo, no cerramos la escucha.
+        $('voice-status').textContent='Escuchando…';
+        $('voice-transcript').textContent='Podés hablar cuando quieras.';
+        return;
+      }
+      const result=executeVoiceCommand(clean);
+      // En modo filtrado móvil, un resultado totalmente desconocido suele ser ruido o una
+      // frase parcial. Lo ignoramos silenciosamente para que el usuario pueda seguir hablando
+      // sin cancelar mensajes ni esperar reinicios.
+      if(options.mobileFiltered&&result&&result.ok===false&&normalizeVoiceText(String(result.message||'')).includes('todavia no reconozco ese comando')){
+        $('voice-status').textContent='Escuchando…';
+        $('voice-transcript').textContent='Podés hablar cuando quieras.';
+        return;
+      }
+      $('voice-status').textContent=voiceContinuousMode?'Escuchando…':'Micrófono apagado';
+      $('voice-transcript').textContent=voiceContinuousMode?'Podés decir otro comando.':'';
+      showVoiceResponse(result.message);
     }
   };
   voiceRecognition.onerror=event=>{
@@ -2861,11 +2922,16 @@ function beginVoiceRecognition(options={}){
     if(['not-allowed','service-not-allowed','audio-capture'].includes(event.error)){
       voiceFatalError=true;voiceContinuousMode=false;setVoiceButtonActive(false);
     }
+    if(options.mobileFiltered&&event.error==='no-speech'&&voiceContinuousMode){
+      $('voice-status').textContent='Escuchando…';
+      $('voice-transcript').textContent='Podés hablar cuando quieras.';
+      return;
+    }
     showVoicePanel(event.error==='no-speech'&&voiceContinuousMode?'Escuchando…':'No se pudo escuchar',messages[event.error]||`Error de reconocimiento: ${event.error}.`);
   };
   voiceRecognition.onend=()=>{
     voiceListening=false;voiceRecognition=null;
-      if(voiceContinuousMode&&!voiceFatalError&&!voiceSpeaking){setVoiceButtonActive(true);if(voiceInputSensitivity==='high')scheduleVoiceRestart();else waitForVoiceActivity();}
+      if(voiceContinuousMode&&!voiceFatalError&&!voiceSpeaking){setVoiceButtonActive(true);if(voiceInputSensitivity==='high'||useMobileContinuousVoiceFilter())scheduleVoiceRestart();else waitForVoiceActivity();}
       else if(voiceSpeaking){setVoiceButtonActive(true);}
     else{setVoiceButtonActive(false);}
   };
@@ -2875,7 +2941,8 @@ function startVoiceRecognition(){
   if(voiceContinuousMode||voiceListening||voiceGateWaiting){stopVoiceRecognition({hidePanel:false,message:'Micrófono cerrado. Tocá el botón cuando quieras volver a activarlo.'});return;}
   voiceContinuousMode=true;
   setVoiceButtonActive(true);
-  showVoicePanel(voiceInputSensitivity==='high'?'Escuchando…':'Preparando filtro de ruido…','Podés hablar cuando quieras.');
+  const instant=voiceInputSensitivity==='high'||useMobileContinuousVoiceFilter();
+  showVoicePanel(instant?'Escuchando…':'Preparando filtro de ruido…','Podés hablar cuando quieras.');
   if(voiceInputSensitivity==='high')beginVoiceRecognition({continuous:true});else waitForVoiceActivity();
 }
 
@@ -2893,5 +2960,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.0').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.2').catch(console.error));
 }
