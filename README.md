@@ -720,7 +720,7 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Si hay ambigüedad, falta fecha destino o la tarea está en otro día, Rainbows no adivina.
 
 
-## V3.15.8 — Sensibilidad ambiente del micrófono
+## V3.15.9 — Sensibilidad ambiente del micrófono
 - Agrega Sensibilidad ambiente en Ayuda → Voz de Rainbows: Alta, Normal y Baja.
 - Alta conserva el comportamiento previo.
 - Normal y Baja usan Web Audio para medir el nivel ambiente y abrir SpeechRecognition solo al detectar una voz por encima del ruido sostenido brevemente.
