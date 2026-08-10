@@ -705,10 +705,16 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Mantiene las consultas globales y las modificaciones contextuales.
 
 
-## V3.15.6 — Tareas generales por voz
+## V3.15.7 — Tareas generales por voz
 - Permite crear tareas generales por voz solo cuando la orden dice explícitamente `tarea general` o `general`.
 - No interpreta automáticamente una tarea sin sala como general: pide aclaración para evitar errores.
 - Las tareas generales se preparan únicamente desde Hoy, donde se administran actualmente.
 - Abre el formulario existente con el nombre precargado y requiere Guardar manualmente.
 - Mantiene tareas por sala con fecha y sala obligatorias.
 - Actualiza versión y caché del service worker.
+
+
+## V3.15.7 — Reprogramar y cancelar tareas por voz
+- Reprogramar tareas desde Hoy/Calendario abre el formulario con la nueva fecha para revisión antes de Guardar.
+- Cancelar tareas desde Hoy/Calendario reutiliza la confirmación manual existente antes de modificar datos.
+- Si hay ambigüedad, falta fecha destino o la tarea está en otro día, Rainbows no adivina.

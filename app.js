@@ -871,7 +871,7 @@ function renderHelp(){
         <li>“Volver a hoy”</li>
       </ul></article>
       <article class="panel help-card help-card-quick"><h3>Acciones disponibles</h3><ul>
-        <li>Desde Hoy o Calendario: “Agregar fumigación mañana en Flora 2”.</li><li>También podés completar: “Completar fumigación de Flora 2”.</li>
+        <li>Desde Hoy o Calendario: “Agregar fumigación mañana en Flora 2”.</li><li>También podés completar: “Completar fumigación de Flora 2”. Reprogramar: “Reprogramar fumigación de Flora 2 para mañana”. Cancelar: “Cancelar fumigación de Flora 2”.</li>
         <li>Podés agregar responsables: “La hicieron Cone y Pata”.</li>
         <li>Nada se guarda hasta que confirmás.</li>
       </ul></article>
@@ -904,7 +904,7 @@ function renderHelp(){
         <article class="help-card"><h3>Tareas · consultas globales</h3><ul>
           <li>“¿Qué tareas hay hoy?”</li><li>“¿Qué tareas están pendientes mañana?”</li><li>“¿Qué tareas hay mañana en Flora 2?”</li><li>“¿Qué tareas se hicieron ayer?”</li><li>“¿Qué hizo Cone hoy?”</li><li>“¿Quién hizo las tareas del 10 de agosto?”</li>
         </ul></article>
-        <article class="help-card"><h3>Tareas · crear y completar</h3><ul><li>Crear: “Agregar fumigación mañana en Flora 2”</li><li>Crear: “Crear tarea limpieza el viernes en Veges”</li>
+        <article class="help-card"><h3>Tareas · crear, completar y reprogramar</h3><ul><li>Crear: “Agregar fumigación mañana en Flora 2”</li><li>Crear: “Crear tarea limpieza el viernes en Veges”</li><li>Reprogramar: “Reprogramar fumigación de Flora 2 para mañana”</li><li>Cancelar: “Cancelar fumigación de Flora 2”</li>
           <li>Disponible desde Hoy o desde un día abierto en Calendario.</li><li>“Completar fumigación de Flora 2”</li><li>“Marcar como hecha la poda de Flora 1”</li><li>“Completar riego de Flora 3, lo hicieron Cone y Pata”</li>
         </ul></article>
         <article class="help-card"><h3>Fechas</h3><ul>
@@ -2459,11 +2459,11 @@ function voiceEmployeesFromText(text){
   }
   return selected.map(x=>x.e);
 }
-function voiceTaskActionMatch(text,d){
+function voiceTaskActionMatch(text,d,extraCommandWords=[]){
   const room=voiceRoomFromText(text,{allowContext:false});
   const pending=tasks(d).filter(t=>!done(t)&&(!room||t.room===room));
   if(!pending.length)return {matches:[],room};
-  const commandWords=new Set(['completar','completa','complete','marcar','marca','como','hecha','hecho','realizada','realizado','terminar','termina','finalizar','finaliza','tarea','la','el','de','del','en','por','favor']);
+  const commandWords=new Set(['completar','completa','complete','marcar','marca','como','hecha','hecho','realizada','realizado','terminar','termina','finalizar','finaliza','tarea','la','el','de','del','en','por','favor',...extraCommandWords]);
   const queryTokens=normalizeVoiceText(text).split(' ').filter(x=>x&&!commandWords.has(x)&&!/^flora$|^[123]$/.test(x));
   const scored=pending.map(t=>{
     const label=normalizeVoiceText(t.task||'');
@@ -2536,6 +2536,61 @@ function executeVoiceCreateTaskAction(rawText){
   return {ok:true,message:`Preparé una nueva tarea “${name}” en ${room} para el ${nice(d)}. Revisá los datos y tocá Guardar para crearla.`};
 }
 
+
+function voiceReprogramTargetDate(rawText){
+  const text=normalizeVoiceText(rawText);
+  // Priorizamos la fecha que aparece después de "para", "al" o "a" porque
+  // en órdenes como "reprogramar fumigación de hoy para mañana" esa es la fecha destino.
+  const markers=[' para ',' al ',' a '];
+  for(const marker of markers){
+    const idx=text.lastIndexOf(marker);
+    if(idx<0)continue;
+    const tail=text.slice(idx+marker.length).trim();
+    if(voiceHasExplicitDate(tail))return voiceDateFromText(tail);
+  }
+  // Si solo se mencionó una fecha, la tomamos como destino.
+  return voiceHasExplicitDate(text)?voiceDateFromText(text):null;
+}
+function executeVoiceReprogramTaskAction(rawText){
+  const text=normalizeVoiceText(rawText);
+  const action=/(^|\s)(reprogramar|reprograma|mover|mueve|pasar|pasa|cambiar de dia|cambia de dia)(\s|$)/.test(text);
+  if(!action)return null;
+  if(!text.includes('tarea')&&!['riego','fumigacion','poda','enmienda','mantenimiento','calibrar','calibracion','schwazzing','redes','knf','esquejes','cosecha','trasplante'].some(w=>text.includes(w)))return null;
+  if(!canEditTasks())return {ok:true,message:'Tu usuario no tiene permiso para reprogramar tareas.'};
+  const sourceDate=voiceTaskActionDate();
+  if(!sourceDate)return {ok:true,message:'Para reprogramar una tarea por voz, abrí Hoy o una fecha concreta del Calendario. Así Rainbows sabe qué día contiene la tarea que querés mover.'};
+  const targetDate=voiceReprogramTargetDate(rawText);
+  if(!targetDate)return {ok:true,message:'Entendí que querés reprogramar una tarea, pero no pude identificar la nueva fecha. Decime por ejemplo: “Reprogramar fumigación de Flora 2 para mañana”.'};
+  if(same(sourceDate,targetDate))return {ok:true,message:`La nueva fecha que entendí es la misma que estás viendo: ${nice(sourceDate)}. Decime otra fecha para reprogramarla.`};
+  const {matches}=voiceTaskActionMatch(text,sourceDate,['reprogramar','reprograma','mover','mueve','pasar','pasa','cambiar','cambia','dia','para','al','a']);
+  if(!matches.length)return {ok:true,message:`No encontré una tarea pendiente que coincida con esa orden el ${nice(sourceDate)}.`};
+  if(matches.length>1)return {ok:true,message:`Encontré más de una tarea posible el ${nice(sourceDate)}: ${voiceList(matches.map(voiceTaskLabel),6)}. Decime la tarea y la sala para evitar mover la equivocada.`};
+  const task=matches[0];
+  openTask(task.date||ymd(sourceDate),task);
+  $('task-date').value=ymd(targetDate);
+  return {ok:true,message:`Preparé para reprogramar ${task.task} de ${task.room} del ${nice(sourceDate)} al ${nice(targetDate)}. Revisá los datos y tocá Guardar para confirmar.`};
+}
+function executeVoiceCancelTaskAction(rawText){
+  const text=normalizeVoiceText(rawText);
+  const action=/(^|\s)(cancelar|cancela|cancelame|anular|anula)(\s|$)/.test(text);
+  if(!action)return null;
+  if(!text.includes('tarea')&&!['riego','fumigacion','poda','enmienda','mantenimiento','calibrar','calibracion','schwazzing','redes','knf','esquejes','cosecha','trasplante'].some(w=>text.includes(w)))return null;
+  if(!canEditTasks())return {ok:true,message:'Tu usuario no tiene permiso para cancelar tareas.'};
+  const d=voiceTaskActionDate();
+  if(!d)return {ok:true,message:'Para cancelar una tarea por voz, abrí Hoy o una fecha concreta del Calendario. Las modificaciones se hacen desde la sección correspondiente para evitar errores.'};
+  const spoken=voiceDateFromText(text);
+  const hasDate=voiceHasExplicitDate(text);
+  if(hasDate&&!same(spoken,d))return {ok:true,message:`Estás viendo ${nice(d)}, pero entendí una cancelación para ${nice(spoken)}. Abrí primero ese día y repetí la orden.`};
+  const {matches}=voiceTaskActionMatch(text,d,['cancelar','cancela','cancelame','anular','anula']);
+  if(!matches.length)return {ok:true,message:`No encontré una tarea pendiente que coincida con esa orden el ${nice(d)}.`};
+  if(matches.length>1)return {ok:true,message:`Encontré más de una tarea posible el ${nice(d)}: ${voiceList(matches.map(voiceTaskLabel),6)}. Decime la tarea y la sala para evitar cancelar la equivocada.`};
+  const task=matches[0];
+  // Reutilizamos exactamente la confirmación y la lógica manual existentes.
+  // No se modifica nada hasta que el usuario acepte el cuadro de confirmación.
+  deleteTask(task).catch(error=>{console.error(error);alert(error.message||'No se pudo cancelar la tarea.');});
+  return {ok:true,message:`Preparé la cancelación de ${task.task} de ${task.room} del ${nice(d)}. Confirmá el cuadro que aparece en pantalla para aplicar el cambio.`};
+}
+
 function executeVoiceTaskAction(rawText){
   const text=normalizeVoiceText(rawText);
   const action=/(^|\s)(completar|completa|complete|marcar como hecha|marcar como hecho|marcar realizada|marcar realizado|terminar|termina|finalizar|finaliza)(\s|$)/.test(text);
@@ -2580,6 +2635,10 @@ function executeVoiceCommand(rawText){
   if(isExplicitVoiceNavigation(rawText))return executeVoiceNavigation(rawText);
   const createTaskAction=executeVoiceCreateTaskAction(rawText);
   if(createTaskAction)return createTaskAction;
+  const reprogramTaskAction=executeVoiceReprogramTaskAction(rawText);
+  if(reprogramTaskAction)return reprogramTaskAction;
+  const cancelTaskAction=executeVoiceCancelTaskAction(rawText);
+  if(cancelTaskAction)return cancelTaskAction;
   const taskAction=executeVoiceTaskAction(rawText);
   if(taskAction)return taskAction;
   const globalQuery=executeGlobalVoiceQuery(rawText);
@@ -2702,5 +2761,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.6').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.7').catch(console.error));
 }
