@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.15.0';
+const APP_VERSION='3.15.1';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -851,35 +851,86 @@ document.querySelectorAll('.top-nav button').forEach(b=>{const allowed=canViewOp
 function renderHelp(){
   $('screen-title').textContent='Ayuda';
   app.innerHTML=`
-    <section class="panel help-hero">
-      <h2>Comandos de voz</h2>
-      <p>El micrófono funciona en modo continuo: tocá el botón 🎙️ una vez, hablá normalmente y seguí dando órdenes. Para apagarlo, tocá el botón otra vez o decí <strong>“cerrar micrófono”</strong>.</p>
-      <div class="help-rule"><strong>Regla actual:</strong> las consultas se pueden hacer desde cualquier parte de la app. Las modificaciones por voz son contextuales y siempre requieren confirmación antes de guardar.</div>
+    <section class="panel help-hero help-hero-compact">
+      <h2>Ayuda</h2>
+      <p><strong>Para usar la voz:</strong> tocá 🎙️ una vez y hablá normalmente. El micrófono queda activo para varias órdenes seguidas. Para cerrarlo, tocá 🎙️ otra vez o decí <strong>“cerrar micrófono”</strong>.</p>
+      <div class="help-rule"><strong>Regla:</strong> podés hacer consultas desde cualquier pantalla. Las modificaciones por voz solo funcionan en la sección correspondiente y siempre piden confirmación.</div>
     </section>
-    <section class="help-grid">
-      <article class="panel help-card"><h3>Generales · navegación</h3><ul>
-        <li>“Abrir Hoy”</li><li>“Abrir Calendario”</li><li>“Abrir Salas”</li><li>“Abrir Genéticas”</li><li>“Abrir Cosechas”</li><li>“Abrir Stock Palestina”</li><li>“Abrir Ayuda”</li>
-        <li>“Ir a Flora 1 / 2 / 3”</li><li>“Mostrar Veges / Madres / Esquejes”</li><li>“Ir a mañana”</li><li>“Día anterior”</li><li>“Volver a hoy”</li>
+
+    <section class="help-quick-grid">
+      <article class="panel help-card help-card-quick"><h3>Consultas</h3><ul>
+        <li>“¿Qué tareas quedaron pendientes?”</li>
+        <li>“¿Cuándo se cosecha Flora 2?”</li>
+        <li>“¿Cuánto stock hay de GomuGomu?”</li>
+        <li>“¿Cuánto produjo Flora 1 ciclo 8?”</li>
       </ul></article>
-      <article class="panel help-card"><h3>Tareas · desde cualquier pantalla</h3><ul>
-        <li>“¿Qué tareas hay hoy?”</li><li>“¿Qué tareas están pendientes mañana?”</li><li>“¿Qué tareas hay mañana en Flora 2?”</li><li>“¿Qué tareas se hicieron ayer?”</li><li>“¿Qué hizo Cone hoy?”</li><li>“¿Quién hizo las tareas de hoy?”</li><li>“¿Quién hizo las tareas del 10 de agosto?”</li><li>“¿Quién hizo las tareas ayer en Flora 2?”</li>
+      <article class="panel help-card help-card-quick"><h3>Navegación</h3><ul>
+        <li>“Abrir Calendario”</li>
+        <li>“Ir a Stock”</li>
+        <li>“Ir a Flora 3”</li>
+        <li>“Volver a hoy”</li>
       </ul></article>
-      <article class="panel help-card"><h3>Tareas · completar por voz</h3><ul><li>Disponible desde Hoy o desde un día concreto abierto en Calendario.</li><li>“Completar fumigación de Flora 2”</li><li>“Marcar como hecha la poda de Flora 1”</li><li>“Completar riego de Flora 3, lo hicieron Cone y Pata”</li><li>Rainbows abre una confirmación con los responsables. Nada se guarda hasta tocar Guardar.</li></ul></article>
-      <article class="panel help-card"><h3>Fechas que entiende</h3><ul>
-        <li>Hoy, ayer, anteayer, mañana y pasado mañana.</li><li>“Lunes”, “martes pasado”, “próximo miércoles”.</li><li>“10 de agosto” o “5 de agosto de 2026”.</li><li>Si no decís una fecha, usa el día que estás viendo en la app.</li>
+      <article class="panel help-card help-card-quick"><h3>Acciones disponibles</h3><ul>
+        <li>Desde Hoy o un día del Calendario: “Completar fumigación de Flora 2”.</li>
+        <li>Podés agregar responsables: “La hicieron Cone y Pata”.</li>
+        <li>Nada se guarda hasta que confirmás.</li>
       </ul></article>
-      <article class="panel help-card"><h3>Salas · estado y ciclo</h3><ul>
-        <li>“¿En qué semana está Flora 1?”</li><li>“¿En qué ciclo está Flora 2?”</li><li>“¿En qué semana estaba Flora 3 ayer?”</li><li>“¿Cuál es el estado de Flora 1 el 10 de agosto?”</li><li>“¿Cuándo se cosecha Flora 2?”</li><li>“¿Cuándo empieza flora en Flora 1?”</li><li>“¿Cuándo es el próximo trasplante de Flora 3?”</li>
+      <article class="panel help-card help-card-quick"><h3>Consejos</h3><ul>
+        <li>Podés decir “Flora tres”, “Flora 3” o incluso si el teléfono escribe “Flora III”.</li>
+        <li>Para genéticas, podés decir el nombre o la nomenclatura.</li>
+        <li>Si hablás muy rápido y no entiende, repetí un poco más separado.</li>
       </ul></article>
-      <article class="panel help-card"><h3>Flora 1 · croquis</h3><ul><li>“¿Qué genética hay en la cama 4 de Flora 1?”</li><li>“¿Cuántas plantas hay en Flora 1?”</li><li>“¿Cuántas camas tiene Flora 1?”</li></ul></article>
-      <article class="panel help-card"><h3>Flora 2 · croquis</h3><ul><li>“¿Qué genética hay en la cama 4 de Flora 2?”</li><li>“¿Cuántas plantas hay en Flora 2?”</li><li>“¿Cuántas camas tiene Flora 2?”</li></ul></article>
-      <article class="panel help-card"><h3>Flora 3 · croquis</h3><ul><li>“¿Qué genética hay en la cama 4 de Flora 3?”</li><li>“¿Cuántas plantas hay en Flora 3?”</li><li>“¿Cuántas camas tiene Flora 3?”</li></ul></article>
-      <article class="panel help-card"><h3>Stock Palestina · desde cualquier pantalla</h3><ul><li>“¿Cuánto stock total hay?”</li><li>“¿Cuánto stock hay de GomuGomu?”</li><li>“¿Cuánto queda del ciclo 9 de Flora 2?”</li><li>“¿Qué stock tiene Flora 1?”</li><li>“¿Qué salidas hubo a Medrano?”</li><li>“¿Cuánto consumo interno hubo?”</li><li>“¿Qué movimientos hubo hoy?”</li><li>“¿Cuánto se descartó esta semana?”</li></ul></article>
-      <article class="panel help-card"><h3>Cosechas · desde cualquier pantalla</h3><ul><li>“¿Cuánto produjo Flora 1 ciclo 8?”</li><li>“¿Cuál fue la última cosecha de Flora 3?”</li><li>“¿Qué genética produjo más en el ciclo 8 de Flora 2?”</li><li>“¿Cuánto produjo GomuGomu en 2026?”</li><li>“¿Cuál fue el desvío respecto de la meta en Flora 1 ciclo 8?”</li><li>“¿Cuánto cosechó Flora 2 en 2026?”</li></ul></article>
-      <article class="panel help-card"><h3>Genéticas · desde cualquier pantalla</h3><ul><li>“¿Cuál es la nomenclatura de Mandarin Cookies?”</li><li>“¿Cuál es el linaje de GomuGomu?”</li><li>“¿Qué cannabinoides tiene GomuGomu?”</li><li>“¿Cuál es el genotipo de GomuGomu?”</li><li>“¿Qué genéticas están activas?”</li><li>“¿Qué genéticas tienen CBD?”</li><li>“¿Qué genéticas están archivadas?”</li></ul></article>
-      <article class="panel help-card"><h3>Números por voz</h3><ul><li>Podés decir “Flora 3”, “Flora tres” o si el teléfono escribe “Flora III”.</li><li>También entiende camas dichas como “cama cuatro”, “cama doce”, etc.</li></ul></article>
-      <article class="panel help-card"><h3>Control del micrófono</h3><ul><li>“Cerrar micrófono”</li><li>“Apagar micrófono”</li><li>“Dejar de escuchar”</li><li>También podés tocar nuevamente el botón 🎙️.</li></ul></article>
-    </section>`;
+    </section>
+
+    <section class="panel help-voice-settings">
+      <div class="help-section-head"><div><h3>Voz de Rainbows</h3><p>Elegí cómo querés escuchar las respuestas en este dispositivo.</p></div></div>
+      <div class="help-voice-controls">
+        <label class="help-field"><span>Voz</span><select id="help-voice-select"></select></label>
+        <label class="help-field"><span>Velocidad <strong id="help-voice-rate-value">1×</strong></span><input id="help-voice-rate" type="range" min="0.75" max="1.35" step="0.05"></label>
+        <label class="help-voice-check"><input id="help-voice-enabled" type="checkbox"> <span>Leer respuestas en voz alta</span></label>
+        <button id="help-voice-test" class="secondary" type="button">Probar voz</button>
+      </div>
+      <p id="help-voice-note" class="muted small"></p>
+    </section>
+
+    <details class="panel help-all-commands">
+      <summary>Ver todos los comandos</summary>
+      <div class="help-grid help-grid-expanded">
+        <article class="help-card"><h3>Generales · navegación</h3><ul>
+          <li>“Abrir Hoy / Calendario / Salas / Genéticas / Cosechas / Stock Palestina / Ayuda”</li>
+          <li>“Ir a Flora 1 / 2 / 3” · “Mostrar Veges / Madres / Esquejes”</li>
+          <li>“Ir a mañana” · “Día anterior” · “Volver a hoy”</li>
+        </ul></article>
+        <article class="help-card"><h3>Tareas · consultas globales</h3><ul>
+          <li>“¿Qué tareas hay hoy?”</li><li>“¿Qué tareas están pendientes mañana?”</li><li>“¿Qué tareas hay mañana en Flora 2?”</li><li>“¿Qué tareas se hicieron ayer?”</li><li>“¿Qué hizo Cone hoy?”</li><li>“¿Quién hizo las tareas del 10 de agosto?”</li>
+        </ul></article>
+        <article class="help-card"><h3>Tareas · completar</h3><ul>
+          <li>Disponible desde Hoy o desde un día abierto en Calendario.</li><li>“Completar fumigación de Flora 2”</li><li>“Marcar como hecha la poda de Flora 1”</li><li>“Completar riego de Flora 3, lo hicieron Cone y Pata”</li>
+        </ul></article>
+        <article class="help-card"><h3>Fechas</h3><ul>
+          <li>Hoy, ayer, anteayer, mañana y pasado mañana.</li><li>“Lunes”, “martes pasado”, “próximo miércoles”.</li><li>“10 de agosto” o “5 de agosto de 2026”.</li>
+        </ul></article>
+        <article class="help-card"><h3>Salas · estado y ciclo</h3><ul>
+          <li>“¿En qué semana está Flora 1?”</li><li>“¿En qué ciclo está Flora 2?”</li><li>“¿En qué semana estaba Flora 3 ayer?”</li><li>“¿Cuándo se cosecha Flora 2?”</li><li>“¿Cuándo empieza flora en Flora 1?”</li><li>“¿Cuándo es el próximo trasplante de Flora 3?”</li>
+        </ul></article>
+        <article class="help-card"><h3>Salas · croquis</h3><ul>
+          <li>“¿Qué genética hay en la cama 4 de Flora 1?”</li><li>“¿Cuántas plantas hay en Flora 2?”</li><li>“¿Cuántas camas tiene Flora 3?”</li><li>Si no nombrás una Flora, Rainbows puede responder las tres.</li>
+        </ul></article>
+        <article class="help-card"><h3>Stock Palestina</h3><ul>
+          <li>“¿Cuánto stock total hay?”</li><li>“¿Cuánto stock hay de GomuGomu?”</li><li>“¿Cuánto queda del ciclo 9 de Flora 2?”</li><li>“¿Qué salidas hubo a Medrano?”</li><li>“¿Cuánto consumo interno hubo?”</li><li>“¿Qué movimientos hubo hoy?”</li>
+        </ul></article>
+        <article class="help-card"><h3>Cosechas</h3><ul>
+          <li>“¿Cuánto produjo Flora 1 ciclo 8?”</li><li>“¿Cuál fue la última cosecha de Flora 3?”</li><li>“¿Qué genética produjo más en el ciclo 8 de Flora 2?”</li><li>“¿Cuánto produjo GomuGomu en 2026?”</li><li>“¿Cuál fue el desvío respecto de la meta?”</li>
+        </ul></article>
+        <article class="help-card"><h3>Genéticas</h3><ul>
+          <li>“¿Cuál es la nomenclatura de Mandarin Cookies?”</li><li>“¿Cuál es el linaje de GomuGomu?”</li><li>“¿Qué cannabinoides tiene GomuGomu?”</li><li>“¿Qué genéticas están activas?”</li><li>“¿Qué genéticas tienen CBD?”</li>
+        </ul></article>
+        <article class="help-card"><h3>Control del micrófono</h3><ul>
+          <li>“Cerrar micrófono” · “Apagar micrófono” · “Dejar de escuchar”</li><li>También podés tocar nuevamente 🎙️.</li><li>Mientras Rainbows habla, podés tocar <strong>Detener voz</strong>.</li>
+        </ul></article>
+      </div>
+    </details>`;
+  setupHelpVoiceSettings();
 }
 function renderToday(){
   $('screen-title').textContent='Hoy';
@@ -1623,6 +1674,9 @@ let voiceRestartTimer=null;
 let voiceFatalError=false;
 let voiceSpeaking=false;
 let voiceSpeechEnabled=localStorage.getItem('rainbows_voice_speech')==='1';
+let voiceSpeechVoiceURI=localStorage.getItem('rainbows_voice_uri')||'';
+let voiceSpeechRate=Math.min(1.35,Math.max(0.75,Number(localStorage.getItem('rainbows_voice_rate')||1)||1));
+let voiceAvailableVoices=[];
 
 function normalizeVoiceText(value=''){
   let clean=value.toLocaleLowerCase('es-AR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
@@ -1637,6 +1691,41 @@ function normalizeVoiceText(value=''){
   clean=clean.replace(/\b(flora)\s+(iii|ii|i)\b/g,(_,name,roman)=>`${name} ${{i:'1',ii:'2',iii:'3'}[roman]}`);
   clean=clean.replace(/\b(uno|una|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|trece|catorce|quince|dieciseis|diecisiete|dieciocho|diecinueve|veinte|veintiuno|veintidos|veintitres|veinticuatro|veinticinco|veintiseis|veintisiete|veintiocho|veintinueve|treinta|treintaiuno)\b/g,m=>words[m]||m);
   return clean;
+}
+function refreshVoiceList(){
+  if(!('speechSynthesis' in window))return [];
+  voiceAvailableVoices=window.speechSynthesis.getVoices()||[];
+  return voiceAvailableVoices;
+}
+function spanishVoiceOptions(){
+  const all=refreshVoiceList();
+  const es=all.filter(v=>String(v.lang||'').toLowerCase().startsWith('es'));
+  return es.length?es:all;
+}
+function selectedVoice(){
+  const voices=refreshVoiceList();
+  if(voiceSpeechVoiceURI){const saved=voices.find(v=>v.voiceURI===voiceSpeechVoiceURI);if(saved)return saved;}
+  return voices.find(v=>String(v.lang||'').toLowerCase()==='es-ar')||voices.find(v=>String(v.lang||'').toLowerCase().startsWith('es'))||null;
+}
+function populateHelpVoiceSelect(){
+  const select=$('help-voice-select');if(!select)return;
+  const voices=spanishVoiceOptions();
+  select.innerHTML='';
+  if(!voices.length){select.innerHTML='<option value="">Voz predeterminada del dispositivo</option>';select.disabled=true;return;}
+  select.disabled=false;
+  for(const v of voices){const o=document.createElement('option');o.value=v.voiceURI;o.textContent=`${v.name}${v.lang?` · ${v.lang}`:''}${v.default?' · predeterminada':''}`;select.appendChild(o);}
+  const current=selectedVoice();if(current)select.value=current.voiceURI;
+}
+function setupHelpVoiceSettings(){
+  const enabled=$('help-voice-enabled'),rate=$('help-voice-rate'),rateValue=$('help-voice-rate-value'),select=$('help-voice-select'),test=$('help-voice-test'),note=$('help-voice-note');
+  if(enabled)enabled.checked=voiceSpeechEnabled;
+  if(rate){rate.value=String(voiceSpeechRate);if(rateValue)rateValue.textContent=`${Number(voiceSpeechRate).toFixed(2).replace(/\.00$/,'').replace(/0$/,'')}×`;}
+  populateHelpVoiceSelect();
+  if(note)note.textContent=('speechSynthesis' in window)?'Las voces disponibles dependen del teléfono, sistema operativo y navegador. Esta configuración se guarda solo en este dispositivo.':'Este navegador no ofrece lectura de voz.';
+  enabled?.addEventListener('change',e=>{voiceSpeechEnabled=Boolean(e.target.checked);localStorage.setItem('rainbows_voice_speech',voiceSpeechEnabled?'1':'0');syncVoiceSpeechToggle();if(!voiceSpeechEnabled)stopVoiceSpeech();});
+  rate?.addEventListener('input',e=>{voiceSpeechRate=Number(e.target.value)||1;localStorage.setItem('rainbows_voice_rate',String(voiceSpeechRate));if(rateValue)rateValue.textContent=`${voiceSpeechRate.toFixed(2).replace(/\.00$/,'').replace(/0$/,'')}×`;});
+  select?.addEventListener('change',e=>{voiceSpeechVoiceURI=e.target.value||'';localStorage.setItem('rainbows_voice_uri',voiceSpeechVoiceURI);});
+  test?.addEventListener('click',()=>{const was=voiceSpeechEnabled;voiceSpeechEnabled=true;speakVoiceResponse('Hola. Esta es la voz de Rainbows.');voiceSpeechEnabled=was;});
 }
 function showVoicePanel(status='Micrófono apagado',message=''){
   const panel=$('voice-panel');
@@ -1700,8 +1789,10 @@ function speakVoiceResponse(message=''){
   if(voiceRestartTimer){clearTimeout(voiceRestartTimer);voiceRestartTimer=null;}
   if(voiceRecognition&&voiceListening){try{voiceRecognition.stop()}catch(_){}}
   const utterance=new SpeechSynthesisUtterance(message);
-  utterance.lang='es-AR';
-  utterance.rate=1;
+  const chosen=selectedVoice();
+  if(chosen){utterance.voice=chosen;utterance.lang=chosen.lang||'es-AR';}
+  else utterance.lang='es-AR';
+  utterance.rate=voiceSpeechRate;
   utterance.onstart=()=>{
     voiceSpeaking=true;
     const stopBtn=$('voice-speech-stop');if(stopBtn)stopBtn.hidden=false;
@@ -2542,6 +2633,8 @@ function startVoiceRecognition(){
 
 $('voice-button')?.setAttribute('aria-pressed','false');
 syncVoiceSpeechToggle();
+refreshVoiceList();
+if('speechSynthesis' in window)window.speechSynthesis.addEventListener?.('voiceschanged',()=>{refreshVoiceList();populateHelpVoiceSelect();});
 $('voice-button')?.addEventListener('click',()=>startVoiceRecognition());
 $('voice-retry')?.addEventListener('click',()=>{if(voiceContinuousMode)stopVoiceRecognition({hidePanel:false});startVoiceRecognition();});
 $('voice-close')?.addEventListener('click',closeVoicePanel);
@@ -2552,5 +2645,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.0').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.1').catch(console.error));
 }

@@ -667,8 +667,14 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Las consultas siguen siendo globales; las modificaciones por voz son contextuales.
 
 
-## V3.15.0 — Mejor reconocimiento de empleados y detener lectura
+## V3.15.1 — Mejor reconocimiento de empleados y detener lectura
 - Reconocimiento aproximado de nombres de empleados con alias frecuentes.
 - Se mantiene la confirmación manual de responsables antes de guardar.
 - Botón “Detener voz” durante la lectura de respuestas para cortar el audio inmediatamente.
 - Al detener la lectura, el micrófono continuo retoma la escucha automáticamente.
+
+
+## V3.15.1
+- Ayuda rediseñada con resumen inicial y lista completa desplegable.
+- Configuración de voz disponible para todos desde Ayuda: selector de voz, velocidad, prueba y lectura activada/desactivada.
+- La voz y velocidad elegidas se guardan por dispositivo.
