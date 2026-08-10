@@ -696,3 +696,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Se reincorpora `vejez` como alias de voz para la sala Veges porque es una transcripción frecuente del reconocimiento en uso real.
 - Se mantiene `veces` excluido para evitar falsos positivos con una palabra común.
 - No se modifican otras funciones de voz ni lógica de datos.
+
+
+## V3.15.5 — Crear tareas por voz
+- Agrega creación de tareas por voz desde Hoy o Calendario.
+- Requiere identificar sala y nombre de tarea; la fecha puede indicarse por voz o toma la fecha visible.
+- Abre el formulario normal precompletado y nunca guarda automáticamente.
+- Mantiene las consultas globales y las modificaciones contextuales.

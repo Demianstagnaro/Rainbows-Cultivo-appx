@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.15.4';
+const APP_VERSION='3.15.5';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -871,7 +871,7 @@ function renderHelp(){
         <li>“Volver a hoy”</li>
       </ul></article>
       <article class="panel help-card help-card-quick"><h3>Acciones disponibles</h3><ul>
-        <li>Desde Hoy o un día del Calendario: “Completar fumigación de Flora 2”.</li>
+        <li>Desde Hoy o Calendario: “Agregar fumigación mañana en Flora 2”.</li><li>También podés completar: “Completar fumigación de Flora 2”.</li>
         <li>Podés agregar responsables: “La hicieron Cone y Pata”.</li>
         <li>Nada se guarda hasta que confirmás.</li>
       </ul></article>
@@ -904,7 +904,7 @@ function renderHelp(){
         <article class="help-card"><h3>Tareas · consultas globales</h3><ul>
           <li>“¿Qué tareas hay hoy?”</li><li>“¿Qué tareas están pendientes mañana?”</li><li>“¿Qué tareas hay mañana en Flora 2?”</li><li>“¿Qué tareas se hicieron ayer?”</li><li>“¿Qué hizo Cone hoy?”</li><li>“¿Quién hizo las tareas del 10 de agosto?”</li>
         </ul></article>
-        <article class="help-card"><h3>Tareas · completar</h3><ul>
+        <article class="help-card"><h3>Tareas · crear y completar</h3><ul><li>Crear: “Agregar fumigación mañana en Flora 2”</li><li>Crear: “Crear tarea limpieza el viernes en Veges”</li>
           <li>Disponible desde Hoy o desde un día abierto en Calendario.</li><li>“Completar fumigación de Flora 2”</li><li>“Marcar como hecha la poda de Flora 1”</li><li>“Completar riego de Flora 3, lo hicieron Cone y Pata”</li>
         </ul></article>
         <article class="help-card"><h3>Fechas</h3><ul>
@@ -2485,6 +2485,46 @@ function voiceTaskActionMatch(text,d){
   const best=scored[0].score;
   return {matches:scored.filter(x=>best-x.score<0.08).map(x=>x.task),room};
 }
+
+function voiceCreateTaskNameFromText(rawText){
+  const text=normalizeVoiceText(rawText);
+  const known=[
+    ['calibrar riego','Calibrar riego'],['poda bajos','Poda bajos'],['inicio flora','Inicio flora'],
+    ['fumigacion','Fumigacion'],['mantenimiento','Mantenimiento'],['enmienda','Enmienda'],
+    ['trasplante','Trasplante'],['esquejes','Esquejes'],['schwazzing','Schwazzing'],
+    ['redes','Redes'],['cosecha','Cosecha'],['riego','Riego'],['knf','KNF']
+  ];
+  for(const [key,label] of known)if(text.includes(key))return label;
+  let candidate=text
+    .replace(/\b(agregar|agrega|anadir|añadir|crear|crea|programar|programa|nueva|nuevo)\b/g,' ')
+    .replace(/\btarea(s)?\b/g,' ')
+    .replace(/\b(hoy|ayer|anteayer|manana|pasado manana)\b/g,' ')
+    .replace(/\b(lunes|martes|miercoles|jueves|viernes|sabado|domingo)( pasado| proximo| siguiente)?\b/g,' ')
+    .replace(/\b(el|para|en|de|del|la|una|un)\b/g,' ')
+    .replace(/flora\s*[123]|veges|madres|esquejes/g,' ')
+    .replace(/\b\d{1,2}\s+de\s+[a-z]+(?:\s+de\s+20\d{2})?\b/g,' ')
+    .replace(/\s+/g,' ').trim();
+  if(!candidate)return '';
+  return candidate.charAt(0).toUpperCase()+candidate.slice(1);
+}
+function executeVoiceCreateTaskAction(rawText){
+  const text=normalizeVoiceText(rawText);
+  const action=/(^|\s)(agregar|agrega|anadir|añadir|crear|crea|programar|programa|nueva tarea|nuevo tarea)(\s|$)/.test(text);
+  if(!action)return null;
+  if(!canEditTasks())return {ok:true,message:'Tu usuario no tiene permiso para crear tareas.'};
+  if(!(state.view==='today'||state.view==='calendar'))return {ok:true,message:'Para crear una tarea por voz, abrí Hoy o Calendario. Las modificaciones se hacen desde la sección correspondiente para evitar errores.'};
+  const room=voiceRoomFromText(text,{allowContext:false});
+  if(!room)return {ok:true,message:'Entendí que querés crear una tarea, pero me falta la sala. Decime por ejemplo: “Agregar fumigación mañana en Flora 2”.'};
+  const name=voiceCreateTaskNameFromText(rawText);
+  if(!name)return {ok:true,message:'Entendí la sala, pero no pude identificar el nombre de la tarea. Decime por ejemplo: “Agregar limpieza mañana en Veges”.'};
+  const d=voiceHasExplicitDate(text)?voiceDateFromText(text):(voiceTaskActionDate()||today());
+  openTask(ymd(d),null,room);
+  $('task-name').value=name;
+  $('task-date').value=ymd(d);
+  $('task-room').value=room;
+  return {ok:true,message:`Preparé una nueva tarea “${name}” en ${room} para el ${nice(d)}. Revisá los datos y tocá Guardar para crearla.`};
+}
+
 function executeVoiceTaskAction(rawText){
   const text=normalizeVoiceText(rawText);
   const action=/(^|\s)(completar|completa|complete|marcar como hecha|marcar como hecho|marcar realizada|marcar realizado|terminar|termina|finalizar|finaliza)(\s|$)/.test(text);
@@ -2527,6 +2567,8 @@ function isExplicitVoiceNavigation(rawText){
 }
 function executeVoiceCommand(rawText){
   if(isExplicitVoiceNavigation(rawText))return executeVoiceNavigation(rawText);
+  const createTaskAction=executeVoiceCreateTaskAction(rawText);
+  if(createTaskAction)return createTaskAction;
   const taskAction=executeVoiceTaskAction(rawText);
   if(taskAction)return taskAction;
   const globalQuery=executeGlobalVoiceQuery(rawText);
@@ -2649,5 +2691,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.3').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.15.5').catch(console.error));
 }
