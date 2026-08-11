@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.9';
+const APP_VERSION='3.16.10';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -925,7 +925,7 @@ function renderHelp(){
           <li>“¿Cuánto stock total hay?”</li><li>“¿Cuánto stock hay de GomuGomu?”</li><li>“¿Cuánto queda del ciclo 9 de Flora 2?”</li><li>“¿Qué salidas hubo a Medrano?”</li><li>“¿Cuánto consumo interno hubo?”</li><li>“¿Qué movimientos hubo hoy?”</li>
         </ul></article>
         <article class="help-card"><h3>Cosechas</h3><ul>
-          <li>Consulta: “¿Cuánto produjo Flora 1 ciclo 8?”</li><li>Consulta: “¿Cuál fue la última cosecha de Flora 3?”</li><li>Cargar: “Nueva cosecha de Flora 3 ciclo 10”.</li><li>Con el formulario abierto, una pesada por frase: “Gomu Gomu 850 gramos” · “Mandarin 1 kilo 150”.</li><li>Podés repetir la misma genética: cada frase agrega otra pesada y el total se suma solo.</li><li>Correcciones: “Quitar última pesada” · “Corregir última pesada a 920 gramos”.</li><li>Opcional: “Meta 9 kilos” · “108 plantas”.</li><li>La cosecha nunca se guarda por voz: revisá y tocá Guardar.</li>
+          <li>Consulta: “¿Cuánto produjo Flora 1 ciclo 8?”</li><li>Consulta: “¿Cuál fue la última cosecha de Flora 3?”</li><li>Cargar: “Nueva cosecha de Flora 3 ciclo 10”.</li><li>Con el formulario abierto, una pesada por frase: “Gomu Gomu 850 gramos” · “Mandarin 1 kilo 150”.</li><li>Podés repetir la misma genética: cada frase agrega otra pesada y el total se suma solo.</li><li>Correcciones: “Quitar última pesada/pasada” · “Corregir última pesada/pasada a 920 gramos”.</li><li>Opcional: “Meta 9 kilos” · “108 plantas”.</li><li>La cosecha nunca se guarda por voz: revisá y tocá Guardar.</li>
         </ul></article>
         <article class="help-card"><h3>Genéticas</h3><ul>
           <li>“¿Cuál es la nomenclatura de Mandarin Cookies?”</li><li>“¿Cuál es el linaje de GomuGomu?”</li><li>“¿Qué cannabinoides tiene GomuGomu?”</li><li>“¿Qué genéticas están activas?”</li><li>“¿Qué genéticas tienen CBD?”</li>
@@ -2357,7 +2357,7 @@ function voiceWeightFromText(rawText=''){
 function voiceHarvestFormPhraseLooksRelevant(rawText=''){
   if(!voiceHarvestDialogOpen())return false;
   const text=normalizeVoiceText(rawText);
-  if(/\b(meta|plantas|pesada|cosecha|guardar|cancelar)\b/.test(text))return true;
+  if(/\b(meta|plantas|pesada|pesadas|pasada|pasadas|pesaje|pesajes|cosecha|guardar|cancelar|quitar|sacar|borrar|eliminar|corregir|cambiar|modificar)\b/.test(text))return true;
   const weight=voiceWeightFromText(rawText);
   if(!(weight>0))return false;
   const geneticResult=voiceGeneticResolver(rawText);
@@ -2398,13 +2398,13 @@ function executeVoiceHarvestAction(rawText){
   if(!canEditTasks())return {ok:true,message:'Tu usuario no tiene permiso para editar cosechas.'};
 
   if(/\b(guardar|grabar|confirmar)\s+(?:la\s+)?cosecha\b/.test(text))return {ok:true,message:'Por seguridad no guardo la cosecha por voz. Revisá el formulario y tocá Guardar cuando esté correcto.'};
-  if(/\b(quitar|borra|borrar|eliminar|elimina)\s+(?:la\s+)?ultima\s+pesada\b/.test(text)){
+  if(/\b(quitar|quita|sacar|saca|borra|borrar|eliminar|elimina)\s+(?:la\s+)?ultima\s+(?:pesada|pasada|pesaje|carga)\b/.test(text)){
     const rows=$('harvest-lines')?.querySelectorAll('.harvest-line');const last=rows?.[rows.length-1];
     if(!last)return {ok:true,message:'Todavía no hay pesadas para quitar.'};
     last.remove();updateHarvestLineTotal();
     return {ok:true,message:`Quité la última pesada. El total del formulario quedó en ${formatGrams(voiceHarvestCurrentTotal())}.`};
   }
-  if(/\b(corregir|corregi|cambiar|cambia)\s+(?:la\s+)?ultima\s+pesada\b/.test(text)){
+  if(/\b(corregir|corregi|corrige|cambiar|cambia|modificar|modifica)\s+(?:la\s+)?ultima\s+(?:pesada|pasada|pesaje|carga)\b/.test(text)){
     const grams=voiceWeightFromText(rawText);const rows=$('harvest-lines')?.querySelectorAll('.harvest-line');const last=rows?.[rows.length-1];
     if(!last)return {ok:true,message:'Todavía no hay una pesada para corregir.'};
     if(!(grams>0))return {ok:true,message:'Decime el nuevo peso, por ejemplo: “Corregir última pesada a 920 gramos”.'};
@@ -2979,6 +2979,11 @@ function useMobileContinuousVoiceFilter(){
 function mobileVoiceLooksRelevant(rawText='',confidence=0){
   const text=normalizeVoiceText(rawText);
   if(!text||isVoiceStopCommand(text))return true;
+  const harvestControlCommand=voiceHarvestDialogOpen()&&(
+    /\b(quitar|quita|sacar|saca|borra|borrar|eliminar|elimina)\s+(?:la\s+)?ultima\s+(?:pesada|pasada|pesaje|carga)\b/.test(text)||
+    /\b(corregir|corregi|corrige|cambiar|cambia|modificar|modifica)\s+(?:la\s+)?ultima\s+(?:pesada|pasada|pesaje|carga)\b/.test(text)
+  );
+  if(harvestControlCommand)return true;
   if(voiceHarvestFormPhraseLooksRelevant(rawText))return confidence===0||confidence>=0.24;
   const words=text.split(/\s+/).filter(Boolean);
   if(words.length<2)return false;
@@ -2986,12 +2991,12 @@ function mobileVoiceLooksRelevant(rawText='',confidence=0){
   const domainTokens=[
     'tarea','tareas','pendiente','pendientes','realizada','realizadas','responsable','responsables',
     'flora','veges','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
-    'cama','camas','planta','plantas','semana','ciclo','riego','fumigacion','poda','enmienda','mantenimiento',
+    'cama','camas','planta','plantas','semana','ciclo','riego','fumigacion','poda','enmienda','mantenimiento','pesada','pesadas','pasada','pasadas','pesaje','pesajes',
     'medrano','consumo','descarte','nomenclatura','linaje','genotipo','cannabinoide','cannabinoides','thc','cbd','cbg'
   ];
   const intentTokens=[
     'abrir','abrime','entrar','llevame','mostrar','ir a','volver',
-    'completar','crear','agregar','programar','reprogramar','mover','cancelar','anular',
+    'completar','crear','agregar','programar','reprogramar','mover','cancelar','anular','quitar','sacar','borrar','eliminar','corregir','cambiar','modificar',
     'cuando','cuanto','cuanta','cuantos','cuantas','quien','quienes','cual','cuales','que ','en que',
     'hizo','hicieron','queda','quedan','quedo','produjo','produccion','desvio','meta','salida','salidas','movimiento','movimientos'
   ];
@@ -3031,15 +3036,20 @@ function mobileVoiceCandidateScore(rawText='',confidence=0){
     'ir a manana','ir a ayer','dia anterior','dia siguiente'
   ];
   let score=exactCommands.includes(text)?30:0;
+  const harvestControlCommand=voiceHarvestDialogOpen()&&(
+    /\b(quitar|quita|sacar|saca|borra|borrar|eliminar|elimina)\s+(?:la\s+)?ultima\s+(?:pesada|pasada|pesaje|carga)\b/.test(text)||
+    /\b(corregir|corregi|corrige|cambiar|cambia|modificar|modifica)\s+(?:la\s+)?ultima\s+(?:pesada|pasada|pesaje|carga)\b/.test(text)
+  );
+  if(harvestControlCommand)score+=40;
   if(voiceHarvestFormPhraseLooksRelevant(rawText))score+=24;
   const domainTokens=[
     'tarea','tareas','pendiente','pendientes','realizada','realizadas','responsable','responsables',
     'flora','veges','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
-    'cama','camas','planta','plantas','semana','ciclo','riego','fumigacion','poda','enmienda','mantenimiento',
+    'cama','camas','planta','plantas','semana','ciclo','riego','fumigacion','poda','enmienda','mantenimiento','pesada','pesadas','pasada','pasadas','pesaje','pesajes',
     'medrano','consumo','descarte','nomenclatura','linaje','genotipo','cannabinoide','cannabinoides','thc','cbd','cbg'
   ];
   const intentTokens=[
-    'abrir','abrime','entrar','llevame','mostrar','ir a','volver','completar','crear','agregar','programar','reprogramar','mover','cancelar','anular',
+    'abrir','abrime','entrar','llevame','mostrar','ir a','volver','completar','crear','agregar','programar','reprogramar','mover','cancelar','anular','quitar','sacar','borrar','eliminar','corregir','cambiar','modificar',
     'cuando','cuanto','cuanta','cuantos','cuantas','quien','quienes','cual','cuales','que ','en que','hizo','hicieron','queda','quedan','quedo','produjo','produccion','desvio','meta'
   ];
   const temporalTokens=['hoy','ayer','manana','anteayer','pasado manana','lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
@@ -3307,5 +3317,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.9').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.10').catch(console.error));
 }

@@ -801,3 +801,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - En sensibilidad Baja móvil, las frases válidas de pesada reciben prioridad en el filtro para que nombres + peso no sean descartados como ruido.
 - Nunca guarda una cosecha por voz: el usuario debe revisar el formulario y tocar Guardar manualmente.
 - Actualiza APP_VERSION, referencias y caché del service worker a 3.16.9.
+
+
+## V3.16.10 — Corrección comandos de última pesada por voz
+- Reconoce `pesada`, `pasada`, `pesaje` y `carga` como variantes para la última pesada.
+- `Quitar`, `sacar`, `borrar` y `eliminar` la última pesada funcionan dentro del formulario de cosecha.
+- `Corregir`, `cambiar` y `modificar` la última pesada aceptan el nuevo peso hablado.
+- El filtro móvil Baja deja pasar estas órdenes explícitas sin aflojar el resto del filtrado.
+- Actualiza APP_VERSION, referencias y caché del service worker a 3.16.10.
