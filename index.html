@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.json?v=3.11.2">
   <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3.11.2">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.11.2">
-  <link rel="stylesheet" href="styles.css?v=3.16.4">
+  <link rel="stylesheet" href="styles.css?v=3.16.5">
 </head>
 <body>
   <section id="auth-screen" class="auth-screen">
@@ -62,21 +62,22 @@
   <dialog id="harvest-dialog" class="dialog harvest-dialog"><form method="dialog"><h3 id="harvest-dialog-title">Nueva cosecha</h3><div class="harvest-form-grid"><label class="field-label">Fecha<input id="harvest-date" class="text-input" type="date"></label><label class="field-label">Sala<select id="harvest-room" class="text-input"><option>Flora 1</option><option>Flora 2</option><option>Flora 3</option></select></label><label class="field-label">Ciclo<input id="harvest-cycle" class="text-input" type="number" min="1" step="1"></label><label class="field-label">Meta (g)<input id="harvest-goal" class="text-input" type="number" min="0" step="1"></label><label class="field-label">Total cosechado (g)<input id="harvest-total" class="text-input" type="number" min="0" step="0.01" readonly title="Se calcula automáticamente con la suma de los resultados por genética."></label><label class="field-label">Cantidad de plantas<input id="harvest-plants" class="text-input" type="number" min="0" step="1"></label></div><label class="field-label">Observaciones<textarea id="harvest-notes" class="text-input"></textarea></label><div class="harvest-lines-head"><div><strong>Resultados por genética</strong><p class="muted">Las cosechas nuevas usan el catálogo de Genéticas. Los nombres históricos se conservan sin cambios.</p></div><button type="button" id="add-harvest-line" class="secondary compact-button">+ Agregar genética</button></div><div id="harvest-lines" class="harvest-lines"></div><p id="harvest-line-total" class="harvest-line-total"></p><menu><button type="button" id="delete-harvest" class="danger">Eliminar</button><button type="button" id="cancel-harvest" class="secondary">Cancelar</button><button type="button" id="save-harvest" class="primary">Guardar</button></menu></form></dialog>
 
 
-  <dialog id="stock-movement-dialog" class="dialog"><form method="dialog"><h3>Registrar movimiento de stock</h3>
+  <dialog id="stock-movement-dialog" class="dialog stock-movement-dialog"><form method="dialog"><h3>Registrar movimientos de stock</h3>
     <label class="field-label">Sala y ciclo<select id="stock-movement-cycle" class="text-input"></select></label>
-    <label class="field-label">Genética<select id="stock-movement-item" class="text-input"></select></label>
+    <div class="stock-batch-head"><div><strong>Genéticas</strong><p class="muted">Seleccioná una o varias y cargá las cantidades sin cerrar esta ventana.</p></div><div class="stock-batch-actions"><button type="button" id="stock-select-all" class="secondary compact-button">Seleccionar todas</button><button type="button" id="stock-clear-all" class="secondary compact-button">Limpiar</button><button type="button" id="stock-use-all" class="secondary compact-button">Usar todo disponible</button></div></div>
+    <div id="stock-movement-items" class="stock-movement-items"></div>
+    <p id="stock-movement-summary" class="stock-movement-summary">Ninguna genética seleccionada.</p>
     <div class="stock-movement-form-grid">
       <label class="field-label">Fecha<input id="stock-movement-date" class="text-input" type="date"></label>
       <label class="field-label">Tipo<select id="stock-movement-type" class="text-input"><option value="salida">Salida</option><option value="entrada">Entrada</option></select></label>
-      <label class="field-label">Cantidad (g)<input id="stock-movement-grams" class="text-input" type="number" min="0.01" step="0.01"></label>
     </div>
     <label class="field-label">Destino / origen<input id="stock-movement-destination" class="text-input" placeholder="Ej.: Medrano"></label>
     <label class="field-label">Observaciones<textarea id="stock-movement-notes" class="text-input"></textarea></label>
-    <menu><button type="button" id="cancel-stock-movement" class="secondary">Cancelar</button><button type="button" id="save-stock-movement" class="primary">Guardar movimiento</button></menu>
+    <menu><button type="button" id="cancel-stock-movement" class="secondary">Cancelar</button><button type="button" id="save-stock-movement" class="primary">Guardar movimientos</button></menu>
   </form></dialog>
 
   <dialog id="plant-dialog" class="dialog"><form method="dialog"><h3 id="plant-dialog-title">Editar planta</h3><label class="field-label">Estado<select id="plant-status" class="text-input"><option value="occupied">Ocupada</option><option value="empty">Vacía</option></select></label><label class="field-label">Genética<select id="plant-genetics" class="text-input"></select></label><label class="field-label">Observaciones<textarea id="plant-notes" class="text-input"></textarea></label><menu><button type="button" id="cancel-plant" class="secondary">Cancelar</button><button type="button" id="save-plant" class="primary">Guardar</button></menu></form></dialog>
 
-  <script type="module" src="app.js?v=3.16.4"></script>
+  <script type="module" src="app.js?v=3.16.5"></script>
 </body>
 </html>

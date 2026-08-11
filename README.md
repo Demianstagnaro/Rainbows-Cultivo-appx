@@ -760,3 +760,12 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Corrige el filtro móvil estricto para reconocer explícitamente `Ir a hoy`, `Abrir hoy`, `Ir a inicio` y `Abrir inicio`.
 - Mantiene sin cambios el filtrado de ruido y la sensibilidad Baja de V3.16.3.
 - Actualiza APP_VERSION, referencias y caché a 3.16.4.
+
+## V3.16.5 — Movimientos de stock por lote
+- Permite seleccionar varias genéticas dentro de una sala/ciclo y registrar todos los movimientos en una sola operación.
+- Agrega “Seleccionar todas”, “Limpiar” y “Usar todo disponible” para salidas.
+- Cada genética conserva su movimiento individual en `stock_movimientos`, por lo que no cambia el modelo de datos ni se pierde detalle histórico.
+- Valida el stock disponible por genética antes de registrar salidas.
+- Muestra cantidad de genéticas y total de gramos cargados antes de guardar.
+- Pide una confirmación final única con cantidad de movimientos, total, sala/ciclo y destino/origen.
+- Actualiza APP_VERSION, referencias de `app.js`/`styles.css` y caché del service worker a 3.16.5.

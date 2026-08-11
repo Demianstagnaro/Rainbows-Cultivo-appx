@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.4';
+const APP_VERSION='3.16.5';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -840,7 +840,11 @@ $('save-genetic').onclick=async()=>{
 function render(){const cb=$('header-config');if(cb){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';state.room=null;state.roomDay=null;state.day=null;render()}}const hb=$('header-help');if(hb){hb.onclick=()=>{state.view='help';state.room=null;state.roomDay=null;state.day=null;render()}} $('today-label').textContent=nice(today());
 $('cancel-stock-movement').onclick=()=>closeDialog('stock-movement-dialog');
 $('stock-movement-cycle').onchange=updateStockMovementItems;
-$('save-stock-movement').onclick=async()=>{const b=$('save-stock-movement');b.disabled=true;try{await saveStockMovement()}catch(e){console.error(e);alert(e.message||'No se pudo registrar el movimiento.')}finally{b.disabled=false}};
+$('stock-movement-type').onchange=updateStockMovementItems;
+$('stock-select-all').onclick=()=>selectAllStockMovementItems();
+$('stock-clear-all').onclick=()=>clearStockMovementItems();
+$('stock-use-all').onclick=()=>useAllAvailableStock();
+$('save-stock-movement').onclick=async()=>{const b=$('save-stock-movement');b.disabled=true;try{await saveStockMovement()}catch(e){console.error(e);alert(e.message||'No se pudieron registrar los movimientos.')}finally{b.disabled=false}};
 $('cancel-harvest').onclick=()=>closeDialog('harvest-dialog');
 $('add-harvest-line').onclick=()=>{$('harvest-lines').insertAdjacentHTML('beforeend',harvestLineTemplate());bindHarvestLines()};
 $('harvest-total').oninput=updateHarvestLineTotal;
@@ -1321,31 +1325,118 @@ function openStockMovement(preselectedCycleId=null){
   $('stock-movement-cycle').innerHTML=cycles.map(c=>`<option value="${c.id}" ${String(c.id)===String(cycleId)?'selected':''}>${escapeHtml(c.sala)} · Ciclo ${c.ciclo}</option>`).join('');
   $('stock-movement-date').value=ymd(today());
   $('stock-movement-type').value='salida';
-  $('stock-movement-grams').value='';
   $('stock-movement-destination').value='Medrano';
   $('stock-movement-notes').value='';
   updateStockMovementItems();
   $('stock-movement-dialog').showModal();
 }
-function updateStockMovementItems(){
+function stockMovementSelectableItems(){
   const cycleId=$('stock-movement-cycle').value;
-  const items=stockCycleItems(cycleId);
-  $('stock-movement-item').innerHTML=items.map(i=>`<option value="${i.id}">${escapeHtml(i.nombre_historico)} · ${formatGrams(stockItemCurrent(i))}</option>`).join('');
+  return stockCycleItems(cycleId);
+}
+function updateStockMovementItems(){
+  const type=$('stock-movement-type').value;
+  const items=stockMovementSelectableItems();
+  const container=$('stock-movement-items');
+  container.innerHTML=items.length?items.map(item=>{
+    const current=stockItemCurrent(item);
+    const disabled=type==='salida'&&current<=0;
+    return `<div class="stock-movement-item-row ${disabled?'disabled':''}" data-stock-movement-row data-item-id="${item.id}" data-current="${current}">
+      <input class="stock-movement-check" type="checkbox" aria-label="Seleccionar ${escapeHtml(item.nombre_historico)}" ${disabled?'disabled':''}>
+      <div class="stock-movement-item-name"><strong>${escapeHtml(item.nombre_historico)}</strong><span>${type==='salida'?`Disponible: ${formatGrams(current)}`:`Stock actual: ${formatGrams(current)}`}</span></div>
+      <label class="stock-movement-grams-label">Cantidad (g)<input class="text-input stock-movement-item-grams" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0" disabled></label>
+    </div>`;
+  }).join(''):'<p class="muted">Este ciclo no tiene genéticas cargadas.</p>';
+  container.querySelectorAll('[data-stock-movement-row]').forEach(row=>{
+    const check=row.querySelector('.stock-movement-check');
+    const grams=row.querySelector('.stock-movement-item-grams');
+    check.onchange=()=>{
+      grams.disabled=!check.checked;
+      if(check.checked){setTimeout(()=>grams.focus(),0)}else grams.value='';
+      updateStockMovementSummary();
+    };
+    grams.oninput=updateStockMovementSummary;
+  });
+  $('stock-use-all').hidden=type!=='salida';
+  updateStockMovementSummary();
+}
+function selectAllStockMovementItems(){
+  $('stock-movement-items').querySelectorAll('[data-stock-movement-row]').forEach(row=>{
+    const check=row.querySelector('.stock-movement-check');
+    const grams=row.querySelector('.stock-movement-item-grams');
+    if(check.disabled)return;
+    check.checked=true;
+    grams.disabled=false;
+  });
+  updateStockMovementSummary();
+}
+function clearStockMovementItems(){
+  $('stock-movement-items').querySelectorAll('[data-stock-movement-row]').forEach(row=>{
+    const check=row.querySelector('.stock-movement-check');
+    const grams=row.querySelector('.stock-movement-item-grams');
+    check.checked=false;
+    grams.value='';
+    grams.disabled=true;
+  });
+  updateStockMovementSummary();
+}
+function useAllAvailableStock(){
+  if($('stock-movement-type').value!=='salida')return;
+  $('stock-movement-items').querySelectorAll('[data-stock-movement-row]').forEach(row=>{
+    const current=Number(row.dataset.current)||0;
+    const check=row.querySelector('.stock-movement-check');
+    const grams=row.querySelector('.stock-movement-item-grams');
+    if(check.disabled||current<=0)return;
+    check.checked=true;
+    grams.disabled=false;
+    grams.value=String(Math.round(current*100)/100);
+  });
+  updateStockMovementSummary();
+}
+function selectedStockMovementRows(){
+  return [...$('stock-movement-items').querySelectorAll('[data-stock-movement-row]')].filter(row=>row.querySelector('.stock-movement-check')?.checked);
+}
+function updateStockMovementSummary(){
+  const rows=selectedStockMovementRows();
+  const total=rows.reduce((sum,row)=>{
+    const grams=Number(row.querySelector('.stock-movement-item-grams')?.value);
+    return sum+(Number.isFinite(grams)&&grams>0?grams:0);
+  },0);
+  const summary=$('stock-movement-summary');
+  if(!rows.length){summary.textContent='Ninguna genética seleccionada.';return}
+  summary.textContent=`${rows.length} genética${rows.length===1?'':'s'} seleccionada${rows.length===1?'':'s'} · Total cargado: ${formatGrams(total)}`;
 }
 async function saveStockMovement(){
   const cycleId=$('stock-movement-cycle').value;
-  const itemId=$('stock-movement-item').value;
   const type=$('stock-movement-type').value;
-  const grams=Number($('stock-movement-grams').value);
-  if(!cycleId||!itemId)throw new Error('Seleccioná el ciclo y la genética.');
-  if(!Number.isFinite(grams)||grams<=0)throw new Error('Ingresá una cantidad válida.');
-  const item=state.stockItems.find(x=>String(x.id)===String(itemId));
-  if(type==='salida'&&grams>stockItemCurrent(item))throw new Error('La salida supera el stock disponible de esa genética.');
-  const payload={ciclo_id:cycleId,existencia_id:itemId,genetica_id:item?.genetica_id||null,nombre_historico:item?.nombre_historico||null,fecha:$('stock-movement-date').value||ymd(today()),fecha_text:null,tipo:type,destino:$('stock-movement-destination').value.trim()||null,gramos:grams,observaciones:$('stock-movement-notes').value.trim()||null,afecta_stock:true,origen:'app'};
-  const q=await db.from('stock_movimientos').insert(payload);
+  const rows=selectedStockMovementRows();
+  if(!cycleId)throw new Error('Seleccioná la sala y el ciclo.');
+  if(!rows.length)throw new Error('Seleccioná al menos una genética.');
+  const date=$('stock-movement-date').value||ymd(today());
+  const destination=$('stock-movement-destination').value.trim()||null;
+  const notes=$('stock-movement-notes').value.trim()||null;
+  const payloads=[];
+  let total=0;
+  for(const row of rows){
+    const itemId=row.dataset.itemId;
+    const item=state.stockItems.find(x=>String(x.id)===String(itemId));
+    const grams=Number(row.querySelector('.stock-movement-item-grams')?.value);
+    if(!item)throw new Error('No se encontró una de las genéticas seleccionadas.');
+    if(!Number.isFinite(grams)||grams<=0)throw new Error(`Ingresá una cantidad válida para ${item.nombre_historico}.`);
+    const available=stockItemCurrent(item);
+    if(type==='salida'&&grams>available+0.0001)throw new Error(`La salida de ${item.nombre_historico} supera su stock disponible (${formatGrams(available)}).`);
+    total+=grams;
+    payloads.push({ciclo_id:cycleId,existencia_id:itemId,genetica_id:item.genetica_id||null,nombre_historico:item.nombre_historico||null,fecha:date,fecha_text:null,tipo:type,destino:destination,gramos:grams,observaciones:notes,afecta_stock:true,origen:'app'});
+  }
+  const cycle=state.stockCycles.find(c=>String(c.id)===String(cycleId));
+  const typeLabel=type==='salida'?'salida':'entrada';
+  const destinationLabel=destination?`\nDestino / origen: ${destination}`:'';
+  const ok=confirm(`Se registrarán ${payloads.length} ${typeLabel}${payloads.length===1?'':'s'} por un total de ${formatGrams(total)}.\n${cycle?`${cycle.sala} · Ciclo ${cycle.ciclo}`:'Stock'}${destinationLabel}\n\n¿Confirmar movimientos?`);
+  if(!ok)return;
+  const q=await db.from('stock_movimientos').insert(payloads);
   if(q.error)throw q.error;
   closeDialog('stock-movement-dialog');
-  state.stockRoom=state.stockCycles.find(c=>String(c.id)===String(cycleId))?.sala||state.stockRoom;
+  state.stockRoom=cycle?.sala||state.stockRoom;
   state.stockCycle=cycleId;
   await refresh();
 }
@@ -2983,5 +3074,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.4').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.5').catch(console.error));
 }
