@@ -780,3 +780,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Mantiene los comandos cortos seguros como “Ir a hoy” y “Abrir hoy”.
 - No modifica el modelo de datos ni los movimientos múltiples de Stock agregados en V3.16.5.
 - Actualiza APP_VERSION, referencias de app.js/styles.css y caché del service worker a 3.16.6.
+
+## V3.16.7 — Menor pausa entre comandos de voz
+
+- En móvil, Normal/Baja reciclan la sesión de reconocimiento con cierre rápido después de recibir un resultado final.
+- En Baja, la espera programada entre sesiones baja de 20 ms a 7 ms; en Normal, de 35 ms a 12 ms (aprox. un tercio).
+- Se ignora silenciosamente el evento `aborted` usado para el reciclado rápido, evitando mensajes falsos de error.
+- Se conserva el filtro de ruido/comandos de V3.16.6 y los movimientos múltiples de Stock.
+- Actualiza APP_VERSION, referencias de app.js/styles.css y caché del service worker a 3.16.7.

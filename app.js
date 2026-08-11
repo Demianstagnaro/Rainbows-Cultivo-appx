@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.6';
+const APP_VERSION='3.16.7';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -3005,7 +3005,7 @@ function scheduleVoiceRestart(){
     voiceRestartTimer=setTimeout(()=>{
       voiceRestartTimer=null;
       if(voiceContinuousMode&&!voiceListening)beginVoiceRecognition({continuous:true,mobileFiltered:true});
-    },voiceInputSensitivity==='low'?20:35);
+    },voiceInputSensitivity==='low'?7:12);
     return;
   }
   if(voiceInputSensitivity!=='high'){waitForVoiceActivity();return;}
@@ -3022,6 +3022,19 @@ function beginVoiceRecognition(options={}){
   voiceFatalError=false;
   voiceRecognition=new VoiceRecognition();
   voiceRecognition.lang='es-AR';voiceRecognition.interimResults=true;voiceRecognition.continuous=false;voiceRecognition.maxAlternatives=options.mobileFiltered?3:1;
+  // En Android, recognition.stop() puede tardar bastante en cerrar una sesión ya finalizada.
+  // Para el modo móvil filtrado reciclamos con abort() DESPUÉS de recibir el resultado final:
+  // el texto ya está capturado y el micrófono se libera mucho antes para la próxima frase.
+  const sessionRecognition=voiceRecognition;
+  let fastRecycle=false;
+  const recycleMobileSession=()=>{
+    if(!options.mobileFiltered)return;
+    fastRecycle=true;
+    try{
+      if(typeof sessionRecognition.abort==='function')sessionRecognition.abort();
+      else sessionRecognition.stop();
+    }catch(_){try{sessionRecognition.stop()}catch(__){}}
+  };
   voiceRecognition.onstart=()=>{
     voiceListening=true;
     if(continuous){voiceContinuousMode=true;setVoiceButtonActive(true);showVoicePanel('Escuchando…','Podés hablar cuando quieras.');}
@@ -3062,7 +3075,7 @@ function beginVoiceRecognition(options={}){
         // ocupado con una conversación de fondo durante varios segundos.
         $('voice-status').textContent='Escuchando…';
         $('voice-transcript').textContent='Podés hablar cuando quieras.';
-        try{voiceRecognition?.stop()}catch(_){}
+        recycleMobileSession();
         return;
       }
       const result=executeVoiceCommand(clean);
@@ -3072,16 +3085,21 @@ function beginVoiceRecognition(options={}){
       if(options.mobileFiltered&&result&&result.ok===false&&normalizeVoiceText(String(result.message||'')).includes('todavia no reconozco ese comando')){
         $('voice-status').textContent='Escuchando…';
         $('voice-transcript').textContent='Podés hablar cuando quieras.';
-        try{voiceRecognition?.stop()}catch(_){}
+        recycleMobileSession();
         return;
       }
       $('voice-status').textContent=voiceContinuousMode?'Escuchando…':'Micrófono apagado';
       $('voice-transcript').textContent=voiceContinuousMode?'Podés decir otro comando.':'';
       showVoiceResponse(result.message);
-      if(options.mobileFiltered&&!voiceSpeaking){try{voiceRecognition?.stop()}catch(_){}}
+      if(options.mobileFiltered&&!voiceSpeaking)recycleMobileSession();
     }
   };
   voiceRecognition.onerror=event=>{
+    if(options.mobileFiltered&&fastRecycle&&event.error==='aborted'){
+      $('voice-status').textContent='Escuchando…';
+      $('voice-transcript').textContent='Podés hablar cuando quieras.';
+      return;
+    }
     const messages={'not-allowed':'No se concedió permiso para usar el micrófono.','service-not-allowed':'El navegador bloqueó el servicio de reconocimiento de voz.','no-speech':'No escuché ninguna instrucción. Sigo escuchando…','audio-capture':'No se encontró un micrófono disponible.','network':'El reconocimiento de voz no pudo conectarse.'};
     if(['not-allowed','service-not-allowed','audio-capture'].includes(event.error)){
       voiceFatalError=true;voiceContinuousMode=false;setVoiceButtonActive(false);
@@ -3124,5 +3142,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.6').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.7').catch(console.error));
 }
