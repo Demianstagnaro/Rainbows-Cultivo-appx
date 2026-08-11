@@ -818,3 +818,16 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Respeta el modelo de movimientos múltiples: cada genética sigue siendo un registro independiente al guardar.
 - Mantiene la regla de seguridad: la voz prepara; el usuario revisa y toca Guardar movimientos.
 - Actualiza APP_VERSION, referencias y caché del service worker a 3.16.11.
+
+
+## V3.16.12 — Modificaciones de Salas y croquis por voz
+- Parte de V3.16.11, última versión confirmada por el usuario.
+- Las modificaciones de croquis por voz solo funcionan desde la sección Salas y requieren rol Administrador o Encargado.
+- Permite preparar cambios de genética en una cama completa, por ejemplo `En Flora 2 cama 4 poner Mandarin`; solo modifica las plantas actualmente ocupadas y deja intactas las posiciones vacías.
+- Permite preparar cambios de una planta concreta, por ejemplo `En Flora 2 cama 4 planta 3 poner Gomu Gomu`.
+- Permite `Vaciar cama 8 de Flora 3` con una confirmación específica antes de tocar Supabase, y `Vaciar planta 3 de cama 8` mediante el formulario normal de planta.
+- `Poner 5 plantas en cama 3` o `Poner 9 plantas...` prepara el cambio de capacidad de cama; no inventa ocupación ni crea plantas.
+- Las coincidencias ambiguas de genética no se adivinan: Rainbows pide nombre o nomenclatura más precisa.
+- Los cambios de cama completa usan un cuadro de confirmación; los cambios de planta/capacidad reutilizan los formularios existentes y nunca guardan por voz.
+- Ajusta el filtro móvil de sensibilidad Baja para reconocer estas órdenes de croquis sin aflojar el filtrado general.
+- Actualiza APP_VERSION, referencias y caché del service worker a 3.16.12.

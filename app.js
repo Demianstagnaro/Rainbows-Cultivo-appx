@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.11';
+const APP_VERSION='3.16.12';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Veges',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false};
+const state={view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
 function cycle(r,date){if(r.type!=='flora')return{label:'Permanente',stage:'permanente'};const days=77,bt=parse(r.transplant),bf=parse(r.floraStart);let c=Math.floor(diff(date,bt)/days);if(diff(date,bt)<0)c=-1;const tr=add(bt,c*days),fl=add(bf,c*days),day=diff(date,tr);if(day<0)return{label:'Pendiente',stage:'pendiente',tr,fl};if(diff(date,fl)<0){const w=Math.min(Math.floor(day/7)+1,3);return{label:`Vege S${w}`,stage:'vege',week:w,tr,fl}}const fd=diff(date,fl),w=Math.min(Math.floor(fd/7)+1,8);return{label:`Flora S${w}`,stage:'flora',week:w,tr,fl}}
@@ -768,6 +768,41 @@ async function savePlantDialog(){
   await refresh();
 }
 
+
+function openVoiceRoomChange(change){
+  state.pendingVoiceRoomChange=change;
+  const summary=$('voice-room-change-summary');
+  if(summary)summary.textContent=change.summary||'Revisá el cambio antes de aplicarlo.';
+  showDialog('voice-room-change-dialog');
+}
+
+async function applyVoiceRoomChange(){
+  const change=state.pendingVoiceRoomChange;
+  if(!change)return;
+  const button=$('confirm-voice-room-change');
+  if(button)button.disabled=true;
+  try{
+    if(change.type==='bed-genetic'){
+      const ids=(change.plantIds||[]).map(String);
+      if(!ids.length)throw new Error('La cama no tiene plantas ocupadas para modificar.');
+      const q=await db.from('plantas').update({genetica_id:change.geneticId}).in('id',ids);
+      if(q.error)throw q.error;
+    }else if(change.type==='empty-bed'){
+      const ids=(change.plantIds||[]).map(String);
+      if(!ids.length)throw new Error('No encontré posiciones habilitadas en esa cama.');
+      const q=await db.from('plantas').update({ocupada:false,genetica_id:null}).in('id',ids);
+      if(q.error)throw q.error;
+    }else{
+      throw new Error('Cambio de croquis no reconocido.');
+    }
+    closeDialog('voice-room-change-dialog');
+    state.pendingVoiceRoomChange=null;
+    await refresh();
+  }finally{
+    if(button)button.disabled=false;
+  }
+}
+
 $('cancel-worker').onclick=()=>{
   state.pending=null;
   state.selected.clear();
@@ -821,6 +856,15 @@ $('cancel-plant').onclick=()=>{
 };
 $('save-plant').onclick=async()=>{
   try{await savePlantDialog()}catch(error){console.error(error);alert(error.message||'No se pudo guardar la planta.')}
+};
+
+
+$('cancel-voice-room-change').onclick=()=>{
+  state.pendingVoiceRoomChange=null;
+  closeDialog('voice-room-change-dialog');
+};
+$('confirm-voice-room-change').onclick=async()=>{
+  try{await applyVoiceRoomChange()}catch(error){console.error(error);alert(error.message||'No se pudo aplicar el cambio de croquis.')}
 };
 
 $('cancel-genetic').onclick=()=>{
@@ -919,7 +963,7 @@ function renderHelp(){
           <li>“¿En qué semana está Flora 1?”</li><li>“¿En qué ciclo está Flora 2?”</li><li>“¿En qué semana estaba Flora 3 ayer?”</li><li>“¿Cuándo se cosecha Flora 2?”</li><li>“¿Cuándo empieza flora en Flora 1?”</li><li>“¿Cuándo es el próximo trasplante de Flora 3?”</li>
         </ul></article>
         <article class="help-card"><h3>Salas · croquis</h3><ul>
-          <li>“¿Qué genética hay en la cama 4 de Flora 1?”</li><li>“¿Cuántas plantas hay en Flora 2?”</li><li>“¿Cuántas camas tiene Flora 3?”</li><li>Si no nombrás una Flora, Rainbows puede responder las tres.</li>
+          <li>Consulta: “¿Qué genética hay en la cama 4 de Flora 1?”</li><li>Consulta: “¿Cuántas plantas hay en Flora 2?”</li><li>Modificar desde Salas: “En Flora 2 cama 4 poner Mandarin”.</li><li>Modificar una planta: “En Flora 2 cama 4 planta 3 poner Gomu Gomu”.</li><li>Vaciar: “Vaciar cama 8 de Flora 3” · “Vaciar planta 3 de cama 8”.</li><li>Capacidad: “Poner 5 plantas en cama 3 de Flora 1”.</li><li>Los cambios se preparan y siempre requieren Guardar o Confirmar.</li>
         </ul></article>
         <article class="help-card"><h3>Stock Palestina</h3><ul>
           <li>“¿Cuánto stock total hay?”</li><li>“¿Cuánto stock hay de GomuGomu?”</li><li>“¿Cuánto queda del ciclo 9 de Flora 2?”</li><li>“¿Qué salidas hubo a Medrano?”</li><li>“¿Cuánto consumo interno hubo?”</li><li>“¿Qué movimientos hubo hoy?”</li><li>Preparar movimiento: “Mover todo el stock de Flora 3 ciclo 9 a Medrano”.</li><li>Con la ventana abierta: “Gomu Gomu 850 gramos” · “Todo de Mandarin” · “Quitar Sugar Cane” · “Usar todo disponible” · “Seleccionar todas”.</li><li>Los movimientos nunca se guardan por voz: revisá y tocá Guardar movimientos.</li>
@@ -2989,6 +3033,94 @@ function executeVoiceTaskAction(rawText){
   openWorker(task,'dated',employees.map(e=>e.id));
   return {ok:true,message:`Preparé para completar ${task.task} de ${task.room} del ${nice(d)}${employees.length?` y seleccioné a ${voiceList(employees.map(e=>e.nombre),6)} como responsables`:''}. Revisá la confirmación y tocá Guardar para registrar el cambio.`};
 }
+
+// V3.16.12 — Modificaciones de Salas/croquis por voz.
+// Las órdenes solo funcionan desde Salas y nunca escriben en Supabase sin una confirmación manual.
+function voicePlantPositionFromText(text){
+  const m=normalizeVoiceText(text).match(/(?:planta|posicion)\s*(?:numero\s*)?(\d{1,2})/);
+  return m?Number(m[1]):null;
+}
+function voiceRoomActionLooksRelevant(rawText){
+  const text=normalizeVoiceText(rawText);
+  const hasTarget=text.includes('cama')||text.includes('planta')||text.includes('posicion');
+  const hasAction=/(^|\s)(poner|pone|asignar|asigna|cambiar|cambia|modificar|modifica|vaciar|vacia|dejar vacia|dejar vacio)(\s|$)/.test(text);
+  return hasTarget&&hasAction;
+}
+function executeVoiceRoomAction(rawText){
+  const text=normalizeVoiceText(rawText);
+  if(!voiceRoomActionLooksRelevant(rawText))return null;
+  if(!canEditTasks())return {ok:true,message:'Tu usuario no tiene permiso para modificar el croquis.'};
+  if(state.view!=='rooms')return {ok:true,message:'Para modificar el croquis por voz, abrí primero Salas. Así Rainbows mantiene los cambios dentro de la sección correcta.'};
+
+  const roomName=voiceRoomFromText(text,{allowContext:true});
+  if(!roomName)return {ok:true,message:'Entendí un cambio de croquis, pero me falta la sala. Decime por ejemplo: “En Flora 2 cama 4 poner Mandarin”.'};
+  const roomRule=rr(roomName);
+  if(!roomRule||roomRule.type!=='flora')return {ok:true,message:`${roomName} no usa el croquis de camas de las salas de flora.`};
+  const bedNumber=voiceBedNumberFromText(text);
+  if(bedNumber===null)return {ok:true,message:'Me falta el número de cama. Decime por ejemplo: “Cama 4 poner Mandarin”.'};
+  const roomDb=sr(roomName);
+  const bed=state.camas.find(c=>String(c.sala_id)===String(roomDb?.id)&&Number(c.numero)===Number(bedNumber));
+  if(!bed)return {ok:true,message:`No encontré la cama ${bedNumber} de ${roomName}.`};
+  const bedPlants=plants(bed);
+  const plantPosition=voicePlantPositionFromText(text);
+  const emptyAction=/(^|\s)(vaciar|vacia|dejar vacia|dejar vacio)(\s|$)/.test(text);
+
+  // “Poner 5/9 plantas en cama X” modifica la capacidad de la cama, no inventa ocupación.
+  const capacityMatch=text.match(/(?:poner|pone|cambiar|cambia|modificar|modifica)(?:\s+la)?(?:\s+capacidad)?(?:\s+a|\s+de)?\s*(5|9)\s*plantas?\b/);
+  if(capacityMatch&&!plantPosition){
+    const capacity=Number(capacityMatch[1]);
+    openBed(bed.id);
+    $('bed-capacity').value=String(capacity);
+    return {ok:true,message:`Preparé la cama ${bedNumber} de ${roomName} con capacidad para ${capacity} plantas. Esto no ocupa ni vacía posiciones. Revisá el formulario y tocá Guardar.`};
+  }
+
+  if(plantPosition!==null){
+    const plant=bedPlants.find(p=>Number(p.posicion)===Number(plantPosition));
+    if(!plant)return {ok:true,message:`No encontré la posición ${plantPosition} en la cama ${bedNumber} de ${roomName}.`};
+    if(emptyAction){
+      openPlant(plant.id);
+      $('plant-status').value='empty';
+      $('plant-genetics').value='';
+      return {ok:true,message:`Preparé para vaciar la planta ${plantPosition} de la cama ${bedNumber} de ${roomName}. Revisá el formulario y tocá Guardar.`};
+    }
+    const geneticResult=voiceGeneticResolver(text);
+    const ambiguity=voiceGeneticAmbiguityMessage(geneticResult);if(ambiguity)return {ok:true,message:ambiguity};
+    const genetic=geneticResult.match?.genetic||null;
+    if(!genetic)return {ok:true,message:'Entendí qué planta querés modificar, pero no pude identificar la genética. Decime el nombre o la nomenclatura.'};
+    openPlant(plant.id);
+    $('plant-status').value='occupied';
+    $('plant-genetics').value=String(genetic.id);
+    return {ok:true,message:`Preparé la planta ${plantPosition} de la cama ${bedNumber} de ${roomName} con ${genetic.nombre}. Revisá el formulario y tocá Guardar.`};
+  }
+
+  if(emptyAction){
+    const occupied=bedPlants.filter(p=>p.ocupada);
+    if(!occupied.length)return {ok:true,message:`La cama ${bedNumber} de ${roomName} ya está vacía.`};
+    openVoiceRoomChange({
+      type:'empty-bed',
+      roomName,bedNumber,
+      plantIds:bedPlants.map(p=>p.id),
+      summary:`Vas a vaciar la cama ${bedNumber} de ${roomName}. Se marcarán como vacías sus ${occupied.length} planta${occupied.length===1?'':'s'} ocupada${occupied.length===1?'':'s'} y se quitarán sus genéticas. Nada cambia hasta que toques Confirmar.`
+    });
+    return {ok:true,message:`Preparé para vaciar la cama ${bedNumber} de ${roomName}. Confirmá el cuadro que aparece en pantalla para aplicar el cambio.`};
+  }
+
+  const geneticResult=voiceGeneticResolver(text);
+  const ambiguity=voiceGeneticAmbiguityMessage(geneticResult);if(ambiguity)return {ok:true,message:ambiguity};
+  const genetic=geneticResult.match?.genetic||null;
+  if(!genetic)return {ok:true,message:'Entendí la cama que querés modificar, pero no pude identificar la genética. Decime el nombre o la nomenclatura.'};
+  const occupied=bedPlants.filter(p=>p.ocupada);
+  if(!occupied.length)return {ok:true,message:`La cama ${bedNumber} de ${roomName} está vacía. Para evitar inventar plantas, Rainbows no asignó ${genetic.nombre}.`};
+  openVoiceRoomChange({
+    type:'bed-genetic',
+    roomName,bedNumber,
+    geneticId:genetic.id,
+    plantIds:occupied.map(p=>p.id),
+    summary:`Vas a cambiar a ${genetic.nombre} la genética de las ${occupied.length} planta${occupied.length===1?'':'s'} ocupada${occupied.length===1?'':'s'} de la cama ${bedNumber} de ${roomName}. Las posiciones vacías no se modifican. Nada cambia hasta que toques Confirmar.`
+  });
+  return {ok:true,message:`Preparé el cambio de la cama ${bedNumber} de ${roomName} a ${genetic.nombre}. Confirmá el cuadro que aparece en pantalla para aplicarlo.`};
+}
+
 function executeGlobalVoiceQuery(rawText){
   // Toda consulta es global: no depende de la ventana activa.
   // Los futuros comandos que MODIFIQUEN datos se resolverán aparte y sí deberán
@@ -3016,6 +3148,8 @@ function executeVoiceCommand(rawText){
   if(harvestAction)return harvestAction;
   const stockMovementAction=executeVoiceStockMovementAction(rawText);
   if(stockMovementAction)return stockMovementAction;
+  const roomAction=executeVoiceRoomAction(rawText);
+  if(roomAction)return roomAction;
   const createTaskAction=executeVoiceCreateTaskAction(rawText);
   if(createTaskAction)return createTaskAction;
   const reprogramTaskAction=executeVoiceReprogramTaskAction(rawText);
@@ -3101,6 +3235,7 @@ function mobileVoiceLooksRelevant(rawText='',confidence=0){
   if(harvestControlCommand)return true;
   if(voiceHarvestFormPhraseLooksRelevant(rawText))return confidence===0||confidence>=0.24;
   if(voiceStockMovementFormPhraseLooksRelevant(rawText))return confidence===0||confidence>=0.24;
+  if(state.view==='rooms'&&voiceRoomActionLooksRelevant(rawText))return confidence===0||confidence>=0.24;
   const words=text.split(/\s+/).filter(Boolean);
   if(words.length<2)return false;
 
@@ -3159,6 +3294,7 @@ function mobileVoiceCandidateScore(rawText='',confidence=0){
   if(harvestControlCommand)score+=40;
   if(voiceHarvestFormPhraseLooksRelevant(rawText))score+=24;
   if(voiceStockMovementFormPhraseLooksRelevant(rawText))score+=24;
+  if(state.view==='rooms'&&voiceRoomActionLooksRelevant(rawText))score+=24;
   const domainTokens=[
     'tarea','tareas','pendiente','pendientes','realizada','realizadas','responsable','responsables',
     'flora','veges','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
@@ -3434,5 +3570,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.11').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.12').catch(console.error));
 }
