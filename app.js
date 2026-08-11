@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.7';
+const APP_VERSION='3.16.9';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -877,7 +877,7 @@ function renderHelp(){
       <article class="panel help-card help-card-quick"><h3>Acciones disponibles</h3><ul>
         <li>Desde Hoy o Calendario: “Agregar fumigación mañana en Flora 2”.</li><li>También podés completar: “Completar fumigación de Flora 2”. Reprogramar: “Reprogramar fumigación de Flora 2 para mañana”. Cancelar: “Cancelar fumigación de Flora 2”.</li>
         <li>Podés agregar responsables: “La hicieron Cone y Pata”.</li>
-        <li>Nada se guarda hasta que confirmás.</li>
+        <li>En Cosechas: “Nueva cosecha de Flora 3 ciclo 10”; con el formulario abierto: “Gomu Gomu 850 gramos”.</li><li>Nada se guarda hasta que confirmás.</li>
       </ul></article>
       <article class="panel help-card help-card-quick"><h3>Consejos</h3><ul>
         <li>Podés decir “Flora tres”, “Flora 3” o incluso si el teléfono escribe “Flora III”.</li>
@@ -925,7 +925,7 @@ function renderHelp(){
           <li>“¿Cuánto stock total hay?”</li><li>“¿Cuánto stock hay de GomuGomu?”</li><li>“¿Cuánto queda del ciclo 9 de Flora 2?”</li><li>“¿Qué salidas hubo a Medrano?”</li><li>“¿Cuánto consumo interno hubo?”</li><li>“¿Qué movimientos hubo hoy?”</li>
         </ul></article>
         <article class="help-card"><h3>Cosechas</h3><ul>
-          <li>“¿Cuánto produjo Flora 1 ciclo 8?”</li><li>“¿Cuál fue la última cosecha de Flora 3?”</li><li>“¿Qué genética produjo más en el ciclo 8 de Flora 2?”</li><li>“¿Cuánto produjo GomuGomu en 2026?”</li><li>“¿Cuál fue el desvío respecto de la meta?”</li>
+          <li>Consulta: “¿Cuánto produjo Flora 1 ciclo 8?”</li><li>Consulta: “¿Cuál fue la última cosecha de Flora 3?”</li><li>Cargar: “Nueva cosecha de Flora 3 ciclo 10”.</li><li>Con el formulario abierto, una pesada por frase: “Gomu Gomu 850 gramos” · “Mandarin 1 kilo 150”.</li><li>Podés repetir la misma genética: cada frase agrega otra pesada y el total se suma solo.</li><li>Correcciones: “Quitar última pesada” · “Corregir última pesada a 920 gramos”.</li><li>Opcional: “Meta 9 kilos” · “108 plantas”.</li><li>La cosecha nunca se guarda por voz: revisá y tocá Guardar.</li>
         </ul></article>
         <article class="help-card"><h3>Genéticas</h3><ul>
           <li>“¿Cuál es la nomenclatura de Mandarin Cookies?”</li><li>“¿Cuál es el linaje de GomuGomu?”</li><li>“¿Qué cannabinoides tiene GomuGomu?”</li><li>“¿Qué genéticas están activas?”</li><li>“¿Qué genéticas tienen CBD?”</li>
@@ -2278,6 +2278,167 @@ function executeVoiceStockQuery(rawText){
 }
 
 
+
+// V3.16.9 — Carga de cosechas por voz.
+// La voz prepara el formulario y agrega pesadas, pero nunca guarda en Supabase automáticamente.
+function voiceHarvestDialogOpen(){return Boolean($('harvest-dialog')?.open)}
+function voicePlainText(value=''){
+  return String(value||'').toLocaleLowerCase('es-AR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/,/g,'.').replace(/[^a-z0-9.\s]/g,' ').replace(/\s+/g,' ').trim();
+}
+function voiceSpanishInteger(value=''){
+  const clean=voicePlainText(value);
+  if(!clean)return null;
+  const direct=clean.match(/(?:^|\s)(\d+(?:\.\d+)?)(?:\s|$)/);
+  if(direct)return Number(direct[1]);
+  const units={un:1,uno:1,una:1,dos:2,tres:3,cuatro:4,cinco:5,seis:6,siete:7,ocho:8,nueve:9};
+  const teens={diez:10,once:11,doce:12,trece:13,catorce:14,quince:15,dieciseis:16,diecisiete:17,dieciocho:18,diecinueve:19};
+  const twenties={veinte:20,veintiuno:21,veintiuna:21,veintidos:22,veintitres:23,veinticuatro:24,veinticinco:25,veintiseis:26,veintisiete:27,veintiocho:28,veintinueve:29};
+  const tens={treinta:30,cuarenta:40,cincuenta:50,sesenta:60,setenta:70,ochenta:80,noventa:90};
+  const hundreds={cien:100,ciento:100,doscientos:200,doscientas:200,trescientos:300,trescientas:300,cuatrocientos:400,cuatrocientas:400,quinientos:500,quinientas:500,seiscientos:600,seiscientas:600,setecientos:700,setecientas:700,ochocientos:800,ochocientas:800,novecientos:900,novecientas:900};
+  let total=0,current=0,seen=false;
+  for(const token of clean.split(' ')){
+    if(token==='y')continue;
+    if(token==='mil'){
+      total+=(current||1)*1000;current=0;seen=true;continue;
+    }
+    if(token in hundreds){current+=hundreds[token];seen=true;continue;}
+    if(token in teens){current+=teens[token];seen=true;continue;}
+    if(token in twenties){current+=twenties[token];seen=true;continue;}
+    if(token in tens){current+=tens[token];seen=true;continue;}
+    if(token in units){current+=units[token];seen=true;continue;}
+  }
+  return seen?total+current:null;
+}
+function voiceNumberPhraseBeforeUnit(clean,unitPattern){
+  const tokens=clean.split(' ');
+  const idx=tokens.findIndex(t=>unitPattern.test(t));
+  if(idx<0)return null;
+  const numberWords=new Set(['un','uno','una','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciseis','diecisiete','dieciocho','diecinueve','veinte','veintiuno','veintiuna','veintidos','veintitres','veinticuatro','veinticinco','veintiseis','veintisiete','veintiocho','veintinueve','treinta','cuarenta','cincuenta','sesenta','setenta','ochenta','noventa','cien','ciento','doscientos','doscientas','trescientos','trescientas','cuatrocientos','cuatrocientas','quinientos','quinientas','seiscientos','seiscientas','setecientos','setecientas','ochocientos','ochocientas','novecientos','novecientas','mil','y']);
+  const picked=[];
+  for(let i=idx-1;i>=0;i--){
+    const t=tokens[i];
+    if(/^\d+(?:\.\d+)?$/.test(t)||numberWords.has(t)){picked.unshift(t);continue;}
+    break;
+  }
+  return picked.length?voiceSpanishInteger(picked.join(' ')):null;
+}
+function voiceWeightFromText(rawText=''){
+  const clean=voicePlainText(rawText);
+  if(!clean)return null;
+  // Casos naturales: “medio kilo” / “un kilo y medio”.
+  if(/\bmedio\s+kilo(?:s|gramos?)?\b/.test(clean))return 500;
+  const kiloMatch=clean.match(/\b(kilo|kilos|kg|kilogramo|kilogramos)\b/);
+  if(kiloMatch){
+    const unit=kiloMatch[1], before=clean.slice(0,kiloMatch.index+unit.length);
+    let kilos=voiceNumberPhraseBeforeUnit(before,/^(kilo|kilos|kg|kilogramo|kilogramos)$/);
+    if(kilos==null&&/\bun\s+(?:kilo|kg|kilogramo)/.test(clean))kilos=1;
+    if(kilos==null)kilos=1;
+    let grams=0;
+    const after=clean.slice((kiloMatch.index||0)+unit.length).trim();
+    if(/^y\s+medio\b/.test(after))grams=500;
+    else{
+      const gramsUnit=after.match(/\b(gramo|gramos|g)\b/);
+      const segment=gramsUnit?after.slice(0,gramsUnit.index):after;
+      const extra=voiceSpanishInteger(segment);
+      if(extra!=null&&extra<1000)grams=extra;
+    }
+    return Math.round((Number(kilos)*1000+grams)*100)/100;
+  }
+  const gramUnit=clean.match(/\b(gramo|gramos|g)\b/);
+  if(gramUnit){
+    const before=clean.slice(0,gramUnit.index+gramUnit[1].length);
+    const grams=voiceNumberPhraseBeforeUnit(before,/^(gramo|gramos|g)$/);
+    if(grams!=null)return Math.round(Number(grams)*100)/100;
+  }
+  // Con el formulario de cosecha abierto permitimos “Gomu Gomu 850”.
+  const trailing=clean.match(/(?:^|\s)(\d+(?:\.\d+)?)\s*$/);
+  return trailing?Number(trailing[1]):null;
+}
+function voiceHarvestFormPhraseLooksRelevant(rawText=''){
+  if(!voiceHarvestDialogOpen())return false;
+  const text=normalizeVoiceText(rawText);
+  if(/\b(meta|plantas|pesada|cosecha|guardar|cancelar)\b/.test(text))return true;
+  const weight=voiceWeightFromText(rawText);
+  if(!(weight>0))return false;
+  const geneticResult=voiceGeneticResolver(rawText);
+  return Boolean(geneticResult?.match||geneticResult?.ambiguous);
+}
+function voiceHarvestAddLine(genetic,grams){
+  const container=$('harvest-lines');if(!container||!genetic?.genetic)return false;
+  container.insertAdjacentHTML('beforeend',harvestLineTemplate({genetica_id:genetic.genetic.id,gramos:Number(grams)}));
+  bindHarvestLines();
+  const row=container.lastElementChild;row?.scrollIntoView?.({block:'nearest',behavior:'smooth'});
+  return true;
+}
+function voiceHarvestCurrentTotal(){
+  return [...($('harvest-lines')?.querySelectorAll('.harvest-line')||[])].reduce((sum,row)=>sum+(Number(row.querySelector('.harvest-line-grams')?.value)||0),0);
+}
+function executeVoiceHarvestAction(rawText){
+  const text=normalizeVoiceText(rawText);
+  const dialogOpen=voiceHarvestDialogOpen();
+  const createAction=/(^|\s)(nueva|nuevo|crear|crea|cargar|carga|registrar|registra|agregar|agrega)(\s|$)/.test(text)&&(text.includes('cosecha')||text.includes('cosechas'));
+
+  if(!dialogOpen&&createAction){
+    if(!canEditTasks())return {ok:true,message:'Tu usuario no tiene permiso para cargar cosechas.'};
+    if(state.view!=='harvests')return {ok:true,message:'Para cargar una cosecha por voz, abrí Cosechas y repetí la orden. Así Rainbows modifica únicamente esa sección.'};
+    const room=voiceRoomFromText(text,{allowContext:false});
+    if(!room||!/^Flora [123]$/.test(room))return {ok:true,message:'Entendí que querés cargar una cosecha, pero necesito la sala. Decime por ejemplo: “Nueva cosecha de Flora 3 ciclo 10”.'};
+    const d=voiceHasExplicitDate(text)?voiceDateFromText(text):today();
+    const rule=rr(room);
+    const spokenCycle=voiceCycleNumberFromText(text);
+    const inferredCycle=rule?cycleNumber(rule,d):null;
+    const cycleValue=spokenCycle||inferredCycle;
+    if(!cycleValue)return {ok:true,message:'No pude determinar el ciclo de la cosecha. Decime por ejemplo: “Nueva cosecha de Flora 3 ciclo 10”.'};
+    openHarvest();
+    $('harvest-date').value=ymd(d);$('harvest-room').value=room;$('harvest-cycle').value=String(cycleValue);
+    return {ok:true,message:`Preparé una nueva cosecha de ${room}, ciclo ${cycleValue}, con fecha ${nice(d)}. Ahora podés decir cada pesada, por ejemplo: “Gomu Gomu 850 gramos”. Nada se guarda hasta que toques Guardar.`};
+  }
+
+  if(!dialogOpen)return null;
+  if(!canEditTasks())return {ok:true,message:'Tu usuario no tiene permiso para editar cosechas.'};
+
+  if(/\b(guardar|grabar|confirmar)\s+(?:la\s+)?cosecha\b/.test(text))return {ok:true,message:'Por seguridad no guardo la cosecha por voz. Revisá el formulario y tocá Guardar cuando esté correcto.'};
+  if(/\b(quitar|borra|borrar|eliminar|elimina)\s+(?:la\s+)?ultima\s+pesada\b/.test(text)){
+    const rows=$('harvest-lines')?.querySelectorAll('.harvest-line');const last=rows?.[rows.length-1];
+    if(!last)return {ok:true,message:'Todavía no hay pesadas para quitar.'};
+    last.remove();updateHarvestLineTotal();
+    return {ok:true,message:`Quité la última pesada. El total del formulario quedó en ${formatGrams(voiceHarvestCurrentTotal())}.`};
+  }
+  if(/\b(corregir|corregi|cambiar|cambia)\s+(?:la\s+)?ultima\s+pesada\b/.test(text)){
+    const grams=voiceWeightFromText(rawText);const rows=$('harvest-lines')?.querySelectorAll('.harvest-line');const last=rows?.[rows.length-1];
+    if(!last)return {ok:true,message:'Todavía no hay una pesada para corregir.'};
+    if(!(grams>0))return {ok:true,message:'Decime el nuevo peso, por ejemplo: “Corregir última pesada a 920 gramos”.'};
+    const input=last.querySelector('.harvest-line-grams');if(input)input.value=String(grams);updateHarvestLineTotal();
+    return {ok:true,message:`Corregí la última pesada a ${formatGrams(grams)}. El total quedó en ${formatGrams(voiceHarvestCurrentTotal())}.`};
+  }
+  if(/\bmeta\b/.test(text)){
+    const grams=voiceWeightFromText(rawText);
+    if(!(grams>=0))return {ok:true,message:'Entendí que querés cargar la meta, pero no pude identificar los gramos.'};
+    $('harvest-goal').value=String(grams);
+    return {ok:true,message:`Cargué una meta de ${formatGrams(grams)} en el formulario. Revisala antes de guardar.`};
+  }
+  if(/\bplantas?\b/.test(text)){
+    const m=voicePlainText(rawText).match(/(?:^|\s)(\d{1,4})\s+plantas?\b/);const count=m?Number(m[1]):voiceSpanishInteger(voicePlainText(rawText).replace(/\bplantas?\b.*$/,''));
+    if(!(count>=0))return {ok:true,message:'Entendí que querés cargar la cantidad de plantas, pero no pude identificar el número.'};
+    $('harvest-plants').value=String(Math.round(count));
+    return {ok:true,message:`Cargué ${Math.round(count)} plantas en el formulario. Revisalo antes de guardar.`};
+  }
+
+  const grams=voiceWeightFromText(rawText);
+  if(grams>0){
+    const geneticResult=voiceGeneticResolver(rawText);
+    const ambiguity=voiceGeneticAmbiguityMessage(geneticResult);if(ambiguity)return {ok:true,message:ambiguity};
+    const genetic=geneticResult.match;
+    if(!genetic?.genetic)return {ok:true,message:`Entendí ${formatGrams(grams)}, pero no pude identificar la genética. Decime nombre o nomenclatura junto con el peso.`};
+    voiceHarvestAddLine(genetic,grams);
+    return {ok:true,message:`Agregué ${genetic.label}: ${formatGrams(grams)}. Total actual: ${formatGrams(voiceHarvestCurrentTotal())}. Podés decir la siguiente pesada.`};
+  }
+
+  // Si estamos dentro del formulario pero la frase no parece una acción de cosecha,
+  // dejamos que continúen funcionando las consultas/navegación globales.
+  return null;
+}
+
 function voiceHarvestYearFromText(text){
   const clean=normalizeVoiceText(text),base=today();
   const m=clean.match(/\b(20\d{2})\b/);
@@ -2738,6 +2899,8 @@ function isExplicitVoiceNavigation(rawText){
 }
 function executeVoiceCommand(rawText){
   if(isExplicitVoiceNavigation(rawText))return executeVoiceNavigation(rawText);
+  const harvestAction=executeVoiceHarvestAction(rawText);
+  if(harvestAction)return harvestAction;
   const createTaskAction=executeVoiceCreateTaskAction(rawText);
   if(createTaskAction)return createTaskAction;
   const reprogramTaskAction=executeVoiceReprogramTaskAction(rawText);
@@ -2816,6 +2979,7 @@ function useMobileContinuousVoiceFilter(){
 function mobileVoiceLooksRelevant(rawText='',confidence=0){
   const text=normalizeVoiceText(rawText);
   if(!text||isVoiceStopCommand(text))return true;
+  if(voiceHarvestFormPhraseLooksRelevant(rawText))return confidence===0||confidence>=0.24;
   const words=text.split(/\s+/).filter(Boolean);
   if(words.length<2)return false;
 
@@ -2867,6 +3031,7 @@ function mobileVoiceCandidateScore(rawText='',confidence=0){
     'ir a manana','ir a ayer','dia anterior','dia siguiente'
   ];
   let score=exactCommands.includes(text)?30:0;
+  if(voiceHarvestFormPhraseLooksRelevant(rawText))score+=24;
   const domainTokens=[
     'tarea','tareas','pendiente','pendientes','realizada','realizadas','responsable','responsables',
     'flora','veges','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
@@ -3142,5 +3307,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.7').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.9').catch(console.error));
 }

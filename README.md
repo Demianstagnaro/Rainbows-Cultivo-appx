@@ -788,3 +788,16 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Se ignora silenciosamente el evento `aborted` usado para el reciclado rápido, evitando mensajes falsos de error.
 - Se conserva el filtro de ruido/comandos de V3.16.6 y los movimientos múltiples de Stock.
 - Actualiza APP_VERSION, referencias de app.js/styles.css y caché del service worker a 3.16.7.
+
+## V3.16.9 — Carga de cosechas por voz
+
+- Parte desde V3.16.7, la última versión de voz confirmada, y conserva movimientos múltiples de Stock.
+- Desde Cosechas, “Nueva cosecha de Flora 3 ciclo 10” abre el formulario existente y precarga sala, ciclo y fecha; si no se dice ciclo, usa el ciclo calculado por el calendario para esa sala/fecha.
+- Con el formulario abierto se puede registrar una pesada por frase, por ejemplo “Gomu Gomu 850 gramos” o “Mandarin 1 kilo 150”.
+- Repetir una genética agrega otra pesada independiente; el formulario suma el total automáticamente y la lógica existente agrupa por genética al guardar.
+- Reconoce gramos, kilos y expresiones habituales como “un kilo y medio” o “1 kilo 150”.
+- Agrega “Quitar última pesada” y “Corregir última pesada a 920 gramos” para corregir errores sin tocar la pantalla.
+- Permite precargar meta y cantidad de plantas por voz dentro del formulario.
+- En sensibilidad Baja móvil, las frases válidas de pesada reciben prioridad en el filtro para que nombres + peso no sean descartados como ruido.
+- Nunca guarda una cosecha por voz: el usuario debe revisar el formulario y tocar Guardar manualmente.
+- Actualiza APP_VERSION, referencias y caché del service worker a 3.16.9.
