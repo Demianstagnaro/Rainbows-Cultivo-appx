@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.10';
+const APP_VERSION='3.16.11';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -877,7 +877,7 @@ function renderHelp(){
       <article class="panel help-card help-card-quick"><h3>Acciones disponibles</h3><ul>
         <li>Desde Hoy o Calendario: “Agregar fumigación mañana en Flora 2”.</li><li>También podés completar: “Completar fumigación de Flora 2”. Reprogramar: “Reprogramar fumigación de Flora 2 para mañana”. Cancelar: “Cancelar fumigación de Flora 2”.</li>
         <li>Podés agregar responsables: “La hicieron Cone y Pata”.</li>
-        <li>En Cosechas: “Nueva cosecha de Flora 3 ciclo 10”; con el formulario abierto: “Gomu Gomu 850 gramos”.</li><li>Nada se guarda hasta que confirmás.</li>
+        <li>En Cosechas: “Nueva cosecha de Flora 3 ciclo 10”; con el formulario abierto: “Gomu Gomu 850 gramos”.</li><li>En Stock: “Mover todo el stock de Flora 3 ciclo 9 a Medrano”; con la ventana abierta: “Gomu Gomu 850 gramos” o “Usar todo disponible”.</li><li>Nada se guarda hasta que confirmás.</li>
       </ul></article>
       <article class="panel help-card help-card-quick"><h3>Consejos</h3><ul>
         <li>Podés decir “Flora tres”, “Flora 3” o incluso si el teléfono escribe “Flora III”.</li>
@@ -922,7 +922,7 @@ function renderHelp(){
           <li>“¿Qué genética hay en la cama 4 de Flora 1?”</li><li>“¿Cuántas plantas hay en Flora 2?”</li><li>“¿Cuántas camas tiene Flora 3?”</li><li>Si no nombrás una Flora, Rainbows puede responder las tres.</li>
         </ul></article>
         <article class="help-card"><h3>Stock Palestina</h3><ul>
-          <li>“¿Cuánto stock total hay?”</li><li>“¿Cuánto stock hay de GomuGomu?”</li><li>“¿Cuánto queda del ciclo 9 de Flora 2?”</li><li>“¿Qué salidas hubo a Medrano?”</li><li>“¿Cuánto consumo interno hubo?”</li><li>“¿Qué movimientos hubo hoy?”</li>
+          <li>“¿Cuánto stock total hay?”</li><li>“¿Cuánto stock hay de GomuGomu?”</li><li>“¿Cuánto queda del ciclo 9 de Flora 2?”</li><li>“¿Qué salidas hubo a Medrano?”</li><li>“¿Cuánto consumo interno hubo?”</li><li>“¿Qué movimientos hubo hoy?”</li><li>Preparar movimiento: “Mover todo el stock de Flora 3 ciclo 9 a Medrano”.</li><li>Con la ventana abierta: “Gomu Gomu 850 gramos” · “Todo de Mandarin” · “Quitar Sugar Cane” · “Usar todo disponible” · “Seleccionar todas”.</li><li>Los movimientos nunca se guardan por voz: revisá y tocá Guardar movimientos.</li>
         </ul></article>
         <article class="help-card"><h3>Cosechas</h3><ul>
           <li>Consulta: “¿Cuánto produjo Flora 1 ciclo 8?”</li><li>Consulta: “¿Cuál fue la última cosecha de Flora 3?”</li><li>Cargar: “Nueva cosecha de Flora 3 ciclo 10”.</li><li>Con el formulario abierto, una pesada por frase: “Gomu Gomu 850 gramos” · “Mandarin 1 kilo 150”.</li><li>Podés repetir la misma genética: cada frase agrega otra pesada y el total se suma solo.</li><li>Correcciones: “Quitar última pesada/pasada” · “Corregir última pesada/pasada a 920 gramos”.</li><li>Opcional: “Meta 9 kilos” · “108 plantas”.</li><li>La cosecha nunca se guarda por voz: revisá y tocá Guardar.</li>
@@ -2439,6 +2439,119 @@ function executeVoiceHarvestAction(rawText){
   return null;
 }
 
+
+// V3.16.11 — Preparación de movimientos de Stock por voz.
+// Nunca guarda automáticamente: la voz solo abre/completa el formulario existente.
+function voiceStockMovementDialogOpen(){return Boolean($('stock-movement-dialog')?.open)}
+function voiceStockMovementCycleContext(room=null,cycleNumber=null){
+  let cycles=state.stockCycles.filter(c=>(!room||c.sala===room)&&(cycleNumber===null||Number(c.ciclo)===Number(cycleNumber)));
+  if(state.stockCycle){
+    const selected=cycles.find(c=>String(c.id)===String(state.stockCycle));
+    if(selected)return {cycle:selected,ambiguous:false};
+  }
+  if(cycleNumber!==null){
+    if(cycles.length===1)return {cycle:cycles[0],ambiguous:false};
+    if(cycles.length>1)return {cycle:null,ambiguous:true,cycles};
+    return {cycle:null,ambiguous:false,cycles:[]};
+  }
+  const withStock=cycles.filter(c=>stockCycleCurrent(c)>0.0001).sort((a,b)=>Number(b.ciclo)-Number(a.ciclo));
+  if(withStock.length===1)return {cycle:withStock[0],ambiguous:false};
+  if(withStock.length>1)return {cycle:null,ambiguous:true,cycles:withStock};
+  if(cycles.length===1)return {cycle:cycles[0],ambiguous:false};
+  return {cycle:null,ambiguous:cycles.length>1,cycles};
+}
+function voiceStockMovementRowForGenetic(genetic){
+  if(!genetic)return null;
+  return [...($('stock-movement-items')?.querySelectorAll('[data-stock-movement-row]')||[])].find(row=>{
+    const item=state.stockItems.find(x=>String(x.id)===String(row.dataset.itemId));
+    return item&&voiceStockItemMatches(item,genetic);
+  })||null;
+}
+function voiceSetStockMovementRow(row,grams){
+  if(!row)return false;
+  const check=row.querySelector('.stock-movement-check');
+  const input=row.querySelector('.stock-movement-item-grams');
+  if(!check||!input||check.disabled)return false;
+  check.checked=true;input.disabled=false;input.value=String(Math.round(Number(grams)*100)/100);updateStockMovementSummary();
+  row.scrollIntoView?.({block:'nearest',behavior:'smooth'});return true;
+}
+function voiceStockMovementFormPhraseLooksRelevant(rawText=''){
+  if(!voiceStockMovementDialogOpen())return false;
+  const text=normalizeVoiceText(rawText);
+  if(/\b(usar todo|todo disponible|seleccionar todas|selecciona todas|limpiar|borrar seleccion|destino|origen|salida|entrada|quitar|sacar|borrar|eliminar|cambiar|corregir|modificar)\b/.test(text))return true;
+  const weight=voiceWeightFromText(rawText);
+  const geneticResult=voiceStockGeneticFromText(rawText);
+  if(weight>0&&(geneticResult?.match||geneticResult?.ambiguous))return true;
+  if(/\btodo\b/.test(text)&&(geneticResult?.match||geneticResult?.ambiguous))return true;
+  return false;
+}
+function executeVoiceStockMovementAction(rawText){
+  const text=normalizeVoiceText(rawText),dialogOpen=voiceStockMovementDialogOpen();
+  if(dialogOpen){
+    if(!canEditTasks())return {ok:true,message:'Tu usuario no tiene permiso para registrar movimientos de Stock.'};
+    if(/\b(guardar|grabar|confirmar)\b/.test(text)&&(text.includes('stock')||text.includes('movimiento')))
+      return {ok:true,message:'Por seguridad no guardo movimientos de Stock por voz. Revisá el formulario y tocá Guardar movimientos cuando esté correcto.'};
+    if(/\b(usar|cargar|poner)\s+(?:todo\s+)?(?:el\s+)?(?:stock\s+)?disponible\b/.test(text)||text==='usar todo disponible'){
+      if($('stock-movement-type').value!=='salida')return {ok:true,message:'“Usar todo disponible” solo corresponde a una salida. Cambiá el tipo a salida o decime “tipo salida”.'};
+      useAllAvailableStock();
+      return {ok:true,message:`Cargué todo el stock disponible de las genéticas con saldo. ${$('stock-movement-summary').textContent} Revisá antes de guardar.`};
+    }
+    if(/\b(seleccionar|selecciona|marcar|marca)\s+(?:a\s+)?todas\b/.test(text)){
+      selectAllStockMovementItems();return {ok:true,message:`Seleccioné todas las genéticas disponibles. ${$('stock-movement-summary').textContent}`};
+    }
+    if(/\b(limpiar|limpia|borrar|borra)\s+(?:la\s+)?seleccion\b/.test(text)||text==='limpiar'){
+      clearStockMovementItems();return {ok:true,message:'Limpié la selección de genéticas del movimiento.'};
+    }
+    if(/\btipo\s+entrada\b/.test(text)||text==='entrada'){$('stock-movement-type').value='entrada';updateStockMovementItems();return {ok:true,message:'Cambié el movimiento a entrada. Revisá las cantidades antes de guardar.'};}
+    if(/\btipo\s+salida\b/.test(text)||text==='salida'){$('stock-movement-type').value='salida';updateStockMovementItems();return {ok:true,message:'Cambié el movimiento a salida. Revisá las cantidades antes de guardar.'};}
+    if(/\bdestino\s+medrano\b/.test(text)||/\b(?:a|hacia)\s+medrano\b/.test(text)){$('stock-movement-destination').value='Medrano';return {ok:true,message:'Puse Medrano como destino del movimiento.'};}
+    if(voiceHasExplicitDate(text)&&(/\bfecha\b/.test(text)||text.split(' ').length<=5)){
+      const d=voiceDateFromText(text);$('stock-movement-date').value=ymd(d);return {ok:true,message:`Puse fecha ${nice(d)} en el movimiento.`};
+    }
+    const geneticResult=voiceStockGeneticFromText(rawText);
+    const ambiguity=voiceGeneticAmbiguityMessage(geneticResult);if(ambiguity)return {ok:true,message:ambiguity};
+    const genetic=geneticResult.match;
+    if(genetic){
+      const row=voiceStockMovementRowForGenetic(genetic);
+      if(!row)return {ok:true,message:`No encontré ${genetic.label} dentro del ciclo seleccionado para este movimiento.`};
+      const remove=/\b(quitar|quita|sacar|saca|borrar|borra|eliminar|elimina)\b/.test(text);
+      if(remove){const check=row.querySelector('.stock-movement-check'),input=row.querySelector('.stock-movement-item-grams');check.checked=false;input.value='';input.disabled=true;updateStockMovementSummary();return {ok:true,message:`Quité ${genetic.label} del movimiento.`};}
+      const wantsAll=/\b(todo|toda|completo|completa)\b/.test(text);
+      let grams=voiceWeightFromText(rawText);
+      if(wantsAll&&$('stock-movement-type').value==='salida')grams=Number(row.dataset.current)||0;
+      if(!(grams>0))return {ok:true,message:`Entendí ${genetic.label}, pero necesito la cantidad. Podés decir “${genetic.label} 850 gramos” o “todo de ${genetic.label}”.`};
+      const available=Number(row.dataset.current)||0;
+      if($('stock-movement-type').value==='salida'&&grams>available+0.0001)return {ok:true,message:`No puedo preparar ${formatGrams(grams)} de ${genetic.label}: hay ${formatGrams(available)} disponibles.`};
+      if(!voiceSetStockMovementRow(row,grams))return {ok:true,message:`No pude seleccionar ${genetic.label} para este movimiento.`};
+      return {ok:true,message:`Cargué ${genetic.label}: ${formatGrams(grams)}. ${$('stock-movement-summary').textContent}`};
+    }
+    return null;
+  }
+
+  const createAction=(/\b(mover|move|trasladar|traslada|transferir|transfiere|registrar|registra|crear|crea|cargar|carga)\b/.test(text)&&/\b(stock|movimiento|salida|entrada)\b/.test(text))||/\b(?:mover|trasladar)\s+todo\b/.test(text);
+  if(!createAction)return null;
+  if(!canEditTasks())return {ok:true,message:'Tu usuario no tiene permiso para registrar movimientos de Stock.'};
+  if(state.view!=='stock')return {ok:true,message:'Para preparar un movimiento por voz, abrí Stock Palestina y repetí la orden. Así Rainbows modifica únicamente esa sección.'};
+  const room=voiceRoomFromText(text,{allowContext:false})||state.stockRoom||null;
+  const cycleNumber=voiceCycleNumberFromText(text);
+  const context=voiceStockMovementCycleContext(room,cycleNumber);
+  if(!context.cycle){
+    if(!room)return {ok:true,message:'Entendí que querés registrar un movimiento, pero necesito la sala y el ciclo. Decime por ejemplo: “Mover todo el stock de Flora 3 ciclo 9 a Medrano”.'};
+    if(context.ambiguous)return {ok:true,message:`Encontré más de un ciclo posible de ${room}. Decime el ciclo para evitar mover stock equivocado.`};
+    return {ok:true,message:`No encontré un ciclo de Stock que coincida con ${room}${cycleNumber!==null?` ciclo ${cycleNumber}`:''}.`};
+  }
+  const type=text.includes('entrada')?'entrada':'salida';
+  const d=voiceHasExplicitDate(text)?voiceDateFromText(text):today();
+  openStockMovement(context.cycle.id);
+  $('stock-movement-type').value=type;updateStockMovementItems();
+  $('stock-movement-date').value=ymd(d);
+  if(text.includes('medrano'))$('stock-movement-destination').value='Medrano';
+  const wantsAll=/\b(todo|todas|completo|completa)\b/.test(text)&&/\bstock\b/.test(text);
+  if(wantsAll&&type==='salida')useAllAvailableStock();
+  const dest=$('stock-movement-destination').value.trim();
+  return {ok:true,message:`Preparé una ${type} de Stock de ${context.cycle.sala}, ciclo ${context.cycle.ciclo}${dest?` ${type==='salida'?'hacia':'desde'} ${dest}`:''}${wantsAll?`, usando todo el stock disponible`:''}. Revisá cantidades y tocá Guardar movimientos cuando esté correcto.`};
+}
+
 function voiceHarvestYearFromText(text){
   const clean=normalizeVoiceText(text),base=today();
   const m=clean.match(/\b(20\d{2})\b/);
@@ -2901,6 +3014,8 @@ function executeVoiceCommand(rawText){
   if(isExplicitVoiceNavigation(rawText))return executeVoiceNavigation(rawText);
   const harvestAction=executeVoiceHarvestAction(rawText);
   if(harvestAction)return harvestAction;
+  const stockMovementAction=executeVoiceStockMovementAction(rawText);
+  if(stockMovementAction)return stockMovementAction;
   const createTaskAction=executeVoiceCreateTaskAction(rawText);
   if(createTaskAction)return createTaskAction;
   const reprogramTaskAction=executeVoiceReprogramTaskAction(rawText);
@@ -2985,6 +3100,7 @@ function mobileVoiceLooksRelevant(rawText='',confidence=0){
   );
   if(harvestControlCommand)return true;
   if(voiceHarvestFormPhraseLooksRelevant(rawText))return confidence===0||confidence>=0.24;
+  if(voiceStockMovementFormPhraseLooksRelevant(rawText))return confidence===0||confidence>=0.24;
   const words=text.split(/\s+/).filter(Boolean);
   if(words.length<2)return false;
 
@@ -3042,6 +3158,7 @@ function mobileVoiceCandidateScore(rawText='',confidence=0){
   );
   if(harvestControlCommand)score+=40;
   if(voiceHarvestFormPhraseLooksRelevant(rawText))score+=24;
+  if(voiceStockMovementFormPhraseLooksRelevant(rawText))score+=24;
   const domainTokens=[
     'tarea','tareas','pendiente','pendientes','realizada','realizadas','responsable','responsables',
     'flora','veges','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
@@ -3317,5 +3434,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.10').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.11').catch(console.error));
 }

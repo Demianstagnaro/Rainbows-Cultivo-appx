@@ -809,3 +809,12 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - `Corregir`, `cambiar` y `modificar` la última pesada aceptan el nuevo peso hablado.
 - El filtro móvil Baja deja pasar estas órdenes explícitas sin aflojar el resto del filtrado.
 - Actualiza APP_VERSION, referencias y caché del service worker a 3.16.10.
+
+
+## V3.16.11 — Movimientos de Stock por voz
+- Desde Stock Palestina, permite preparar movimientos por voz sin guardar automáticamente.
+- Ejemplo: `Mover todo el stock de Flora 3 ciclo 9 a Medrano` abre el formulario, selecciona el ciclo y puede cargar todo el saldo disponible.
+- Con el formulario abierto se puede decir `Gomu Gomu 850 gramos`, `Todo de Mandarin`, `Quitar Sugar Cane`, `Usar todo disponible`, `Seleccionar todas`, `Tipo salida/entrada` y `Destino Medrano`.
+- Respeta el modelo de movimientos múltiples: cada genética sigue siendo un registro independiente al guardar.
+- Mantiene la regla de seguridad: la voz prepara; el usuario revisa y toca Guardar movimientos.
+- Actualiza APP_VERSION, referencias y caché del service worker a 3.16.11.
