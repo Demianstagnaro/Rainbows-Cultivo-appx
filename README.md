@@ -769,3 +769,14 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Muestra cantidad de genéticas y total de gramos cargados antes de guardar.
 - Pide una confirmación final única con cantidad de movimientos, total, sala/ciclo y destino/origen.
 - Actualiza APP_VERSION, referencias de `app.js`/`styles.css` y caché del service worker a 3.16.5.
+
+
+## V3.16.6 — Voz móvil más estable
+- Corrige el modo Normal/Baja en celular sin volver al detector previo que podía cortar el inicio de la frase.
+- SpeechRecognition trabaja en sesiones cortas y se recicla casi inmediatamente, en vez de quedar en una sesión continua ocupada por ruido o conversaciones lejanas.
+- En modo Baja los textos intermedios irrelevantes se ocultan para evitar que el panel parezca reaccionar constantemente al ruido.
+- Android puede devolver hasta tres alternativas de reconocimiento; Rainbows elige la alternativa con más señales de ser un comando válido de la app.
+- Los resultados irrelevantes o desconocidos se descartan silenciosamente y fuerzan un reinicio rápido de la escucha.
+- Mantiene los comandos cortos seguros como “Ir a hoy” y “Abrir hoy”.
+- No modifica el modelo de datos ni los movimientos múltiples de Stock agregados en V3.16.5.
+- Actualiza APP_VERSION, referencias de app.js/styles.css y caché del service worker a 3.16.6.

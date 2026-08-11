@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.5';
+const APP_VERSION='3.16.6';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2856,6 +2856,36 @@ function mobileVoiceLooksRelevant(rawText='',confidence=0){
   const hasDomain=domainMatches>0;
   return hasDomain||hasIntent||confidence>=0.48;
 }
+function mobileVoiceCandidateScore(rawText='',confidence=0){
+  const text=normalizeVoiceText(rawText);
+  if(!text)return -999;
+  if(isVoiceStopCommand(text))return 100;
+  const words=text.split(/\s+/).filter(Boolean);
+  const exactCommands=[
+    'abrir hoy','abrir inicio','abrir ayuda','abrir calendario','abrir salas','abrir cosechas','abrir stock','abrir geneticas','abrir configuracion',
+    'ir a hoy','ir a inicio','ir a ayuda','ir a calendario','ir a salas','ir a cosechas','ir a stock','ir a geneticas','volver a hoy',
+    'ir a manana','ir a ayer','dia anterior','dia siguiente'
+  ];
+  let score=exactCommands.includes(text)?30:0;
+  const domainTokens=[
+    'tarea','tareas','pendiente','pendientes','realizada','realizadas','responsable','responsables',
+    'flora','veges','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
+    'cama','camas','planta','plantas','semana','ciclo','riego','fumigacion','poda','enmienda','mantenimiento',
+    'medrano','consumo','descarte','nomenclatura','linaje','genotipo','cannabinoide','cannabinoides','thc','cbd','cbg'
+  ];
+  const intentTokens=[
+    'abrir','abrime','entrar','llevame','mostrar','ir a','volver','completar','crear','agregar','programar','reprogramar','mover','cancelar','anular',
+    'cuando','cuanto','cuanta','cuantos','cuantas','quien','quienes','cual','cuales','que ','en que','hizo','hicieron','queda','quedan','quedo','produjo','produccion','desvio','meta'
+  ];
+  const temporalTokens=['hoy','ayer','manana','anteayer','pasado manana','lunes','martes','miercoles','jueves','viernes','sabado','domingo'];
+  score+=domainTokens.filter(token=>text.includes(token)).length*4;
+  if(intentTokens.some(token=>text.includes(token)))score+=4;
+  if(temporalTokens.some(token=>text.includes(token)))score+=2;
+  if(/\bflora\s*[123]\b/.test(text))score+=3;
+  if(words.length>=2&&words.length<=10)score+=1;
+  if(Number(confidence)>0)score+=Math.min(5,Number(confidence)*5);
+  return score;
+}
 function voiceGateThreshold(){
   const mobile=isLikelyMobileVoiceDevice();
   if(voiceInputSensitivity==='low'){
@@ -2975,7 +3005,7 @@ function scheduleVoiceRestart(){
     voiceRestartTimer=setTimeout(()=>{
       voiceRestartTimer=null;
       if(voiceContinuousMode&&!voiceListening)beginVoiceRecognition({continuous:true,mobileFiltered:true});
-    },60);
+    },voiceInputSensitivity==='low'?20:35);
     return;
   }
   if(voiceInputSensitivity!=='high'){waitForVoiceActivity();return;}
@@ -2991,7 +3021,7 @@ function beginVoiceRecognition(options={}){
   const continuous=Boolean(options.continuous);
   voiceFatalError=false;
   voiceRecognition=new VoiceRecognition();
-  voiceRecognition.lang='es-AR';voiceRecognition.interimResults=true;voiceRecognition.continuous=Boolean(options.mobileFiltered);voiceRecognition.maxAlternatives=options.mobileFiltered?3:1;
+  voiceRecognition.lang='es-AR';voiceRecognition.interimResults=true;voiceRecognition.continuous=false;voiceRecognition.maxAlternatives=options.mobileFiltered?3:1;
   voiceRecognition.onstart=()=>{
     voiceListening=true;
     if(continuous){voiceContinuousMode=true;setVoiceButtonActive(true);showVoicePanel('Escuchando…','Podés hablar cuando quieras.');}
@@ -2999,10 +3029,26 @@ function beginVoiceRecognition(options={}){
   voiceRecognition.onresult=event=>{
     let transcript='';let finalText='';let finalConfidence=0;
     for(let i=event.resultIndex;i<event.results.length;i++){
-      transcript+=event.results[i][0].transcript;
-      if(event.results[i].isFinal){finalText+=event.results[i][0].transcript;finalConfidence=Math.max(finalConfidence,Number(event.results[i][0].confidence)||0);}
+      const result=event.results[i];
+      transcript+=result[0]?.transcript||'';
+      if(result.isFinal){
+        let bestText=result[0]?.transcript||'';
+        let bestConfidence=Number(result[0]?.confidence)||0;
+        if(options.mobileFiltered){
+          let bestScore=mobileVoiceCandidateScore(bestText,bestConfidence);
+          for(let j=1;j<Math.min(result.length,3);j++){
+            const candidateText=result[j]?.transcript||'';
+            const candidateConfidence=Number(result[j]?.confidence)||0;
+            const candidateScore=mobileVoiceCandidateScore(candidateText,candidateConfidence);
+            if(candidateScore>bestScore){bestText=candidateText;bestConfidence=candidateConfidence;bestScore=candidateScore;}
+          }
+        }
+        finalText+=bestText;
+        finalConfidence=Math.max(finalConfidence,bestConfidence);
+      }
     }
-    $('voice-transcript').textContent=transcript?`Escuché: “${transcript}”`:'Escuchando…';
+    const interimLooksUseful=!options.mobileFiltered||voiceInputSensitivity!=='low'||mobileVoiceLooksRelevant(transcript,0);
+    $('voice-transcript').textContent=transcript&&interimLooksUseful?`Escuché: “${transcript}”`:'Podés hablar cuando quieras.';
     if(finalText){
       const clean=finalText.trim();
       if(isVoiceStopCommand(clean)){
@@ -3011,10 +3057,12 @@ function beginVoiceRecognition(options={}){
         return;
       }
       if(options.mobileFiltered&&!mobileVoiceLooksRelevant(clean,finalConfidence)){
-        // Ruido o conversación lejana sin vocabulario de Rainbows: no mostramos error,
-        // no respondemos y, sobre todo, no cerramos la escucha.
+        // Ruido o conversación lejana: se descarta y reciclamos esta sesión enseguida.
+        // La siguiente escucha se abre automáticamente en onend, sin dejar al reconocedor
+        // ocupado con una conversación de fondo durante varios segundos.
         $('voice-status').textContent='Escuchando…';
         $('voice-transcript').textContent='Podés hablar cuando quieras.';
+        try{voiceRecognition?.stop()}catch(_){}
         return;
       }
       const result=executeVoiceCommand(clean);
@@ -3024,11 +3072,13 @@ function beginVoiceRecognition(options={}){
       if(options.mobileFiltered&&result&&result.ok===false&&normalizeVoiceText(String(result.message||'')).includes('todavia no reconozco ese comando')){
         $('voice-status').textContent='Escuchando…';
         $('voice-transcript').textContent='Podés hablar cuando quieras.';
+        try{voiceRecognition?.stop()}catch(_){}
         return;
       }
       $('voice-status').textContent=voiceContinuousMode?'Escuchando…':'Micrófono apagado';
       $('voice-transcript').textContent=voiceContinuousMode?'Podés decir otro comando.':'';
       showVoiceResponse(result.message);
+      if(options.mobileFiltered&&!voiceSpeaking){try{voiceRecognition?.stop()}catch(_){}}
     }
   };
   voiceRecognition.onerror=event=>{
@@ -3074,5 +3124,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.5').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.6').catch(console.error));
 }
