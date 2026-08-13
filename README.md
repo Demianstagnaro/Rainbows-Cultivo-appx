@@ -840,3 +840,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - `isContinuable()` ahora tolera tareas sin propiedad `task`, evitando futuros errores por valores indefinidos.
 - No modifica la lógica de voz, Stock, Cosechas, Salas ni croquis.
 - Actualiza APP_VERSION, referencias y caché del service worker a 3.16.13.
+
+
+## V3.16.14 — Cosechas y Stock exclusivos para Administradores
+- Los módulos Cosechas y Stock Palestina se ocultan para Encargado, Empleado y Lectura.
+- Los usuarios no administradores ya no consultan desde la app las tablas de cosechas, detalles de cosecha, ciclos de stock, existencias ni movimientos de stock.
+- Se bloquea también el acceso por navegación y consultas/comandos de voz a resultados de cosecha y stock.
+- Las tareas operativas de Cosecha del calendario siguen visibles según los permisos normales de tareas.
+- Actualiza APP_VERSION, referencias y caché del service worker a 3.16.14.

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.13';
+const APP_VERSION='3.16.14';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -183,29 +183,41 @@ async function undo(t){
   if(update.error)throw update.error;
   await refresh();
 }
-async function load(){const qs=await Promise.all([
-db.from('salas').select('*'),
-db.from('camas').select('*'),
-db.from('plantas').select('*'),
-db.from('geneticas').select('*').order('nombre'),
-db.from('cosechas').select('*').order('fecha',{ascending:false}),
-db.from('cosecha_geneticas').select('*'),
-db.from('stock_ciclos').select('*').order('sala').order('ciclo',{ascending:false}),
-db.from('stock_existencias').select('*').order('orden'),
-db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}),
-db.from('empleados').select('*').eq('activo',true).order('nombre'),
-db.from('tareas').select('*'),
-db.from('realizaciones_tarea').select('*'),
-db.from('realizacion_empleados').select('*'),
-db.from('perfiles').select('*').order('nombre'),
-db.from('perfiles').select('*').eq('id',state.session.user.id).maybeSingle(),
-db.from('tareas_generales').select('*').order('created_at',{ascending:false}),
-db.from('tarea_general_empleados').select('*')
-]);for(const q of qs)if(q.error)throw q.error;
-[state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,14).map(q=>q.data||[]);
-state.profile=qs[14].data||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;
-state.generalTasks=qs[15].data||[];
-state.generalJoins=qs[16].data||[]
+async function load(){
+  // V3.16.14: primero resolvemos el rol del usuario. Cosechas y Stock solo se
+  // consultan desde Supabase si el usuario actual es administrador.
+  const selfProfile=await db.from('perfiles').select('*').eq('id',state.session.user.id).maybeSingle();
+  if(selfProfile.error)throw selfProfile.error;
+  state.profile=selfProfile.data||null;
+  const admin=normalizeRole(state.profile?.rol||state.session?.user?.user_metadata?.rol)==='administrador';
+  const empty=()=>Promise.resolve({data:[],error:null});
+  const qs=await Promise.all([
+    db.from('salas').select('*'),
+    db.from('camas').select('*'),
+    db.from('plantas').select('*'),
+    db.from('geneticas').select('*').order('nombre'),
+    admin?db.from('cosechas').select('*').order('fecha',{ascending:false}):empty(),
+    admin?db.from('cosecha_geneticas').select('*'):empty(),
+    admin?db.from('stock_ciclos').select('*').order('sala').order('ciclo',{ascending:false}):empty(),
+    admin?db.from('stock_existencias').select('*').order('orden'):empty(),
+    admin?db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
+    db.from('empleados').select('*').eq('activo',true).order('nombre'),
+    db.from('tareas').select('*'),
+    db.from('realizaciones_tarea').select('*'),
+    db.from('realizacion_empleados').select('*'),
+    db.from('perfiles').select('*').order('nombre'),
+    db.from('tareas_generales').select('*').order('created_at',{ascending:false}),
+    db.from('tarea_general_empleados').select('*')
+  ]);
+  for(const q of qs)if(q.error)throw q.error;
+  [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,14).map(q=>q.data||[]);
+  state.profile=state.profile||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;
+  state.generalTasks=qs[14].data||[];
+  state.generalJoins=qs[15].data||[];
+  if(!admin){
+    state.cosechas=[];state.cosechaDetalles=[];state.stockCycles=[];state.stockItems=[];state.stockMovements=[];
+    state.selectedHarvest=null;state.editHarvest=null;state.stockRoom=null;state.stockCycle=null;
+  }
 }async function refresh(){try{await load();render()}catch(e){console.error(e);app.innerHTML=`<section class="panel error-panel"><strong>Error</strong><p>${e.message}</p></section>`}}
 function subscribe(){if(state.channel)db.removeChannel(state.channel);state.channel=db.channel('rainbows-shared').on('postgres_changes',{event:'*',schema:'public'},refresh).subscribe()}
 function progress(r,d){const x=tasks(d).filter(t=>t.room===r.name),n=x.filter(done).length;return{total:x.length,done:n,pct:x.length?Math.round(n/x.length*100):100}}
@@ -233,6 +245,10 @@ function currentRole(){
 
 function canViewOperations(){
   return ['administrador','encargado','empleado','lectura'].includes(currentRole());
+}
+
+function canViewHarvestAndStock(){
+  return currentRole()==='administrador';
 }
 
 function canComplete(){
@@ -897,7 +913,7 @@ $('harvest-total').oninput=updateHarvestLineTotal;
 $('save-harvest').onclick=async()=>{try{await saveHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la cosecha.')}};
 $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
 
-document.querySelectorAll('.top-nav button').forEach(b=>{const allowed=canViewOperations();b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',b.dataset.view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
+document.querySelectorAll('.top-nav button').forEach(b=>{const sensitive=b.dataset.view==='harvests'||b.dataset.view==='stock';const allowed=canViewOperations()&&(!sensitive||canViewHarvestAndStock());b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',b.dataset.view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if((state.view==='harvests'||state.view==='stock')&&!canViewHarvestAndStock()){state.view='today';state.stockRoom=null;state.stockCycle=null;state.selectedHarvest=null;}if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
 function renderHelp(){
   $('screen-title').textContent='Ayuda';
   app.innerHTML=`
@@ -1624,7 +1640,7 @@ async function restoreBackup(){
 function renderSettings(){
   if(currentRole()!=='administrador'){state.view='today';render();return}
   $('screen-title').textContent='Config';
-  const permissions={administrador:'Acceso total: puede gestionar usuarios, roles, empleados, genéticas, tareas, configuración y backups.',encargado:'Puede crear, editar, completar y reprogramar tareas, además de consultar Hoy, Salas y Calendario.',empleado:'Puede consultar Hoy, Salas y Calendario, y completar tareas indicando quiénes las realizaron.',lectura:'Puede consultar Hoy, Salas y Calendario; no puede modificar información.'};
+  const permissions={administrador:'Acceso total: puede gestionar usuarios, roles, empleados, genéticas, tareas, configuración y backups.',encargado:'Puede crear, editar, completar y reprogramar tareas, además de consultar Hoy, Salas y Calendario. No accede a resultados de Cosechas ni a Stock Palestina.',empleado:'Puede consultar Hoy, Salas y Calendario, y completar tareas indicando quiénes las realizaron. No accede a resultados de Cosechas ni a Stock Palestina.',lectura:'Puede consultar Hoy, Salas y Calendario; no puede modificar información ni acceder a resultados de Cosechas o Stock Palestina.'};
   app.innerHTML=`
     <section class="panel backup-panel">
       <div class="backup-panel-head"><div><h3>Copias de seguridad</h3><p class="muted">Backup completo diario, conservación por 30 días y descarga local.</p></div><button id="refresh-backups" class="secondary compact-button">Actualizar</button></div>
@@ -1655,7 +1671,7 @@ $('harvest-total').oninput=updateHarvestLineTotal;
 $('save-harvest').onclick=async()=>{try{await saveHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la cosecha.')}};
 $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
 
-document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{state.view=b.dataset.view;state.room=null;state.roomDay=null;state.day=null;if(state.view!=='stock'){state.stockRoom=null;state.stockCycle=null}render()});$('sign-out').onclick=()=>db.auth.signOut();$('sign-in').onclick=async()=>{
+document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{const target=b.dataset.view;if((target==='harvests'||target==='stock')&&!canViewHarvestAndStock()){state.view='today';render();return}state.view=target;state.room=null;state.roomDay=null;state.day=null;if(state.view!=='stock'){state.stockRoom=null;state.stockCycle=null}render()});$('sign-out').onclick=()=>db.auth.signOut();$('sign-in').onclick=async()=>{
   const message=$('auth-message');
   message.textContent='Ingresando…';
   try{
@@ -1987,6 +2003,7 @@ function stopVoiceRecognition({hidePanel=false,message='Micrófono cerrado.'}={}
 function closeVoicePanel(){stopVoiceRecognition({hidePanel:true});}
 function setVoiceView(view){
   if(!canViewOperations())return false;
+  if((view==='harvests'||view==='stock')&&!canViewHarvestAndStock())return false;
   state.view=view;state.room=null;state.roomDay=null;state.day=null;
   if(view!=='stock'){state.stockRoom=null;state.stockCycle=null}
   render();
@@ -2255,6 +2272,11 @@ function voiceStockItemMatches(item,genetic){
 }
 function executeVoiceStockQuery(rawText){
   const text=normalizeVoiceText(rawText);
+  if(!canViewHarvestAndStock()){
+    const stockWords=['stock','existencia','existencias','disponible','disponibles','movimiento','movimientos','salida','salidas','entrada','entradas','ajuste','ajustes','medrano','consumo interno','descarte'];
+    if(stockWords.some(w=>text.includes(w)))return {ok:true,message:'El acceso a Stock Palestina está reservado a administradores.'};
+    return null;
+  }
   // Si la frase habla explícitamente de tareas, no debe caer nunca en Stock aunque diga 'queda/quedan'.
   const taskWords=['tarea','tareas','pendiente','pendientes','realizada','realizadas','completada','completadas','responsable','responsables','quien hizo','quienes hicieron'];
   if(taskWords.some(w=>text.includes(w)))return null;
@@ -2421,6 +2443,7 @@ function voiceHarvestCurrentTotal(){
 }
 function executeVoiceHarvestAction(rawText){
   const text=normalizeVoiceText(rawText);
+  if(!canViewHarvestAndStock()&&(text.includes('cosecha')||state.view==='harvests'))return {ok:true,message:'La carga y edición de cosechas está reservada a administradores.'};
   const dialogOpen=voiceHarvestDialogOpen();
   const createAction=/(^|\s)(nueva|nuevo|crear|crea|cargar|carga|registrar|registra|agregar|agrega)(\s|$)/.test(text)&&(text.includes('cosecha')||text.includes('cosechas'));
 
@@ -2621,6 +2644,13 @@ function voiceHarvestLabel(h){
 }
 function executeVoiceHarvestQuery(rawText){
   const text=normalizeVoiceText(rawText);
+  if(!canViewHarvestAndStock()){
+    // Las preguntas de calendario ("cuándo se cosecha") siguen permitidas y las resuelve Salas.
+    if(text.includes('cuando')&&(text.includes('cosecha')||text.includes('cosechar')))return null;
+    const harvestWords=['cosecha','cosechas','cosecho','cosechado','produjo','produccion','rindio','rinde','rendimiento','meta','desvio'];
+    if(harvestWords.some(w=>text.includes(w)))return {ok:true,message:'Los resultados de cosecha están reservados a administradores.'};
+    return null;
+  }
   // “¿Cuándo se cosecha...?” es una consulta de calendario de sala, no de resultados históricos.
   if(text.includes('cuando')&&(text.includes('cosecha')||text.includes('cosechar')))return null;
   const harvestWords=['cosecha','cosechas','cosecho','cosechado','produjo','produccion','produccion total','rindio','rinde','rendimiento','meta','desvio'];
@@ -3203,6 +3233,7 @@ function executeVoiceNavigation(rawText){
   const destination=destinations.find(item=>item.labels.some(label=>text.includes(label)));
   if(destination&&(text.includes('abrir')||text.includes('ir a')||text.includes('mostrar')||destination.labels.some(label=>text===label))){
     if(destination.view==='settings'&&currentRole()!=='administrador')return {ok:false,message:'La configuración solo está disponible para administradores.'};
+    if((destination.view==='harvests'||destination.view==='stock')&&!canViewHarvestAndStock())return {ok:false,message:`${destination.name} solo está disponible para administradores.`};
     setVoiceView(destination.view);
     return {ok:true,message:`Listo. Abrí ${destination.name}.`};
   }
@@ -3572,5 +3603,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.13').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.14').catch(console.error));
 }
