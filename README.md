@@ -848,3 +848,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Se bloquea también el acceso por navegación y consultas/comandos de voz a resultados de cosecha y stock.
 - Las tareas operativas de Cosecha del calendario siguen visibles según los permisos normales de tareas.
 - Actualiza APP_VERSION, referencias y caché del service worker a 3.16.14.
+
+
+## V3.16.15 — Historial visible de tareas generales en Hoy
+- Corrige una regresión visual: al completar una tarea general ya no desaparece de la pantalla Hoy.
+- Las tareas generales realizadas durante el día vuelven a mostrarse debajo de las pendientes, con responsables, fecha/hora y usuario registrante.
+- Mantiene el fix de V3.16.13 y los permisos exclusivos de Cosechas/Stock de V3.16.14.
+- Actualiza APP_VERSION, referencias y caché del service worker a 3.16.15.

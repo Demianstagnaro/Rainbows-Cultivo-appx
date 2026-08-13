@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.14';
+const APP_VERSION='3.16.15';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1003,6 +1003,7 @@ function renderToday(){
   $('screen-title').textContent='Hoy';
   const d=state.todayDay||today(),ts=tasks(d),n=ts.filter(done).length,p=ts.length?Math.round(n/ts.length*100):100;
   const pendingGeneral=state.generalTasks.filter(t=>t.estado!=='realizada');
+  const completedGeneral=generalTasksForDate(d);
   app.innerHTML=`<div class="today-date-controls"><button id="today-back" class="secondary" ${same(d,today())?'disabled':''}>Volver a hoy</button><div class="day-navigator"><button id="today-prev" class="secondary nav-day" aria-label="Día anterior">◀</button><div class="room-date-label">${shortRoomDate(d)}</div><button id="today-next" class="secondary nav-day" aria-label="Día siguiente">▶</button></div></div><div class="today-layout">
     <div class="today-main">
       <section class="panel daily-summary"><div class="daily-summary-head"><div>${taskCounter(n,ts.length)}</div></div><div class="progress"><span style="width:${p}%"></span></div></section>
@@ -1013,6 +1014,7 @@ function renderToday(){
     <aside class="general-tasks-panel panel">
       <div class="general-tasks-head"><h2>Tareas generales</h2>${canEditTasks()?'<button id="add-general-task" class="primary compact-button" type="button">+ Agregar tarea</button>':''}</div>
       <div class="general-task-section">${pendingGeneral.length?pendingGeneral.map(generalTaskRow).join(''):'<div class="empty-room-tasks">No hay tareas generales pendientes</div>'}</div>
+      ${completedGeneral.length?`<div class="general-completed-today"><h3>Tareas generales realizadas</h3><div class="general-task-section">${completedGeneral.map(generalTaskRow).join('')}</div></div>`:''}
     </aside>
   </div>`;
   $('today-prev').onclick=()=>{state.todayDay=add(d,-1);render()};
@@ -3603,5 +3605,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.14').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.15').catch(console.error));
 }
