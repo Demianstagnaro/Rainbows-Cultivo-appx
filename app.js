@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.24';
+const APP_VERSION='3.16.25';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -932,7 +932,7 @@ function renderSiteShell(){
   return isPalestina;
 }
 function renderMedrano(){
-  $('today-label').textContent='';
+  $('today-label').textContent=nice(today());
   let mv=state.medranoView||'stock';
   if(mv==='home')mv='stock';
   state.medranoView=mv;

@@ -922,3 +922,9 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Permite saltar directamente de cualquier módulo a cualquier otro sin volver a la portada.
 - Reduce tamaño y espaciado de las tarjetas Almacén, Dispensario y Laboratorio para alinearlas visualmente con Palestina.
 - Actualiza APP_VERSION, referencias y caché a 3.16.24.
+
+
+## V3.16.25 — Fecha visible en módulos de Medrano
+- Muestra la fecha actual debajo del nombre del módulo activo de Medrano, igual que en Palestina.
+- Mantiene la navegación compacta entre Stock Medrano, Administración y Dispensario.
+- Actualiza APP_VERSION, referencias y caché a 3.16.25.
