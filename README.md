@@ -867,9 +867,9 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Actualiza APP_VERSION, referencias y caché del service worker a 3.16.16.
 
 
-## V3.16.17 — Enmiendas Vege días 14 y 28
+## V3.16.18 — Enmiendas Vege días 14 y 28
 - Vege 1 y Vege 2 generan una primera tarea de Enmienda 14 días después del ingreso desde Esquejes.
 - Generan una segunda tarea de Enmienda 28 días después del ingreso (14 días después de la primera).
 - Se mantiene sin cambios el resto de tareas de ambas salas.
 - No requiere SQL.
-- Actualiza APP_VERSION, referencias y caché del service worker a 3.16.17.
+- Actualiza APP_VERSION, referencias y caché del service worker a 3.16.18.
