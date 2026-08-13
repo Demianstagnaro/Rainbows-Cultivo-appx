@@ -1,12 +1,12 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.15';
+const APP_VERSION='3.16.16';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
 {name:'Flora 2',type:'flora',transplant:'2026-06-10',floraStart:'2026-07-01',automaticIrrigation:false},
 {name:'Flora 3',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:false},
-{name:'Veges',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
+{name:'Vege 1',type:'vege'},{name:'Vege 2',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
 const state={view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
@@ -54,9 +54,9 @@ function cycleNumber(r,d){
   return referenceCycle+Math.floor(diff(d,referenceDate)/77);
 }function roomStatus(r,d){const n=cycleNumber(r,d);return n?`Ciclo ${n} · ${stage(r,d)}`:stage(r,d)}
 function stage(r,d){if(r.type==='trabajo')return'Área operativa';return r.type==='esquejes'?cut(d).label:(cycle(r,d).week?`Semana ${cycle(r,d).week}`:cycle(r,d).label)}function startWeek(r,d,w){const c=cycle(r,d);return c.stage==='flora'&&c.week===w&&diff(d,c.fl)%7===0}function transplant(r,d){const c=cycle(r,d);return r.type==='flora'&&diff(d,c.tr)===0}function harvest(r,d){const c=cycle(r,d);return r.type==='flora'&&diff(d,c.fl)===56}
-function routine(date){const out=[],day=dow(date),push=(room,name,detail)=>out.push({id:`${ymd(date)}|${room}|${name}`,key:`${ymd(date)}|${room}|${name}`,date:ymd(date),room,task:name,detail,type:'rutina',custom:false});for(const r of rules){const c=r.type==='esquejes'?{cut:cut(date)}:cycle(r,date);if(r.type==='vege'&&!vegesOccupied(date))continue;if(!['esquejes','trabajo'].includes(r.type)&&!(r.name==='Flora 1'&&r.automaticIrrigation))push(r.name,'Riego','');if(r.type==='esquejes'&&c.cut.active)push(r.name,'Mantenimiento',c.cut.label);if(r.name==='Flora 1'){if(transplant(r,date))push(r.name,'Calibrar riego','');if(startWeek(r,date,1))push(r.name,'Calibrar riego','');if(startWeek(r,date,7))push(r.name,'Calibrar riego','')}if(['lunes','miercoles','viernes'].includes(day)){if(['vege','madres'].includes(r.type))push(r.name,'Fumigacion',day==='miercoles'?'ABA + OIL + Nissorun':'ABA + OIL');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=3)))push(r.name,'Fumigacion',day==='miercoles'?'ABA + OIL + Nissorun':'ABA + OIL')}if(day==='jueves'){if(['vege','madres'].includes(r.type))push(r.name,'KNF','');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=6)))push(r.name,'KNF','')}if(r.type==='flora'){if(transplant(r,date)){push(r.name,'Enmienda','');push(r.name,'Trasplante','')}if(startWeek(r,date,1)){push(r.name,'Enmienda','');push(r.name,'Inicio flora','')}if(startWeek(r,date,4))push(r.name,'Enmienda','');if(same(date,add(c.fl,-1))){push(r.name,'Esquejes','');push(r.name,'Poda bajos','')}if(startWeek(r,date,3))push(r.name,'Schwazzing','');if(same(date,add(c.tr,1)))push(r.name,'Redes','');if(harvest(r,date))push(r.name,'Cosecha','')}
+function routine(date){const out=[],day=dow(date),push=(room,name,detail)=>{const keyRoom=room==='Vege 1'?'Veges':room;out.push({id:`${ymd(date)}|${keyRoom}|${name}`,key:`${ymd(date)}|${keyRoom}|${name}`,date:ymd(date),room,task:name,detail,type:'rutina',custom:false})};for(const r of rules){const c=r.type==='esquejes'?{cut:cut(date)}:cycle(r,date);if(r.type==='vege'&&!vegesOccupied(date))continue;if(!['esquejes','trabajo'].includes(r.type)&&!(r.name==='Flora 1'&&r.automaticIrrigation))push(r.name,'Riego','');if(r.type==='esquejes'&&c.cut.active)push(r.name,'Mantenimiento',c.cut.label);if(r.name==='Flora 1'){if(transplant(r,date))push(r.name,'Calibrar riego','');if(startWeek(r,date,1))push(r.name,'Calibrar riego','');if(startWeek(r,date,7))push(r.name,'Calibrar riego','')}if(['lunes','miercoles','viernes'].includes(day)){if(['vege','madres'].includes(r.type))push(r.name,'Fumigacion',day==='miercoles'?'ABA + OIL + Nissorun':'ABA + OIL');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=3)))push(r.name,'Fumigacion',day==='miercoles'?'ABA + OIL + Nissorun':'ABA + OIL')}if(day==='jueves'){if(['vege','madres'].includes(r.type))push(r.name,'KNF','');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=6)))push(r.name,'KNF','')}if(r.type==='flora'){if(transplant(r,date)){push(r.name,'Enmienda','');push(r.name,'Trasplante','')}if(startWeek(r,date,1)){push(r.name,'Enmienda','');push(r.name,'Inicio flora','')}if(startWeek(r,date,4))push(r.name,'Enmienda','');if(same(date,add(c.fl,-1))){push(r.name,'Esquejes','');push(r.name,'Poda bajos','')}if(startWeek(r,date,3))push(r.name,'Schwazzing','');if(same(date,add(c.tr,1)))push(r.name,'Redes','');if(harvest(r,date))push(r.name,'Cosecha','')}
 if(r.type==='vege'){
-  if(cloneTransfer(date))push(r.name,'Trasplante','Esquejes → Veges');
+  if(cloneTransfer(date))push(r.name,'Trasplante',`Esquejes → ${r.name}`);
   const transferDate=new Date(date);
   transferDate.setDate(transferDate.getDate()-21);
   if(cloneTransfer(transferDate))push(r.name,'Enmienda','');
@@ -965,13 +965,13 @@ function renderHelp(){
       <div class="help-grid help-grid-expanded">
         <article class="help-card"><h3>Generales · navegación</h3><ul>
           <li>“Abrir Hoy / Calendario / Salas / Genéticas / Cosechas / Stock Palestina / Ayuda”</li>
-          <li>“Ir a Flora 1 / 2 / 3” · “Mostrar Veges / Madres / Esquejes”</li>
+          <li>“Ir a Flora 1 / 2 / 3” · “Mostrar Vege 1 / Vege 2 / Madres / Esquejes”</li>
           <li>“Ir a mañana” · “Día anterior” · “Volver a hoy”</li>
         </ul></article>
         <article class="help-card"><h3>Tareas · consultas globales</h3><ul>
           <li>“¿Qué tareas hay hoy?”</li><li>“¿Qué tareas están pendientes mañana?”</li><li>“¿Qué tareas hay mañana en Flora 2?”</li><li>“¿Qué tareas se hicieron ayer?”</li><li>“¿Qué hizo Cone hoy?”</li><li>“¿Quién hizo las tareas del 10 de agosto?”</li>
         </ul></article>
-        <article class="help-card"><h3>Tareas · crear, completar y reprogramar</h3><ul><li>Crear: “Agregar fumigación mañana en Flora 2”</li><li>Crear: “Crear tarea limpieza el viernes en Veges”</li><li>Reprogramar: “Reprogramar fumigación de Flora 2 para mañana”</li><li>Cancelar: “Cancelar fumigación de Flora 2”</li>
+        <article class="help-card"><h3>Tareas · crear, completar y reprogramar</h3><ul><li>Crear: “Agregar fumigación mañana en Flora 2”</li><li>Crear: “Crear tarea limpieza el viernes en Vege 1”</li><li>Reprogramar: “Reprogramar fumigación de Flora 2 para mañana”</li><li>Cancelar: “Cancelar fumigación de Flora 2”</li>
           <li>Disponible desde Hoy o desde un día abierto en Calendario.</li><li>“Completar fumigación de Flora 2”</li><li>“Marcar como hecha la poda de Flora 1”</li><li>“Completar riego de Flora 3, lo hicieron Cone y Pata”</li>
         </ul></article>
         <article class="help-card"><h3>Fechas</h3><ul>
@@ -1846,10 +1846,13 @@ let voiceGateWaiting=false;
 
 function normalizeVoiceText(value=''){
   let clean=value.toLocaleLowerCase('es-AR').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
-  // Alias fonéticos de salas. “Veges” suele llegar desde el reconocimiento como “vejes”,
-  // “vejez”, “veces” u otras variantes cercanas. Las unificamos antes de interpretar
-  // navegación, consultas y acciones para que todas las funciones usen la misma sala.
-  clean=clean.replace(/\b(veges|vejes|vejez|vegez|bejes|begez|veyes|beyes|veggies|veggie)\b/g,'veges');
+  // Alias fonéticos de las salas vegetativas. La antigua “Veges” ahora es “Vege 1”.
+  // Si no se dice número, mantenemos compatibilidad y asumimos Vege 1. “Veces” sigue
+  // excluido para evitar falsos positivos, tal como se validó en uso real.
+  clean=clean.replace(/\b(veges|vejes|vejez|vegez|bejes|begez|veyes|beyes|veggies|veggie|vege)(?:\s+(1|2|uno|una|dos))?\b/g,(_,word,n)=>{
+    const num=(n==='2'||n==='dos')?'2':'1';
+    return `vege ${num}`;
+  });
   // El reconocimiento puede devolver números hablados o romanos. Normalizamos las variantes
   // más habituales antes de interpretar comandos/consultas para que, por ejemplo,
   // “Flora tres”, “Flora III” y “Flora 3” sean equivalentes.
@@ -2056,7 +2059,7 @@ function voiceDateFromText(text){
   return voiceCurrentDate();
 }
 function voiceRoomFromText(text,{allowContext=false}={}){
-  const match=text.match(/flora\s*(1|2|3)|veges|madres|esquejes|sala de trabajo/);
+  const match=text.match(/flora\s*(1|2|3)|vege\s*(1|2)|madres|esquejes|sala de trabajo/);
   if(!match){
     // Las consultas son globales. La sala abierta solo se usa como contexto opcional
     // cuando el usuario omite el nombre de la sala.
@@ -2065,6 +2068,7 @@ function voiceRoomFromText(text,{allowContext=false}={}){
   }
   const token=match[0];
   if(token.startsWith('flora'))return `Flora ${match[1]}`;
+  if(token.startsWith('vege'))return `Vege ${match[2]}`;
   if(token==='sala de trabajo')return 'Sala de trabajo';
   return token.charAt(0).toUpperCase()+token.slice(1);
 }
@@ -2958,7 +2962,7 @@ function voiceCreateTaskNameFromText(rawText){
     .replace(/\b(hoy|ayer|anteayer|manana|pasado manana)\b/g,' ')
     .replace(/\b(lunes|martes|miercoles|jueves|viernes|sabado|domingo)( pasado| proximo| siguiente)?\b/g,' ')
     .replace(/\b(el|para|en|de|del|la|una|un)\b/g,' ')
-    .replace(/flora\s*[123]|veges|madres|esquejes/g,' ')
+    .replace(/flora\s*[123]|vege\s*[12]|madres|esquejes/g,' ')
     .replace(/\b\d{1,2}\s+de\s+[a-z]+(?:\s+de\s+20\d{2})?\b/g,' ')
     .replace(/\s+/g,' ').trim();
   if(!candidate)return '';
@@ -2984,7 +2988,7 @@ function executeVoiceCreateTaskAction(rawText){
   const room=voiceRoomFromText(text,{allowContext:false});
   if(!room)return {ok:true,message:'Entendí que querés crear una tarea, pero no indicaste una sala ni dijiste “tarea general”. Decime por ejemplo: “Agregar fumigación mañana en Flora 2” o “Crear tarea general revisar matafuegos”.'};
   const name=voiceCreateTaskNameFromText(rawText);
-  if(!name)return {ok:true,message:'Entendí la sala, pero no pude identificar el nombre de la tarea. Decime por ejemplo: “Agregar limpieza mañana en Veges”.'};
+  if(!name)return {ok:true,message:'Entendí la sala, pero no pude identificar el nombre de la tarea. Decime por ejemplo: “Agregar limpieza mañana en Vege 1”.'};
   const d=voiceHasExplicitDate(text)?voiceDateFromText(text):(voiceTaskActionDate()||today());
   openTask(ymd(d),null,room);
   $('task-name').value=name;
@@ -3174,7 +3178,7 @@ function isExplicitVoiceNavigation(rawText){
   if(!navVerb)return false;
   const destinations=['hoy','inicio','calendario','salas','sala','geneticas','genetica','cosechas','cosecha','stock palestina','stock','ayuda','instructivo','configuracion','config'];
   if(destinations.some(label=>text.includes(label)))return true;
-  return /flora\s*(1|2|3)|veges|madres|esquejes/.test(text);
+  return /flora\s*(1|2|3)|vege\s*(1|2)|madres|esquejes/.test(text);
 }
 function executeVoiceCommand(rawText){
   if(isExplicitVoiceNavigation(rawText))return executeVoiceNavigation(rawText);
@@ -3214,10 +3218,10 @@ function executeVoiceNavigation(rawText){
     else {state.todayDay=add(state.todayDay||today(),-1);setVoiceView('today');}
     return {ok:true,message:'Listo. Mostré el día anterior.'};
   }
-  const roomMatch=text.match(/flora\s*(1|2|3)|veges|madres|esquejes/);
+  const roomMatch=text.match(/flora\s*(1|2|3)|vege\s*(1|2)|madres|esquejes/);
   if(roomMatch&&(text.includes('abrir')||text.includes('ir a')||text.includes('mostrar'))){
     const token=roomMatch[0];
-    const roomName=token.startsWith('flora')?`Flora ${roomMatch[1]}`:token.charAt(0).toUpperCase()+token.slice(1);
+    const roomName=token.startsWith('flora')?`Flora ${roomMatch[1]}`:(token.startsWith('vege')?`Vege ${roomMatch[2]}`:token.charAt(0).toUpperCase()+token.slice(1));
     if(!rules.some(r=>r.name===roomName))return {ok:false,message:`No encontré la sala ${roomName}.`};
     state.view='rooms';state.room=roomName;state.roomDay=today();state.day=null;state.tab='summary';render();
     return {ok:true,message:`Listo. Abrí ${roomName}.`};
@@ -3276,7 +3280,7 @@ function mobileVoiceLooksRelevant(rawText='',confidence=0){
 
   const domainTokens=[
     'tarea','tareas','pendiente','pendientes','realizada','realizadas','responsable','responsables',
-    'flora','veges','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
+    'flora','vege','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
     'cama','camas','planta','plantas','semana','ciclo','riego','fumigacion','poda','enmienda','mantenimiento','pesada','pesadas','pasada','pasadas','pesaje','pesajes',
     'medrano','consumo','descarte','nomenclatura','linaje','genotipo','cannabinoide','cannabinoides','thc','cbd','cbg'
   ];
@@ -3332,7 +3336,7 @@ function mobileVoiceCandidateScore(rawText='',confidence=0){
   if(state.view==='rooms'&&voiceRoomActionLooksRelevant(rawText))score+=24;
   const domainTokens=[
     'tarea','tareas','pendiente','pendientes','realizada','realizadas','responsable','responsables',
-    'flora','veges','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
+    'flora','vege','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
     'cama','camas','planta','plantas','semana','ciclo','riego','fumigacion','poda','enmienda','mantenimiento','pesada','pesadas','pasada','pasadas','pesaje','pesajes',
     'medrano','consumo','descarte','nomenclatura','linaje','genotipo','cannabinoide','cannabinoides','thc','cbd','cbg'
   ];

@@ -855,3 +855,13 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Las tareas generales realizadas durante el día vuelven a mostrarse debajo de las pendientes, con responsables, fecha/hora y usuario registrante.
 - Mantiene el fix de V3.16.13 y los permisos exclusivos de Cosechas/Stock de V3.16.14.
 - Actualiza APP_VERSION, referencias y caché del service worker a 3.16.15.
+
+
+## V3.16.16 — Vege 1 + Vege 2
+- La sala `Veges` pasa a llamarse `Vege 1`.
+- Se agrega una nueva sala `Vege 2`.
+- `Vege 2` replica las mismas reglas automáticas de `Vege 1`: Riego, Fumigación, KNF, Trasplante y Enmienda, incluyendo el mismo criterio de ocupación/vacío.
+- Se conserva compatibilidad histórica: las tareas automáticas de Vege 1 mantienen internamente la clave antigua `Veges` para no perder realizaciones ya registradas.
+- Los comandos de voz reconocen `Vege 1` y `Vege 2`; decir simplemente `Veges` o variantes históricas dirige a `Vege 1`.
+- Requiere ejecutar primero `Rainbows_V3.16.16_Vege_1_Vege_2_Supabase.sql` para renombrar la sala existente y crear la nueva sala en Supabase.
+- Actualiza APP_VERSION, referencias y caché del service worker a 3.16.16.
