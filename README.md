@@ -914,3 +914,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Mantiene Stock Medrano con Almacén, Dispensario y Laboratorio.
 - Administración y Dispensario abren pantallas independientes listas para desarrollar.
 - Actualiza APP_VERSION, referencias y caché a 3.16.23.
+
+
+## V3.16.24 — Navegación compacta de módulos Medrano
+- Reemplaza las tarjetas grandes de portada por una barra compacta de módulos: Stock Medrano, Administración y Dispensario.
+- La barra permanece visible dentro de cualquier módulo y dentro de los sub-stocks de Medrano.
+- Permite saltar directamente de cualquier módulo a cualquier otro sin volver a la portada.
+- Reduce tamaño y espaciado de las tarjetas Almacén, Dispensario y Laboratorio para alinearlas visualmente con Palestina.
+- Actualiza APP_VERSION, referencias y caché a 3.16.24.

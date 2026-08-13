@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.23';
+const APP_VERSION='3.16.24';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Vege 1',type:'vege'},{name:'Vege 2',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={site:'palestina',medranoView:'home',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
+const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
 state.site=localStorage.getItem('rainbows_site')==='medrano'?'medrano':'palestina';
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
@@ -933,26 +933,24 @@ function renderSiteShell(){
 }
 function renderMedrano(){
   $('today-label').textContent='';
-  const mv=state.medranoView||'home';
-  if(mv==='home'){
-    $('screen-title').textContent='';
-    app.innerHTML=`<div class="medrano-main-grid"><button id="medrano-open-stock" class="panel medrano-main-card" type="button"><span class="medrano-main-card-title">Stock Medrano</span><span class="medrano-main-card-meta">Almacén · Dispensario · Laboratorio</span></button><button id="medrano-open-admin" class="panel medrano-main-card" type="button"><span class="medrano-main-card-title">Administración</span><span class="medrano-main-card-meta">Gestión administrativa de Medrano</span></button><button id="medrano-open-dispensario" class="panel medrano-main-card" type="button"><span class="medrano-main-card-title">Dispensario</span><span class="medrano-main-card-meta">Gestión del dispensario de Medrano</span></button></div>`;
-    $('medrano-open-stock').onclick=()=>{state.medranoView='stock';render()};
-    $('medrano-open-admin').onclick=()=>{state.medranoView='administracion';render()};
-    $('medrano-open-dispensario').onclick=()=>{state.medranoView='dispensario';render()};
-    return;
-  }
+  let mv=state.medranoView||'stock';
+  if(mv==='home')mv='stock';
+  state.medranoView=mv;
+  const module=mv.startsWith('stock')?'stock':mv;
+  const medranoNav=`<nav class="medrano-top-nav" aria-label="Módulos de Medrano"><button type="button" data-medrano-module="stock" class="${module==='stock'?'active':''}">Stock Medrano</button><button type="button" data-medrano-module="administracion" class="${module==='administracion'?'active':''}">Administración</button><button type="button" data-medrano-module="dispensario" class="${module==='dispensario'?'active':''}">Dispensario</button></nav>`;
+  const bindModuleNav=()=>document.querySelectorAll('[data-medrano-module]').forEach(b=>b.onclick=()=>{state.medranoView=b.dataset.medranoModule;render()});
+
   if(mv==='administracion'||mv==='dispensario'){
     const label=mv==='administracion'?'Administración':'Dispensario';
     $('screen-title').textContent=label;
-    app.innerHTML=`<section class="panel medrano-stock-detail"><div class="medrano-section-head"><button id="medrano-module-back" class="secondary compact-button" type="button">← Medrano</button><div><h2>${label}</h2></div></div><div class="medrano-empty-stock"><strong>${label}</strong><p class="muted">Todavía no configuramos el contenido de esta sección.</p></div></section>`;
-    $('medrano-module-back').onclick=()=>{state.medranoView='home';render()};
+    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-detail medrano-module-panel"><div class="medrano-section-head"><div><h2>${label}</h2></div></div><div class="medrano-empty-stock"><strong>${label}</strong><p class="muted">Todavía no configuramos el contenido de esta sección.</p></div></section>`;
+    bindModuleNav();
     return;
   }
   if(mv==='stock'){
     $('screen-title').textContent='Stock Medrano';
-    app.innerHTML=`<section class="panel medrano-stock-home"><div class="medrano-section-head"><button id="medrano-stock-back" class="secondary compact-button" type="button">← Medrano</button><div><h2>Stock Medrano</h2><p class="muted">Elegí el sector de stock que querés consultar.</p></div></div><div class="medrano-stock-grid"><button class="medrano-stock-card" data-medrano-stock="almacen" type="button"><strong>Almacén</strong><span>Stock de Almacén</span></button><button class="medrano-stock-card" data-medrano-stock="dispensario" type="button"><strong>Dispensario</strong><span>Stock de Dispensario</span></button><button class="medrano-stock-card" data-medrano-stock="laboratorio" type="button"><strong>Laboratorio</strong><span>Stock de Laboratorio</span></button></div></section>`;
-    $('medrano-stock-back').onclick=()=>{state.medranoView='home';render()};
+    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Stock Medrano</h2><p class="muted">Elegí el sector de stock que querés consultar.</p></div></div><div class="medrano-stock-grid"><button class="medrano-stock-card" data-medrano-stock="almacen" type="button"><strong>Almacén</strong><span>Stock de Almacén</span></button><button class="medrano-stock-card" data-medrano-stock="dispensario" type="button"><strong>Dispensario</strong><span>Stock de Dispensario</span></button><button class="medrano-stock-card" data-medrano-stock="laboratorio" type="button"><strong>Laboratorio</strong><span>Stock de Laboratorio</span></button></div></section>`;
+    bindModuleNav();
     document.querySelectorAll('[data-medrano-stock]').forEach(b=>b.onclick=()=>{state.medranoView=`stock-${b.dataset.medranoStock}`;render()});
     return;
   }
@@ -960,7 +958,8 @@ function renderMedrano(){
   const key=mv.replace('stock-','');
   const label=labels[key]||'Stock';
   $('screen-title').textContent=`Stock ${label}`;
-  app.innerHTML=`<section class="panel medrano-stock-detail"><div class="medrano-section-head"><button id="medrano-stock-list-back" class="secondary compact-button" type="button">← Stock Medrano</button><div><h2>${label}</h2><p class="muted">Stock de ${label} · Medrano</p></div></div><div class="medrano-empty-stock"><strong>Stock ${label}</strong><p class="muted">Todavía no configuramos los datos ni movimientos de este stock.</p></div></section>`;
+  app.innerHTML=`${medranoNav}<section class="panel medrano-stock-detail medrano-module-panel"><div class="medrano-section-head"><button id="medrano-stock-list-back" class="secondary compact-button" type="button">← Stock Medrano</button><div><h2>${label}</h2><p class="muted">Stock de ${label} · Medrano</p></div></div><div class="medrano-empty-stock"><strong>Stock ${label}</strong><p class="muted">Todavía no configuramos los datos ni movimientos de este stock.</p></div></section>`;
+  bindModuleNav();
   $('medrano-stock-list-back').onclick=()=>{state.medranoView='stock';render()};
 }
 

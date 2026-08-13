@@ -797,3 +797,15 @@ body{
 
 /* V3.16.22 — portada Medrano alineada al estilo operativo de Palestina */
 .medrano-main-grid{display:grid;gap:14px;margin-top:14px}.medrano-main-card{appearance:none;width:100%;color:var(--text);text-align:left;cursor:pointer;padding:16px;transition:.15s ease}.medrano-main-card:hover{border-color:rgba(249,115,22,.55);transform:translateY(-1px)}.medrano-main-card-title{display:block;font-size:20px;font-weight:900;margin-bottom:5px}.medrano-main-card-meta{display:block;color:var(--muted);font-size:13px}.medrano-main-card:active{transform:scale(.995)}
+
+
+/* V3.16.24 — navegación compacta entre módulos de Medrano */
+.medrano-top-nav{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin:0 0 12px;padding:8px;background:rgba(11,16,32,.72);border:1px solid var(--line);border-radius:14px}
+.medrano-top-nav button{border:1px solid var(--line);border-radius:10px;background:#1f2937;color:var(--text);padding:9px 8px;font-weight:800;font-size:12px;cursor:pointer;min-height:38px}
+.medrano-top-nav button.active{background:rgba(249,115,22,.18);border-color:rgba(249,115,22,.48);color:#fed7aa}
+.medrano-module-panel{margin-top:0}
+.medrano-stock-grid{gap:8px}
+.medrano-stock-card{border-radius:12px;padding:12px 13px}
+.medrano-stock-card strong{font-size:15px;margin-bottom:2px}
+.medrano-stock-card span{font-size:11px}
+@media(max-width:560px){.medrano-top-nav{gap:4px;padding:6px}.medrano-top-nav button{font-size:10.5px;padding:8px 5px}.medrano-stock-grid{grid-template-columns:1fr}.medrano-stock-card{padding:11px 12px}}
