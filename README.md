@@ -873,3 +873,12 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Se mantiene sin cambios el resto de tareas de ambas salas.
 - No requiere SQL.
 - Actualiza APP_VERSION, referencias y caché del service worker a 3.16.18.
+
+
+## V3.16.19 — Próximo Trimming por voz
+- Agrega las consultas “¿Cuándo es el próximo trimming?” y “¿Cuándo es el próximo trimming de Flora 2?”.
+- Acepta tanto “trimming” como “triming” para tolerar transcripciones de voz.
+- Sin sala indicada, responde el trimming cronológicamente más próximo y las Floras involucradas.
+- Con una Flora indicada, responde el próximo trimming específico de esa sala.
+- Mantiene intacta la lógica de calendario y el resto de funciones de voz.
+- Actualiza APP_VERSION, referencias y caché del service worker a 3.16.19.

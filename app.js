@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.18';
+const APP_VERSION='3.16.19';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -981,7 +981,7 @@ function renderHelp(){
           <li>Hoy, ayer, anteayer, mañana y pasado mañana.</li><li>“Lunes”, “martes pasado”, “próximo miércoles”.</li><li>“10 de agosto” o “5 de agosto de 2026”.</li>
         </ul></article>
         <article class="help-card"><h3>Salas · estado y ciclo</h3><ul>
-          <li>“¿En qué semana está Flora 1?”</li><li>“¿En qué ciclo está Flora 2?”</li><li>“¿En qué semana estaba Flora 3 ayer?”</li><li>“¿Cuándo se cosecha Flora 2?”</li><li>“¿Cuándo empieza flora en Flora 1?”</li><li>“¿Cuándo es el próximo trasplante de Flora 3?”</li>
+          <li>“¿En qué semana está Flora 1?”</li><li>“¿En qué ciclo está Flora 2?”</li><li>“¿En qué semana estaba Flora 3 ayer?”</li><li>“¿Cuándo se cosecha Flora 2?”</li><li>“¿Cuándo empieza flora en Flora 1?”</li><li>“¿Cuándo es el próximo trasplante de Flora 3?”</li><li>“¿Cuándo es el próximo trimming?” · “¿Cuándo es el próximo trimming de Flora 2?”</li>
         </ul></article>
         <article class="help-card"><h3>Salas · croquis</h3><ul>
           <li>Consulta: “¿Qué genética hay en la cama 4 de Flora 1?”</li><li>Consulta: “¿Cuántas plantas hay en Flora 2?”</li><li>Modificar desde Salas: “En Flora 2 cama 4 poner Mandarin”.</li><li>Modificar una planta: “En Flora 2 cama 4 planta 3 poner Gomu Gomu”.</li><li>Vaciar: “Vaciar cama 8 de Flora 3” · “Vaciar planta 3 de cama 8”.</li><li>Capacidad: “Poner 5 plantas en cama 3 de Flora 1”.</li><li>Los cambios se preparan y siempre requieren Guardar o Confirmar.</li>
@@ -2806,8 +2806,9 @@ function executeVoiceRoomQuery(rawText){
   const wantsHarvest=text.includes('cuando')&&(text.includes('cosecha')||text.includes('cosechar'));
   const wantsFloraStart=text.includes('cuando')&&(text.includes('empieza flora')||text.includes('inicio flora')||text.includes('pasa a flora'));
   const wantsTransplant=text.includes('cuando')&&(text.includes('trasplante')||text.includes('entra a la sala'));
+  const wantsTrimming=(text.includes('trimming')||text.includes('triming'))&&(text.includes('cuando')||text.includes('proximo')||text.includes('siguiente'));
   const wantsStatus=text.includes('semana')||text.includes('ciclo')||text.includes('estado')||text.includes('en que esta')||text.includes('en que estan')||text.includes('como esta')||text.includes('como estan');
-  const looksLikeRoomQuery=wantsBed||wantsPlants||wantsBeds||wantsHarvest||wantsFloraStart||wantsTransplant||wantsStatus;
+  const looksLikeRoomQuery=wantsBed||wantsPlants||wantsBeds||wantsHarvest||wantsFloraStart||wantsTransplant||wantsTrimming||wantsStatus;
   if(!looksLikeRoomQuery)return null;
 
   const selectedRules=room?[rr(room)].filter(Boolean):floraRules;
@@ -2858,6 +2859,30 @@ function executeVoiceRoomQuery(rawText){
     if(room&&targetRules.length===0)return {ok:true,message:`${room} no usa el trasplante cíclico de las salas de flora.`};
     const answers=targetRules.map(r=>{let tr=cycle(r,today()).tr;if(diff(today(),tr)>0)tr=add(tr,77);return `${r.name}: ${nice(tr)} (ciclo ${cycleNumber(r,tr)})`;});
     return {ok:true,message:`Próximo trasplante: ${answers.join('; ')}.`};
+  }
+  if(wantsTrimming){
+    const targetRules=selectedRules.filter(r=>r.type==='flora');
+    if(room&&targetRules.length===0)return {ok:true,message:`${room} no tiene trimming programado por ciclos de floración.`};
+    const from=today();
+    const matches=[];
+    for(let offset=0;offset<=100;offset++){
+      const day=add(from,offset);
+      const trims=routine(day).filter(t=>t.room==='Sala de trabajo'&&String(t.task||'').startsWith('Trimming - '));
+      for(const t of trims){
+        const floraName=String(t.task||'').replace(/^Trimming - /,'');
+        if(targetRules.some(r=>r.name===floraName))matches.push({day,floraName,detail:t.detail||''});
+      }
+      if(matches.length&&(!room||matches.some(x=>x.floraName===room))){
+        if(room){
+          const specific=matches.filter(x=>x.floraName===room).sort((a,b)=>a.day-b.day)[0];
+          if(specific)return {ok:true,message:`Próximo trimming de ${room}: ${nice(specific.day)}${specific.detail?` · ${specific.detail}`:''}.`};
+        }
+        const earliest=matches.reduce((min,x)=>x.day<min?x.day:min,matches[0].day);
+        const sameDay=matches.filter(x=>same(x.day,earliest));
+        return {ok:true,message:`Próximo trimming: ${nice(earliest)} · ${sameDay.map(x=>x.floraName).join(' y ')}.`};
+      }
+    }
+    return {ok:true,message:`No encontré un trimming programado en los próximos 100 días${room?` para ${room}`:''}.`};
   }
   if(wantsStatus){
     const answers=selectedRules.map(r=>`${r.name}: ${roomStatus(r,d)}`);
@@ -3284,7 +3309,7 @@ function mobileVoiceLooksRelevant(rawText='',confidence=0){
   const domainTokens=[
     'tarea','tareas','pendiente','pendientes','realizada','realizadas','responsable','responsables',
     'flora','vege','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
-    'cama','camas','planta','plantas','semana','ciclo','riego','fumigacion','poda','enmienda','mantenimiento','pesada','pesadas','pasada','pasadas','pesaje','pesajes',
+    'cama','camas','planta','plantas','semana','ciclo','riego','fumigacion','poda','enmienda','mantenimiento','trimming','triming','pesada','pesadas','pasada','pasadas','pesaje','pesajes',
     'medrano','consumo','descarte','nomenclatura','linaje','genotipo','cannabinoide','cannabinoides','thc','cbd','cbg'
   ];
   const intentTokens=[
@@ -3340,7 +3365,7 @@ function mobileVoiceCandidateScore(rawText='',confidence=0){
   const domainTokens=[
     'tarea','tareas','pendiente','pendientes','realizada','realizadas','responsable','responsables',
     'flora','vege','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
-    'cama','camas','planta','plantas','semana','ciclo','riego','fumigacion','poda','enmienda','mantenimiento','pesada','pesadas','pasada','pasadas','pesaje','pesajes',
+    'cama','camas','planta','plantas','semana','ciclo','riego','fumigacion','poda','enmienda','mantenimiento','trimming','triming','pesada','pesadas','pasada','pasadas','pesaje','pesajes',
     'medrano','consumo','descarte','nomenclatura','linaje','genotipo','cannabinoide','cannabinoides','thc','cbd','cbg'
   ];
   const intentTokens=[
