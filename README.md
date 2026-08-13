@@ -882,3 +882,13 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Con una Flora indicada, responde el próximo trimming específico de esa sala.
 - Mantiene intacta la lógica de calendario y el resto de funciones de voz.
 - Actualiza APP_VERSION, referencias y caché del service worker a 3.16.19.
+
+
+## V3.16.20 — Secciones Palestina y Medrano
+- Todo el sistema operativo existente queda contenido en la sección Palestina.
+- Se agrega selector de sede debajo de Salir: Palestina / Medrano.
+- Palestina conserva subtítulo Cultivo y todas las funciones actuales.
+- Medrano muestra subtítulo Sede y una portada inicial vacía para futuras funciones.
+- En Medrano se ocultan navegación y voz de Palestina para mantener ambas secciones separadas.
+- La sede seleccionada se recuerda por dispositivo.
+- Actualiza APP_VERSION, referencias y caché del service worker a 3.16.20.
