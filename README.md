@@ -865,3 +865,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Los comandos de voz reconocen `Vege 1` y `Vege 2`; decir simplemente `Veges` o variantes históricas dirige a `Vege 1`.
 - Requiere ejecutar primero `Rainbows_V3.16.16_Vege_1_Vege_2_Supabase.sql` para renombrar la sala existente y crear la nueva sala en Supabase.
 - Actualiza APP_VERSION, referencias y caché del service worker a 3.16.16.
+
+
+## V3.16.17 — Enmiendas Vege días 14 y 28
+- Vege 1 y Vege 2 generan una primera tarea de Enmienda 14 días después del ingreso desde Esquejes.
+- Generan una segunda tarea de Enmienda 28 días después del ingreso (14 días después de la primera).
+- Se mantiene sin cambios el resto de tareas de ambas salas.
+- No requiere SQL.
+- Actualiza APP_VERSION, referencias y caché del service worker a 3.16.17.

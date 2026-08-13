@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.16';
+const APP_VERSION='3.16.17';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -57,9 +57,12 @@ function stage(r,d){if(r.type==='trabajo')return'Área operativa';return r.type=
 function routine(date){const out=[],day=dow(date),push=(room,name,detail)=>{const keyRoom=room==='Vege 1'?'Veges':room;out.push({id:`${ymd(date)}|${keyRoom}|${name}`,key:`${ymd(date)}|${keyRoom}|${name}`,date:ymd(date),room,task:name,detail,type:'rutina',custom:false})};for(const r of rules){const c=r.type==='esquejes'?{cut:cut(date)}:cycle(r,date);if(r.type==='vege'&&!vegesOccupied(date))continue;if(!['esquejes','trabajo'].includes(r.type)&&!(r.name==='Flora 1'&&r.automaticIrrigation))push(r.name,'Riego','');if(r.type==='esquejes'&&c.cut.active)push(r.name,'Mantenimiento',c.cut.label);if(r.name==='Flora 1'){if(transplant(r,date))push(r.name,'Calibrar riego','');if(startWeek(r,date,1))push(r.name,'Calibrar riego','');if(startWeek(r,date,7))push(r.name,'Calibrar riego','')}if(['lunes','miercoles','viernes'].includes(day)){if(['vege','madres'].includes(r.type))push(r.name,'Fumigacion',day==='miercoles'?'ABA + OIL + Nissorun':'ABA + OIL');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=3)))push(r.name,'Fumigacion',day==='miercoles'?'ABA + OIL + Nissorun':'ABA + OIL')}if(day==='jueves'){if(['vege','madres'].includes(r.type))push(r.name,'KNF','');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=6)))push(r.name,'KNF','')}if(r.type==='flora'){if(transplant(r,date)){push(r.name,'Enmienda','');push(r.name,'Trasplante','')}if(startWeek(r,date,1)){push(r.name,'Enmienda','');push(r.name,'Inicio flora','')}if(startWeek(r,date,4))push(r.name,'Enmienda','');if(same(date,add(c.fl,-1))){push(r.name,'Esquejes','');push(r.name,'Poda bajos','')}if(startWeek(r,date,3))push(r.name,'Schwazzing','');if(same(date,add(c.tr,1)))push(r.name,'Redes','');if(harvest(r,date))push(r.name,'Cosecha','')}
 if(r.type==='vege'){
   if(cloneTransfer(date))push(r.name,'Trasplante',`Esquejes → ${r.name}`);
-  const transferDate=new Date(date);
-  transferDate.setDate(transferDate.getDate()-21);
-  if(cloneTransfer(transferDate))push(r.name,'Enmienda','');
+  const transferDate14=new Date(date);
+  transferDate14.setDate(transferDate14.getDate()-14);
+  if(cloneTransfer(transferDate14))push(r.name,'Enmienda','1ª aplicación · 14 días desde ingreso');
+  const transferDate28=new Date(date);
+  transferDate28.setDate(transferDate28.getDate()-28);
+  if(cloneTransfer(transferDate28))push(r.name,'Enmienda','2ª aplicación · 28 días desde ingreso');
 }
 if(r.type==='madres'){
   const motherAmendmentStart=parse('2026-07-28');
