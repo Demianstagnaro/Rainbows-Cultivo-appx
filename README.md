@@ -900,3 +900,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Cada acceso abre su propia pantalla de stock, inicialmente sin datos ni movimientos hasta definir su funcionamiento.
 - Palestina y todas sus funciones permanecen sin cambios.
 - Actualiza APP_VERSION, referencias de app.js/styles.css y caché del service worker a 3.16.21.
+
+
+## V3.16.22 — Portada Medrano simplificada
+- Elimina de la portada de Medrano los textos redundantes ‘Medrano’, ‘RAINBOWS · Sede’ y ‘Gestión de la sede Medrano’.
+- Deja Stock Medrano como módulo operativo principal con una tarjeta visual alineada al estilo de Palestina.
+- Mantiene sin cambios Almacén, Dispensario y Laboratorio.
+- Actualiza APP_VERSION, referencias y caché a 3.16.22.

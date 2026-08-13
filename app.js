@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.21';
+const APP_VERSION='3.16.22';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -935,8 +935,8 @@ function renderMedrano(){
   $('today-label').textContent='';
   const mv=state.medranoView||'home';
   if(mv==='home'){
-    $('screen-title').textContent='Medrano';
-    app.innerHTML=`<section class="panel medrano-home"><div class="medrano-home-mark">Medrano</div><h2>RAINBOWS · Sede</h2><p class="muted">Gestión de la sede Medrano.</p><div class="medrano-module-grid"><button id="medrano-open-stock" class="medrano-module-card" type="button"><span class="medrano-module-title">Stock Medrano</span><span class="medrano-module-copy">Ingresar a los stocks de Almacén, Dispensario y Laboratorio.</span></button></div></section>`;
+    $('screen-title').textContent='';
+    app.innerHTML=`<div class="medrano-main-grid"><button id="medrano-open-stock" class="panel medrano-main-card" type="button"><span class="medrano-main-card-title">Stock Medrano</span><span class="medrano-main-card-meta">Almacén · Dispensario · Laboratorio</span></button></div>`;
     $('medrano-open-stock').onclick=()=>{state.medranoView='stock';render()};
     return;
   }
