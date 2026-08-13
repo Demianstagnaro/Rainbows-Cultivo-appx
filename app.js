@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.22';
+const APP_VERSION='3.16.23';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -936,8 +936,17 @@ function renderMedrano(){
   const mv=state.medranoView||'home';
   if(mv==='home'){
     $('screen-title').textContent='';
-    app.innerHTML=`<div class="medrano-main-grid"><button id="medrano-open-stock" class="panel medrano-main-card" type="button"><span class="medrano-main-card-title">Stock Medrano</span><span class="medrano-main-card-meta">Almacén · Dispensario · Laboratorio</span></button></div>`;
+    app.innerHTML=`<div class="medrano-main-grid"><button id="medrano-open-stock" class="panel medrano-main-card" type="button"><span class="medrano-main-card-title">Stock Medrano</span><span class="medrano-main-card-meta">Almacén · Dispensario · Laboratorio</span></button><button id="medrano-open-admin" class="panel medrano-main-card" type="button"><span class="medrano-main-card-title">Administración</span><span class="medrano-main-card-meta">Gestión administrativa de Medrano</span></button><button id="medrano-open-dispensario" class="panel medrano-main-card" type="button"><span class="medrano-main-card-title">Dispensario</span><span class="medrano-main-card-meta">Gestión del dispensario de Medrano</span></button></div>`;
     $('medrano-open-stock').onclick=()=>{state.medranoView='stock';render()};
+    $('medrano-open-admin').onclick=()=>{state.medranoView='administracion';render()};
+    $('medrano-open-dispensario').onclick=()=>{state.medranoView='dispensario';render()};
+    return;
+  }
+  if(mv==='administracion'||mv==='dispensario'){
+    const label=mv==='administracion'?'Administración':'Dispensario';
+    $('screen-title').textContent=label;
+    app.innerHTML=`<section class="panel medrano-stock-detail"><div class="medrano-section-head"><button id="medrano-module-back" class="secondary compact-button" type="button">← Medrano</button><div><h2>${label}</h2></div></div><div class="medrano-empty-stock"><strong>${label}</strong><p class="muted">Todavía no configuramos el contenido de esta sección.</p></div></section>`;
+    $('medrano-module-back').onclick=()=>{state.medranoView='home';render()};
     return;
   }
   if(mv==='stock'){

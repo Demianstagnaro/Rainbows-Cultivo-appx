@@ -907,3 +907,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Deja Stock Medrano como módulo operativo principal con una tarjeta visual alineada al estilo de Palestina.
 - Mantiene sin cambios Almacén, Dispensario y Laboratorio.
 - Actualiza APP_VERSION, referencias y caché a 3.16.22.
+
+
+## V3.16.23 — Módulos Administración y Dispensario en Medrano
+- Agrega Administración y Dispensario como módulos principales de la sede Medrano.
+- Mantiene Stock Medrano con Almacén, Dispensario y Laboratorio.
+- Administración y Dispensario abren pantallas independientes listas para desarrollar.
+- Actualiza APP_VERSION, referencias y caché a 3.16.23.
