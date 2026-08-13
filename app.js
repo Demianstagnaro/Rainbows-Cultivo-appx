@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.12';
+const APP_VERSION='3.16.13';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-30',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -88,7 +88,7 @@ function uiTask(t){const s=state.salas.find(x=>x.id===t.sala_id);return{id:t.id,
 const HISTORICAL_COMPLETION_CUTOFF='2026-07-21';
 const CONTINUABLE_FROM='2026-07-22';
 const CONTINUABLE_TASKS=new Set(['Trasplante','Esquejes','Poda bajos','Schwazzing']);
-function isContinuable(t){return CONTINUABLE_TASKS.has(t.task)||t.task.startsWith('Trimming - ')}
+function isContinuable(t){const taskName=String(t?.task||'');return CONTINUABLE_TASKS.has(taskName)||taskName.startsWith('Trimming - ')}
 function taskChain(t){return t.chain||t.key||(t.db?.clave_externa&&!t.db.clave_externa.startsWith('CONT|')?t.db.clave_externa:null)||(t.custom?`CUSTOM:${t.id}`:null)}
 function continuationPrefix(chain){return `CONT|${encodeURIComponent(chain)}|`}
 function chainRows(chain){
@@ -264,8 +264,10 @@ function openWorker(t,kind='dated',preselected=[]){
   state.selected=new Set(preselected);
   const summary=$('worker-task-summary');
   if(summary){
-    const taskDate=t.date?parse(t.date):(state.todayDay||today());
-    summary.textContent=`${t.task}${t.room?` · ${t.room}`:''}${taskDate?` · ${nice(taskDate)}`:''}`;
+    const isGeneral=kind==='general';
+    const taskLabel=isGeneral?(t?.nombre||'Tarea general'):(t?.task||t?.nombre||'Tarea');
+    const taskDate=!isGeneral&&t?.date?parse(t.date):(!isGeneral?(state.todayDay||today()):null);
+    summary.textContent=`${taskLabel}${t?.room?` · ${t.room}`:''}${taskDate?` · ${nice(taskDate)}`:''}`;
   }
   const container=$('worker-options');
   container.innerHTML='';
@@ -295,7 +297,7 @@ function openWorker(t,kind='dated',preselected=[]){
     });
   }
 
-  const isContinuation=isContinuable(t);
+  const isContinuation=kind!=='general'&&isContinuable(t);
   const dayNo=t.continuationDay||1;
   const normalButton=$('confirm-worker');
   const continueButton=$('continue-worker');
@@ -3570,5 +3572,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.12').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.13').catch(console.error));
 }

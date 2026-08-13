@@ -831,3 +831,12 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Los cambios de cama completa usan un cuadro de confirmación; los cambios de planta/capacidad reutilizan los formularios existentes y nunca guardan por voz.
 - Ajusta el filtro móvil de sensibilidad Baja para reconocer estas órdenes de croquis sin aflojar el filtrado general.
 - Actualiza APP_VERSION, referencias y caché del service worker a 3.16.12.
+
+
+## V3.16.13 — Corrección al completar tareas generales
+- Corrige el error `Cannot read properties of undefined (reading 'startsWith')` al intentar completar una tarea general.
+- La ventana de responsables ahora usa `nombre` para las tareas generales y `task` para las tareas con fecha/sala.
+- Las tareas generales quedan excluidas de la lógica de continuación de tareas normales (`Trimming`, etc.).
+- `isContinuable()` ahora tolera tareas sin propiedad `task`, evitando futuros errores por valores indefinidos.
+- No modifica la lógica de voz, Stock, Cosechas, Salas ni croquis.
+- Actualiza APP_VERSION, referencias y caché del service worker a 3.16.13.
