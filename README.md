@@ -892,3 +892,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - En Medrano se ocultan navegación y voz de Palestina para mantener ambas secciones separadas.
 - La sede seleccionada se recuerda por dispositivo.
 - Actualiza APP_VERSION, referencias y caché del service worker a 3.16.20.
+
+
+## V3.16.21 — Stock Medrano
+- Agrega en la sede Medrano el módulo **Stock Medrano**.
+- Stock Medrano contiene tres accesos independientes: **Almacén**, **Dispensario** y **Laboratorio**.
+- Cada acceso abre su propia pantalla de stock, inicialmente sin datos ni movimientos hasta definir su funcionamiento.
+- Palestina y todas sus funciones permanecen sin cambios.
+- Actualiza APP_VERSION, referencias de app.js/styles.css y caché del service worker a 3.16.21.
