@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.29';
+const APP_VERSION='3.16.30';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Vege 1',type:'vege'},{name:'Vege 2',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
+const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
 state.site=localStorage.getItem('rainbows_site')==='medrano'?'medrano':'palestina';
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
@@ -207,6 +207,7 @@ async function load(){
     stockAccess?db.from('stock_ciclos').select('*').order('sala').order('ciclo',{ascending:false}):empty(),
     stockAccess?db.from('stock_existencias').select('*').order('orden'):empty(),
     stockAccess?db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
+    canAccessMedrano()?db.from('medrano_dispensario_lotes').select('*').order('fecha_ingreso',{ascending:false}).order('created_at',{ascending:false}):empty(),
     db.from('empleados').select('*').eq('activo',true).order('nombre'),
     db.from('tareas').select('*'),
     db.from('realizaciones_tarea').select('*'),
@@ -216,10 +217,10 @@ async function load(){
     db.from('tarea_general_empleados').select('*')
   ]);
   for(const q of qs)if(q.error)throw q.error;
-  [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,14).map(q=>q.data||[]);
+  [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.medranoDispensarioLots,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,15).map(q=>q.data||[]);
   state.profile=state.profile||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;
-  state.generalTasks=qs[14].data||[];
-  state.generalJoins=qs[15].data||[];
+  state.generalTasks=qs[15].data||[];
+  state.generalJoins=qs[16].data||[];
   if(!admin){
     state.cosechas=[];state.cosechaDetalles=[];state.selectedHarvest=null;state.editHarvest=null;
   }
@@ -957,6 +958,68 @@ function renderSiteShell(){
   }
   return isPalestina;
 }
+function medranoLotGeneticName(lot){
+  return lot.nombre_historico||state.geneticas.find(g=>String(g.id)===String(lot.genetica_id))?.nombre||'Sin identificar';
+}
+function medranoDispensarioTotal(lots=state.medranoDispensarioLots){
+  return lots.reduce((sum,lot)=>sum+(Number(lot.gramos_actual)||0),0);
+}
+function canManageMedrano(){return ['administrador','medrano'].includes(currentRole())}
+function openMedranoLotDialog(room){
+  if(!canManageMedrano())return;
+  $('medrano-lot-room').value=room;
+  $('medrano-lot-code').value='';
+  $('medrano-lot-genetic').innerHTML='<option value="">Seleccionar genética</option>'+state.geneticas.filter(g=>g.activa!==false).map(g=>`<option value="${g.id}">${escapeHtml(g.nombre)}${g.nomenclatura?` · ${escapeHtml(g.nomenclatura)}`:''}</option>`).join('');
+  $('medrano-lot-grams').value='';
+  $('medrano-lot-date').value=ymd(today());
+  $('medrano-lot-dialog').showModal();
+}
+async function saveMedranoLot(){
+  if(!canManageMedrano())throw new Error('No tenés permiso para ingresar lotes en Medrano.');
+  const sala=$('medrano-lot-room').value;
+  const codigo=$('medrano-lot-code').value.trim();
+  const geneticaId=$('medrano-lot-genetic').value||null;
+  const genetica=state.geneticas.find(g=>String(g.id)===String(geneticaId));
+  const gramos=Number($('medrano-lot-grams').value);
+  const fecha=$('medrano-lot-date').value;
+  if(!['Flora 1','Flora 2','Flora 3'].includes(sala))throw new Error('Sala inválida.');
+  if(!codigo)throw new Error('Ingresá el código de lote.');
+  if(!geneticaId||!genetica)throw new Error('Seleccioná una genética.');
+  if(!Number.isFinite(gramos)||gramos<=0)throw new Error('Ingresá una cantidad válida en gramos.');
+  if(!fecha)throw new Error('Ingresá la fecha de ingreso.');
+  const payload={sala,codigo_lote:codigo,genetica_id:geneticaId,nombre_historico:genetica.nombre,gramos_inicial:gramos,gramos_actual:gramos,fecha_ingreso:fecha,creado_por:state.session?.user?.id||null};
+  const q=await db.from('medrano_dispensario_lotes').insert(payload);
+  if(q.error)throw q.error;
+  closeDialog('medrano-lot-dialog');
+  await refresh();
+}
+function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
+  const rooms=['Flora 1','Flora 2','Flora 3'];
+  const lots=state.medranoDispensarioLots||[];
+  const total=medranoDispensarioTotal(lots);
+  $('screen-title').textContent='Stock Dispensario';
+  if(!state.medranoDispensarioRoom){
+    const detailRows=[...lots].sort((a,b)=>String(b.fecha_ingreso||'').localeCompare(String(a.fecha_ingreso||''))||String(a.codigo_lote||'').localeCompare(String(b.codigo_lote||'')));
+    app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-stock-list-back" class="secondary compact-button" type="button">← Stock Medrano</button><h2>Dispensario</h2><p class="muted">Stock general disponible en Medrano.</p></div></section>
+    <section class="stock-room-selector">${rooms.map(room=>{const roomLots=lots.filter(l=>l.sala===room);const roomTotal=medranoDispensarioTotal(roomLots);return `<button class="panel stock-room-button" data-medrano-dispensario-room="${room}"><span>${room}</span><strong>${formatGrams(roomTotal)}</strong><small>${roomLots.length} lote${roomLots.length===1?'':'s'}</small></button>`}).join('')}</section>
+    <button id="medrano-current-toggle" class="panel stock-current-summary stock-current-toggle" type="button" aria-expanded="${state.medranoDispensarioExpanded?'true':'false'}" aria-controls="medrano-current-detail"><span>Stock general Medrano</span><strong>${formatGrams(total)}</strong><small>${lots.length} lote${lots.length===1?'':'s'} cargado${lots.length===1?'':'s'} · ${state.medranoDispensarioExpanded?'Ocultar detalle':'Ver detalle'}</small><span class="stock-toggle-icon" aria-hidden="true">${state.medranoDispensarioExpanded?'▲':'▼'}</span></button>
+    <section id="medrano-current-detail" class="panel stock-overview-panel ${state.medranoDispensarioExpanded?'':'stock-overview-collapsed'}"><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Sala</th><th>Lote</th><th>Genética</th><th>Fecha</th><th>Disponible</th></tr></thead><tbody>${detailRows.length?detailRows.map(l=>`<tr><td>${escapeHtml(l.sala)}</td><td><strong>${escapeHtml(l.codigo_lote)}</strong></td><td>${escapeHtml(medranoLotGeneticName(l))}</td><td>${l.fecha_ingreso?parse(l.fecha_ingreso).toLocaleDateString('es-AR'):'—'}</td><td><strong>${formatGrams(Number(l.gramos_actual)||0)}</strong></td></tr>`).join(''):'<tr><td colspan="5">No hay lotes cargados todavía.</td></tr>'}</tbody></table></div></section>`;
+    bindModuleNav();
+    $('medrano-stock-list-back').onclick=()=>{state.medranoView='stock';render()};
+    $('medrano-current-toggle').onclick=()=>{state.medranoDispensarioExpanded=!state.medranoDispensarioExpanded;render()};
+    app.querySelectorAll('[data-medrano-dispensario-room]').forEach(b=>b.onclick=()=>{state.medranoDispensarioRoom=b.dataset.medranoDispensarioRoom;render()});
+    return;
+  }
+  const room=state.medranoDispensarioRoom;
+  const roomLots=lots.filter(l=>l.sala===room).sort((a,b)=>String(b.fecha_ingreso||'').localeCompare(String(a.fecha_ingreso||'')));
+  const roomTotal=medranoDispensarioTotal(roomLots);
+  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-dispensario-back" class="secondary compact-button" type="button">← Stock general</button><h2>${escapeHtml(room)}</h2><p class="muted">Lotes ingresados al Dispensario de Medrano.</p></div>${canManageMedrano()?'<button id="medrano-add-lot" class="primary compact-button" type="button">+ Ingresar lote</button>':''}</section>
+  <section class="stock-kpis"><div class="panel"><span>Stock actual</span><strong>${formatGrams(roomTotal)}</strong></div><div class="panel"><span>Lotes</span><strong>${roomLots.length}</strong></div></section>
+  <section class="panel stock-detail-panel"><h3>Lotes de cosecha</h3><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Código de lote</th><th>Genética</th><th>Fecha ingreso</th><th>Stock inicial</th><th>Stock actual</th></tr></thead><tbody>${roomLots.length?roomLots.map(l=>`<tr><td><strong>${escapeHtml(l.codigo_lote)}</strong></td><td>${escapeHtml(medranoLotGeneticName(l))}</td><td>${l.fecha_ingreso?parse(l.fecha_ingreso).toLocaleDateString('es-AR'):'—'}</td><td>${formatGrams(Number(l.gramos_inicial)||0)}</td><td><strong>${formatGrams(Number(l.gramos_actual)||0)}</strong></td></tr>`).join(''):'<tr><td colspan="5">Todavía no hay lotes cargados para esta sala.</td></tr>'}</tbody></table></div></section>`;
+  bindModuleNav();
+  $('medrano-dispensario-back').onclick=()=>{state.medranoDispensarioRoom=null;render()};
+  const addLot=$('medrano-add-lot');if(addLot)addLot.onclick=()=>openMedranoLotDialog(room);
+}
 function renderMedrano(){
   $('today-label').textContent=nice(today());
   let mv=state.medranoView||'stock';
@@ -964,7 +1027,7 @@ function renderMedrano(){
   state.medranoView=mv;
   const module=mv.startsWith('stock')?'stock':mv;
   const medranoNav=`<nav class="medrano-top-nav" aria-label="Módulos de Medrano"><button type="button" data-medrano-module="administracion" class="${module==='administracion'?'active':''}">Administración</button><button type="button" data-medrano-module="dispensario" class="${module==='dispensario'?'active':''}">Dispensario</button><button type="button" data-medrano-module="stock" class="${module==='stock'?'active':''}">Stock Medrano</button></nav>`;
-  const bindModuleNav=()=>document.querySelectorAll('[data-medrano-module]').forEach(b=>b.onclick=()=>{state.medranoView=b.dataset.medranoModule;render()});
+  const bindModuleNav=()=>document.querySelectorAll('[data-medrano-module]').forEach(b=>b.onclick=()=>{state.medranoView=b.dataset.medranoModule;state.medranoDispensarioRoom=null;render()});
 
   if(mv==='administracion'||mv==='dispensario'){
     const label=mv==='administracion'?'Administración':'Dispensario';
@@ -977,19 +1040,24 @@ function renderMedrano(){
     $('screen-title').textContent='Stock Medrano';
     app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Stock Medrano</h2><p class="muted">Elegí el sector de stock que querés consultar.</p></div></div><div class="medrano-stock-grid"><button class="medrano-stock-card" data-medrano-stock="dispensario" type="button"><strong>Dispensario</strong><span>Stock de Dispensario</span></button><button class="medrano-stock-card" data-medrano-stock="laboratorio" type="button"><strong>Laboratorio</strong><span>Stock de Laboratorio</span></button></div></section>`;
     bindModuleNav();
-    document.querySelectorAll('[data-medrano-stock]').forEach(b=>b.onclick=()=>{state.medranoView=`stock-${b.dataset.medranoStock}`;render()});
+    document.querySelectorAll('[data-medrano-stock]').forEach(b=>b.onclick=()=>{state.medranoView=`stock-${b.dataset.medranoStock}`;state.medranoDispensarioRoom=null;render()});
     return;
   }
-  const labels={dispensario:'Dispensario',laboratorio:'Laboratorio'};
   const key=mv.replace('stock-','');
+  if(key==='dispensario'){
+    renderMedranoDispensarioStock(medranoNav,bindModuleNav);
+    return;
+  }
+  const labels={laboratorio:'Laboratorio'};
   const label=labels[key]||'Stock';
   $('screen-title').textContent=`Stock ${label}`;
   app.innerHTML=`${medranoNav}<section class="panel medrano-stock-detail medrano-module-panel"><div class="medrano-section-head"><button id="medrano-stock-list-back" class="secondary compact-button" type="button">← Stock Medrano</button><div><h2>${label}</h2><p class="muted">Stock de ${label} · Medrano</p></div></div><div class="medrano-empty-stock"><strong>Stock ${label}</strong><p class="muted">Todavía no configuramos los datos ni movimientos de este stock.</p></div></section>`;
   bindModuleNav();
   $('medrano-stock-list-back').onclick=()=>{state.medranoView='stock';render()};
 }
-
 function render(){const isPalestina=renderSiteShell();const cb=$('header-config');if(cb&&isPalestina){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';state.room=null;state.roomDay=null;state.day=null;render()}}const hb=$('header-help');if(hb&&isPalestina){hb.onclick=()=>{state.view='help';state.room=null;state.roomDay=null;state.day=null;render()}}if(!isPalestina){renderMedrano();return} $('today-label').textContent=nice(today());
+$('cancel-medrano-lot').onclick=()=>closeDialog('medrano-lot-dialog');
+$('save-medrano-lot').onclick=async()=>{const b=$('save-medrano-lot');b.disabled=true;try{await saveMedranoLot()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el lote.')}finally{b.disabled=false}};
 $('cancel-stock-movement').onclick=()=>closeDialog('stock-movement-dialog');
 $('stock-movement-cycle').onchange=updateStockMovementItems;
 $('stock-movement-type').onchange=updateStockMovementItems;

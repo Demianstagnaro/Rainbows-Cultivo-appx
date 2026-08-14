@@ -954,8 +954,13 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Requiere ejecutar el SQL V3.16.28 para migrar los roles y habilitar la nueva función segura de actualización de perfiles.
 
 
-## V3.16.29 — Stock Medrano sin Almacén
+## V3.16.30 — Stock Medrano sin Almacén
 - Elimina la ventana Almacén del módulo Stock Medrano.
 - Stock Medrano queda con Dispensario y Laboratorio.
 - Sin cambios en permisos, navegación ni lógica de Palestina.
-- Actualiza APP_VERSION, referencias y caché a 3.16.29.
+- Actualiza APP_VERSION, referencias y caché a 3.16.30.
+
+
+## V3.16.30
+- Medrano > Stock Medrano > Dispensario: stock general, accesos Flora 1/2/3, carga de lotes de cosecha y detalle general desplegable.
+- Cada lote guarda sala, código de lote, genética, gramos iniciales/actuales y fecha de ingreso.
