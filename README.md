@@ -990,3 +990,13 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - El registro de movimientos muestra una columna `Número de lote`.
 - Los movimientos históricos pueden completarse por SQL desde su existencia asociada.
 - Actualiza APP_VERSION, referencias y caché a 3.16.33.
+
+
+## V3.16.34 — Orden y búsqueda en detalles de Stock
+- Agrega buscador instantáneo independiente a las tablas de detalle de Stock Palestina y Stock Medrano.
+- El filtro busca simultáneamente por cualquier texto visible: fecha, número/código de lote, genética, tipo, destino, sala y cantidades.
+- Los encabezados de las columnas se pueden tocar para ordenar ascendente/descendente.
+- Fechas se ordenan cronológicamente y pesos/gramos de forma numérica.
+- Incluye Stock por genética y Registro de movimientos en Palestina, y detalle general/lotes por Flora en Medrano.
+- No requiere cambios de Supabase.
+- Actualiza APP_VERSION, referencias y caché a 3.16.34.

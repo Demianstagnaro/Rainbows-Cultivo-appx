@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.33';
+const APP_VERSION='3.16.34';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1003,8 +1003,9 @@ function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
     app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-stock-list-back" class="secondary compact-button" type="button">← Stock Medrano</button><h2>Dispensario</h2><p class="muted">Stock general disponible en Medrano.</p></div></section>
     <section class="stock-room-selector">${rooms.map(room=>{const roomLots=lots.filter(l=>l.sala===room);const roomTotal=medranoDispensarioTotal(roomLots);return `<button class="panel stock-room-button" data-medrano-dispensario-room="${room}"><span>${room}</span><strong>${formatGrams(roomTotal)}</strong><small>${roomLots.length} lote${roomLots.length===1?'':'s'}</small></button>`}).join('')}</section>
     <button id="medrano-current-toggle" class="panel stock-current-summary stock-current-toggle" type="button" aria-expanded="${state.medranoDispensarioExpanded?'true':'false'}" aria-controls="medrano-current-detail"><span>Stock general Medrano</span><strong>${formatGrams(total)}</strong><small>${lots.length} lote${lots.length===1?'':'s'} cargado${lots.length===1?'':'s'} · ${state.medranoDispensarioExpanded?'Ocultar detalle':'Ver detalle'}</small><span class="stock-toggle-icon" aria-hidden="true">${state.medranoDispensarioExpanded?'▲':'▼'}</span></button>
-    <section id="medrano-current-detail" class="panel stock-overview-panel ${state.medranoDispensarioExpanded?'':'stock-overview-collapsed'}"><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Sala</th><th>Lote</th><th>Genética</th><th>Fecha</th><th>Disponible</th></tr></thead><tbody>${detailRows.length?detailRows.map(l=>`<tr><td>${escapeHtml(l.sala)}</td><td><strong>${escapeHtml(l.codigo_lote)}</strong></td><td>${escapeHtml(medranoLotGeneticName(l))}</td><td>${l.fecha_ingreso?parse(l.fecha_ingreso).toLocaleDateString('es-AR'):'—'}</td><td><strong>${formatGrams(Number(l.gramos_actual)||0)}</strong></td></tr>`).join(''):'<tr><td colspan="5">No hay lotes cargados todavía.</td></tr>'}</tbody></table></div></section>`;
+    <section id="medrano-current-detail" class="panel stock-overview-panel ${state.medranoDispensarioExpanded?'':'stock-overview-collapsed'}" data-stock-table-tools>${stockTableToolbar('Buscar por sala, lote, genética, fecha o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Sala</th><th data-sort-type="text">Lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha</th><th data-sort-type="number">Disponible</th></tr></thead><tbody>${detailRows.length?detailRows.map(l=>`<tr><td>${escapeHtml(l.sala)}</td><td><strong>${escapeHtml(l.codigo_lote)}</strong></td><td>${escapeHtml(medranoLotGeneticName(l))}</td><td data-sort-value="${escapeHtml(l.fecha_ingreso||'')}">${l.fecha_ingreso?parse(l.fecha_ingreso).toLocaleDateString('es-AR'):'—'}</td><td data-sort-value="${Number(l.gramos_actual)||0}"><strong>${formatGrams(Number(l.gramos_actual)||0)}</strong></td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="5">No hay lotes cargados todavía.</td></tr>'}</tbody></table></div></section>`;
     bindModuleNav();
+    bindStockTableTools(app);
     $('medrano-stock-list-back').onclick=()=>{state.medranoView='stock';render()};
     $('medrano-current-toggle').onclick=()=>{state.medranoDispensarioExpanded=!state.medranoDispensarioExpanded;render()};
     app.querySelectorAll('[data-medrano-dispensario-room]').forEach(b=>b.onclick=()=>{state.medranoDispensarioRoom=b.dataset.medranoDispensarioRoom;render()});
@@ -1015,8 +1016,9 @@ function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
   const roomTotal=medranoDispensarioTotal(roomLots);
   app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-dispensario-back" class="secondary compact-button" type="button">← Stock general</button><h2>${escapeHtml(room)}</h2><p class="muted">Lotes ingresados al Dispensario de Medrano.</p></div>${canManageMedrano()?'<button id="medrano-add-lot" class="primary compact-button" type="button">+ Ingresar lote</button>':''}</section>
   <section class="stock-kpis"><div class="panel"><span>Stock actual</span><strong>${formatGrams(roomTotal)}</strong></div><div class="panel"><span>Lotes</span><strong>${roomLots.length}</strong></div></section>
-  <section class="panel stock-detail-panel"><h3>Lotes de cosecha</h3><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Código de lote</th><th>Genética</th><th>Fecha ingreso</th><th>Stock inicial</th><th>Stock actual</th></tr></thead><tbody>${roomLots.length?roomLots.map(l=>`<tr><td><strong>${escapeHtml(l.codigo_lote)}</strong></td><td>${escapeHtml(medranoLotGeneticName(l))}</td><td>${l.fecha_ingreso?parse(l.fecha_ingreso).toLocaleDateString('es-AR'):'—'}</td><td>${formatGrams(Number(l.gramos_inicial)||0)}</td><td><strong>${formatGrams(Number(l.gramos_actual)||0)}</strong></td></tr>`).join(''):'<tr><td colspan="5">Todavía no hay lotes cargados para esta sala.</td></tr>'}</tbody></table></div></section>`;
+  <section class="panel stock-detail-panel" data-stock-table-tools><h3>Lotes de cosecha</h3>${stockTableToolbar('Buscar por lote, genética, fecha o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Código de lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha ingreso</th><th data-sort-type="number">Stock inicial</th><th data-sort-type="number">Stock actual</th></tr></thead><tbody>${roomLots.length?roomLots.map(l=>`<tr><td><strong>${escapeHtml(l.codigo_lote)}</strong></td><td>${escapeHtml(medranoLotGeneticName(l))}</td><td data-sort-value="${escapeHtml(l.fecha_ingreso||'')}">${l.fecha_ingreso?parse(l.fecha_ingreso).toLocaleDateString('es-AR'):'—'}</td><td data-sort-value="${Number(l.gramos_inicial)||0}">${formatGrams(Number(l.gramos_inicial)||0)}</td><td data-sort-value="${Number(l.gramos_actual)||0}"><strong>${formatGrams(Number(l.gramos_actual)||0)}</strong></td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="5">Todavía no hay lotes cargados para esta sala.</td></tr>'}</tbody></table></div></section>`;
   bindModuleNav();
+  bindStockTableTools(app);
   $('medrano-dispensario-back').onclick=()=>{state.medranoDispensarioRoom=null;render()};
   const addLot=$('medrano-add-lot');if(addLot)addLot.onclick=()=>openMedranoLotDialog(room);
 }
@@ -1498,6 +1500,63 @@ function stockMovementTitle(m){
   return m.nombre_historico||item?.nombre_historico||state.geneticas.find(g=>String(g.id)===String(m.genetica_id))?.nombre||'Sin identificar';
 }
 function stockMovementDate(m){if(m.fecha)return parse(m.fecha).toLocaleDateString('es-AR');return m.fecha_text||'Sin fecha'}
+
+function stockSearchNormalize(value){
+  return String(value??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+function stockSortValue(cell,type){
+  const raw=cell?.dataset?.sortValue ?? cell?.textContent ?? '';
+  if(type==='number'){
+    const cleaned=String(raw).replace(/[^0-9,.-]/g,'').replace(/\.(?=.*\.)/g,'').replace(',','.');
+    const n=Number(cleaned);return Number.isFinite(n)?n:-Infinity;
+  }
+  if(type==='date'){
+    const iso=cell?.dataset?.sortValue;
+    if(iso){const t=Date.parse(iso);if(Number.isFinite(t))return t;}
+    const m=String(raw).match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
+    if(m){let y=Number(m[3]);if(y<100)y+=2000;return new Date(y,Number(m[2])-1,Number(m[1])).getTime();}
+    const t=Date.parse(raw);return Number.isFinite(t)?t:0;
+  }
+  return stockSearchNormalize(raw);
+}
+function bindStockTableTools(root=document){
+  root.querySelectorAll('[data-stock-table-tools]').forEach(wrapper=>{
+    const input=wrapper.querySelector('[data-stock-search]');
+    const table=wrapper.querySelector('table');
+    if(!table)return;
+    const rows=()=>Array.from(table.tBodies?.[0]?.rows||[]).filter(r=>!r.dataset.emptyRow);
+    const applyFilter=()=>{
+      const q=stockSearchNormalize(input?.value||'');
+      rows().forEach(row=>{row.hidden=!!q&&!stockSearchNormalize(row.textContent).includes(q)});
+    };
+    if(input)input.addEventListener('input',applyFilter);
+    table.querySelectorAll('th[data-sort-type]').forEach((th,index)=>{
+      th.classList.add('stock-sortable');
+      th.setAttribute('role','button');
+      th.tabIndex=0;
+      const sort=()=>{
+        const type=th.dataset.sortType||'text';
+        const col=Number(th.dataset.sortIndex??index);
+        const dir=th.dataset.sortDir==='asc'?'desc':'asc';
+        table.querySelectorAll('th[data-sort-type]').forEach(h=>{h.dataset.sortDir='';h.classList.remove('sort-asc','sort-desc')});
+        th.dataset.sortDir=dir;th.classList.add(dir==='asc'?'sort-asc':'sort-desc');
+        const body=table.tBodies[0];
+        rows().sort((a,b)=>{
+          const av=stockSortValue(a.cells[col],type),bv=stockSortValue(b.cells[col],type);
+          const cmp=(typeof av==='number'&&typeof bv==='number')?av-bv:String(av).localeCompare(String(bv),'es',{numeric:true,sensitivity:'base'});
+          return dir==='asc'?cmp:-cmp;
+        }).forEach(r=>body.appendChild(r));
+        applyFilter();
+      };
+      th.addEventListener('click',sort);
+      th.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();sort()}});
+    });
+  });
+}
+function stockTableToolbar(placeholder='Buscar por lote, genética, fecha, peso...'){
+  return `<div class="stock-table-toolbar"><input type="search" class="text-input stock-table-search" data-stock-search placeholder="${escapeHtml(placeholder)}" autocomplete="off" spellcheck="false"><span class="stock-table-hint">Tocá una columna para ordenar</span></div>`;
+}
+
 function renderStock(){
   $('screen-title').textContent='Stock Palestina';
   const canManage=canEditTasks();
@@ -1537,6 +1596,7 @@ function renderStock(){
 
   app.innerHTML=`<section class="panel stock-page-head"><div><button id="stock-back-room" class="secondary compact-button">← ${escapeHtml(state.stockRoom)}</button><h2>${escapeHtml(state.stockRoom)} · Ciclo ${selected.ciclo}</h2><p class="muted">Detalle de stock y movimientos del ciclo.</p></div>${canManage?'<button id="stock-add-movement" class="primary compact-button">+ Registrar movimiento</button>':''}</section>
   ${renderStockCycleDetail(selected,canManage)}`;
+  bindStockTableTools(app);
   $('stock-back-room').onclick=()=>{state.stockCycle=null;renderStock()};
   if(canManage){
     $('stock-add-movement').onclick=()=>openStockMovement(selected.id);
@@ -1548,9 +1608,10 @@ function renderStockCycleDetail(cycle,canManage){
   const items=stockCycleItems(cycle.id);
   const movements=stockCycleMovements(cycle.id);
   return `<section class="stock-kpis"><div class="panel"><span>Stock inicial</span><strong>${formatGrams(cycle.stock_inicial)}</strong></div><div class="panel"><span>Stock actual</span><strong>${formatGrams(stockCycleCurrent(cycle))}</strong></div><div class="panel"><span>Genéticas</span><strong>${items.length}</strong></div><div class="panel"><span>Movimientos</span><strong>${movements.length}</strong></div></section>
-  <section class="panel stock-detail-panel"><h3>Stock por genética</h3><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Número de lote</th><th>Genética</th><th>Stock inicial</th><th>Stock actual</th></tr></thead><tbody>${items.length?items.map(item=>`<tr><td><strong>${escapeHtml(item.numero_lote||'—')}</strong></td><td>${escapeHtml(item.nombre_historico)}</td><td>${formatGrams(Number(item.stock_inicial)||0)}</td><td><strong>${formatGrams(stockItemCurrent(item))}</strong></td></tr>`).join(''):'<tr><td colspan="4">Sin detalle cargado.</td></tr>'}</tbody></table></div></section>
-  <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Los movimientos históricos se conservan tal como estaban registrados en el Excel.</p></div>${canManage?`<button class="primary compact-button" data-stock-add-cycle="${cycle.id}">+ Movimiento</button>`:''}</div><div class="stock-table-wrap"><table class="stock-table movements"><thead><tr><th>Fecha</th><th>Número de lote</th><th>Genética / detalle</th><th>Tipo</th><th>Destino</th><th>Gramos</th></tr></thead><tbody>${movements.length?movements.map(m=>{const item=state.stockItems.find(x=>String(x.id)===String(m.existencia_id));const lote=m.numero_lote||item?.numero_lote||'—';return`<tr><td>${escapeHtml(stockMovementDate(m))}</td><td><strong>${escapeHtml(lote)}</strong></td><td>${escapeHtml(stockMovementTitle(m))}</td><td><span class="stock-movement-type ${m.tipo}">${escapeHtml(m.tipo)}</span></td><td>${escapeHtml(m.destino||'—')}</td><td><strong>${formatGrams(m.gramos)}</strong></td></tr>`}).join(''):'<tr><td colspan="6">No hay movimientos registrados.</td></tr>'}</tbody></table></div></section>`;
+  <section class="panel stock-detail-panel" data-stock-table-tools><h3>Stock por genética</h3>${stockTableToolbar('Buscar por lote, genética o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Número de lote</th><th data-sort-type="text">Genética</th><th data-sort-type="number">Stock inicial</th><th data-sort-type="number">Stock actual</th></tr></thead><tbody>${items.length?items.map(item=>`<tr><td><strong>${escapeHtml(item.numero_lote||'—')}</strong></td><td>${escapeHtml(item.nombre_historico)}</td><td data-sort-value="${Number(item.stock_inicial)||0}">${formatGrams(Number(item.stock_inicial)||0)}</td><td data-sort-value="${stockItemCurrent(item)}"><strong>${formatGrams(stockItemCurrent(item))}</strong></td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="4">Sin detalle cargado.</td></tr>'}</tbody></table></div></section>
+  <section class="panel stock-detail-panel" data-stock-table-tools><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Los movimientos históricos se conservan tal como estaban registrados en el Excel.</p></div>${canManage?`<button class="primary compact-button" data-stock-add-cycle="${cycle.id}">+ Movimiento</button>`:''}</div>${stockTableToolbar('Buscar por fecha, lote, genética, tipo, destino o peso...')}<div class="stock-table-wrap"><table class="stock-table movements"><thead><tr><th data-sort-type="date">Fecha</th><th data-sort-type="text">Número de lote</th><th data-sort-type="text">Genética / detalle</th><th data-sort-type="text">Tipo</th><th data-sort-type="text">Destino</th><th data-sort-type="number">Gramos</th></tr></thead><tbody>${movements.length?movements.map(m=>{const item=state.stockItems.find(x=>String(x.id)===String(m.existencia_id));const lote=m.numero_lote||item?.numero_lote||'—';return`<tr><td data-sort-value="${escapeHtml(m.fecha||'')}">${escapeHtml(stockMovementDate(m))}</td><td><strong>${escapeHtml(lote)}</strong></td><td>${escapeHtml(stockMovementTitle(m))}</td><td><span class="stock-movement-type ${m.tipo}">${escapeHtml(m.tipo)}</span></td><td>${escapeHtml(m.destino||'—')}</td><td data-sort-value="${Number(m.gramos)||0}"><strong>${formatGrams(m.gramos)}</strong></td></tr>`}).join(''):'<tr data-empty-row="1"><td colspan="6">No hay movimientos registrados.</td></tr>'}</tbody></table></div></section>`;
 }
+
 function openStockMovement(preselectedCycleId=null){
   const cycles=state.stockCycles.filter(c=>!state.stockRoom||c.sala===state.stockRoom).sort((a,b)=>a.sala.localeCompare(b.sala)||Number(b.ciclo)-Number(a.ciclo));
   const cycleId=preselectedCycleId||state.stockCycle||cycles[0]?.id||'';

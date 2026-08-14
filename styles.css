@@ -840,3 +840,15 @@ body{
 
 /* V3.16.31 — detalle por sala de Stock Palestina con visual tipo Medrano */
 .stock-room-kpis{grid-template-columns:repeat(2,minmax(0,1fr));max-width:520px}.stock-room-cycles{margin-top:14px}.stock-cycle-list-table tbody tr[data-stock-cycle-row]{cursor:pointer;transition:.15s background}.stock-cycle-list-table tbody tr[data-stock-cycle-row]:hover{background:rgba(249,115,22,.055)}.stock-cycle-list-table td:last-child{text-align:right}.stock-cycle-open{min-width:62px}@media(max-width:620px){.stock-room-kpis{grid-template-columns:1fr 1fr}.stock-cycle-list-table{min-width:560px}}
+
+/* V3.16.34 — Busqueda y orden de tablas de stock */
+.stock-table-toolbar{display:flex;align-items:center;gap:10px;padding:12px 16px 10px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.015)}
+.stock-table-search{flex:1;min-width:180px;max-width:520px;margin:0}
+.stock-table-hint{font-size:11px;color:var(--muted);white-space:nowrap}
+.stock-table th.stock-sortable{cursor:pointer;user-select:none;position:relative;padding-right:28px}
+.stock-table th.stock-sortable:hover{color:var(--text);background:rgba(255,255,255,.05)}
+.stock-table th.stock-sortable::after{content:'↕';position:absolute;right:10px;opacity:.35;font-size:12px}
+.stock-table th.stock-sortable.sort-asc::after{content:'↑';opacity:1;color:var(--accent)}
+.stock-table th.stock-sortable.sort-desc::after{content:'↓';opacity:1;color:var(--accent)}
+.stock-table tbody tr[hidden]{display:none}
+@media(max-width:760px){.stock-table-toolbar{align-items:stretch;flex-direction:column}.stock-table-search{max-width:none;width:100%}.stock-table-hint{white-space:normal}}
