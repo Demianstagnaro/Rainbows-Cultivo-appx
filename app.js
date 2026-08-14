@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.30';
+const APP_VERSION='3.16.31';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1523,13 +1523,23 @@ function renderStock(){
 
   const cycles=state.stockCycles.filter(c=>c.sala===state.stockRoom).sort((a,b)=>Number(b.ciclo)-Number(a.ciclo));
   const selected=cycles.find(c=>String(c.id)===String(state.stockCycle))||null;
-  app.innerHTML=`<section class="panel stock-page-head"><div><button id="stock-back-home" class="secondary compact-button">← Stock general</button><h2>${escapeHtml(state.stockRoom)}</h2><p class="muted">Elegí un ciclo para consultar su stock y movimientos.</p></div>${canManage?'<button id="stock-add-movement" class="primary compact-button">+ Registrar movimiento</button>':''}</section>
-  <section class="stock-cycle-selector">${cycles.map(c=>`<button class="panel stock-cycle-button ${selected&&String(selected.id)===String(c.id)?'active':''}" data-stock-cycle="${c.id}"><span>Ciclo ${c.ciclo}</span><strong>${formatGrams(stockCycleCurrent(c))}</strong><small>Inicial: ${formatGrams(c.stock_inicial)}</small></button>`).join('')}</section>
-  ${selected?renderStockCycleDetail(selected,canManage):'<section class="panel stock-placeholder">Seleccioná un ciclo para ver el detalle.</section>'}`;
-  $('stock-back-home').onclick=()=>{state.stockRoom=null;state.stockCycle=null;renderStock()};
-  app.querySelectorAll('[data-stock-cycle]').forEach(b=>b.onclick=()=>{state.stockCycle=b.dataset.stockCycle;renderStock()});
+  if(!selected){
+    const roomTotal=cycles.reduce((sum,c)=>sum+stockCycleCurrent(c),0);
+    app.innerHTML=`<section class="panel stock-page-head"><div><button id="stock-back-home" class="secondary compact-button">← Stock general</button><h2>${escapeHtml(state.stockRoom)}</h2><p class="muted">Stock disponible y ciclos de cosecha de esta sala.</p></div>${canManage?'<button id="stock-add-movement" class="primary compact-button">+ Registrar movimiento</button>':''}</section>
+    <section class="stock-kpis stock-room-kpis"><div class="panel"><span>Stock actual</span><strong>${formatGrams(roomTotal)}</strong></div><div class="panel"><span>Ciclos</span><strong>${cycles.length}</strong></div></section>
+    <section class="panel stock-detail-panel stock-room-cycles"><h3>Ciclos de cosecha</h3><div class="stock-table-wrap"><table class="stock-table stock-cycle-list-table"><thead><tr><th>Ciclo</th><th>Stock inicial</th><th>Stock actual</th><th>Genéticas</th><th></th></tr></thead><tbody>${cycles.length?cycles.map(c=>`<tr data-stock-cycle-row="${c.id}"><td><strong>Ciclo ${c.ciclo}</strong></td><td>${formatGrams(Number(c.stock_inicial)||0)}</td><td><strong>${formatGrams(stockCycleCurrent(c))}</strong></td><td>${stockCycleItems(c.id).length}</td><td><button type="button" class="secondary compact-button stock-cycle-open" data-stock-cycle="${c.id}">Ver</button></td></tr>`).join(''):'<tr><td colspan="5">No hay ciclos cargados para esta sala.</td></tr>'}</tbody></table></div></section>`;
+    $('stock-back-home').onclick=()=>{state.stockRoom=null;state.stockCycle=null;renderStock()};
+    app.querySelectorAll('[data-stock-cycle]').forEach(b=>b.onclick=()=>{state.stockCycle=b.dataset.stockCycle;renderStock()});
+    app.querySelectorAll('[data-stock-cycle-row]').forEach(row=>row.onclick=e=>{if(e.target.closest('button'))return;state.stockCycle=row.dataset.stockCycleRow;renderStock()});
+    if(canManage)$('stock-add-movement').onclick=()=>openStockMovement();
+    return;
+  }
+
+  app.innerHTML=`<section class="panel stock-page-head"><div><button id="stock-back-room" class="secondary compact-button">← ${escapeHtml(state.stockRoom)}</button><h2>${escapeHtml(state.stockRoom)} · Ciclo ${selected.ciclo}</h2><p class="muted">Detalle de stock y movimientos del ciclo.</p></div>${canManage?'<button id="stock-add-movement" class="primary compact-button">+ Registrar movimiento</button>':''}</section>
+  ${renderStockCycleDetail(selected,canManage)}`;
+  $('stock-back-room').onclick=()=>{state.stockCycle=null;renderStock()};
   if(canManage){
-    $('stock-add-movement').onclick=()=>openStockMovement(selected?.id||null);
+    $('stock-add-movement').onclick=()=>openStockMovement(selected.id);
     const addCycle=app.querySelector('[data-stock-add-cycle]');
     if(addCycle)addCycle.onclick=()=>openStockMovement(addCycle.dataset.stockAddCycle);
   }

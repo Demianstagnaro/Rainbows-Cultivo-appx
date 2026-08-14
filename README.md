@@ -964,3 +964,12 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 ## V3.16.30
 - Medrano > Stock Medrano > Dispensario: stock general, accesos Flora 1/2/3, carga de lotes de cosecha y detalle general desplegable.
 - Cada lote guarda sala, código de lote, genética, gramos iniciales/actuales y fecha de ingreso.
+
+
+## V3.16.31 — Stock Palestina con visual tipo Medrano
+- Rediseña únicamente la vista al entrar a Flora 1, Flora 2 o Flora 3 dentro de Stock Palestina.
+- Muestra resumen compacto de stock actual y cantidad de ciclos.
+- Reemplaza las tarjetas grandes de ciclos por una tabla compacta y clickeable, siguiendo el patrón visual de Medrano.
+- El detalle de cada ciclo se abre como una pantalla propia con botón para volver a la sala.
+- No modifica cálculos, movimientos, permisos ni estructura de Supabase.
+- Actualiza APP_VERSION, referencias y caché a 3.16.31.
