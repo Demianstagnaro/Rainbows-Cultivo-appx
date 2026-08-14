@@ -952,3 +952,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - El botón Medrano se oculta y bloquea para usuarios Cultivo, incluso si el dispositivo tenía Medrano guardado como sede anterior.
 - Stock Palestina se carga para Administrador y Medrano; Cosechas sigue cargándose únicamente para Administrador.
 - Requiere ejecutar el SQL V3.16.28 para migrar los roles y habilitar la nueva función segura de actualización de perfiles.
+
+
+## V3.16.29 — Stock Medrano sin Almacén
+- Elimina la ventana Almacén del módulo Stock Medrano.
+- Stock Medrano queda con Dispensario y Laboratorio.
+- Sin cambios en permisos, navegación ni lógica de Palestina.
+- Actualiza APP_VERSION, referencias y caché a 3.16.29.

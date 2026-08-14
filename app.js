@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.28';
+const APP_VERSION='3.16.29';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -975,12 +975,12 @@ function renderMedrano(){
   }
   if(mv==='stock'){
     $('screen-title').textContent='Stock Medrano';
-    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Stock Medrano</h2><p class="muted">Elegí el sector de stock que querés consultar.</p></div></div><div class="medrano-stock-grid"><button class="medrano-stock-card" data-medrano-stock="almacen" type="button"><strong>Almacén</strong><span>Stock de Almacén</span></button><button class="medrano-stock-card" data-medrano-stock="dispensario" type="button"><strong>Dispensario</strong><span>Stock de Dispensario</span></button><button class="medrano-stock-card" data-medrano-stock="laboratorio" type="button"><strong>Laboratorio</strong><span>Stock de Laboratorio</span></button></div></section>`;
+    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Stock Medrano</h2><p class="muted">Elegí el sector de stock que querés consultar.</p></div></div><div class="medrano-stock-grid"><button class="medrano-stock-card" data-medrano-stock="dispensario" type="button"><strong>Dispensario</strong><span>Stock de Dispensario</span></button><button class="medrano-stock-card" data-medrano-stock="laboratorio" type="button"><strong>Laboratorio</strong><span>Stock de Laboratorio</span></button></div></section>`;
     bindModuleNav();
     document.querySelectorAll('[data-medrano-stock]').forEach(b=>b.onclick=()=>{state.medranoView=`stock-${b.dataset.medranoStock}`;render()});
     return;
   }
-  const labels={almacen:'Almacén',dispensario:'Dispensario',laboratorio:'Laboratorio'};
+  const labels={dispensario:'Dispensario',laboratorio:'Laboratorio'};
   const key=mv.replace('stock-','');
   const label=labels[key]||'Stock';
   $('screen-title').textContent=`Stock ${label}`;
