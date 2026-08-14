@@ -1023,3 +1023,8 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Para faltantes: `Recuperado` devuelve la diferencia al stock disponible de Palestina; `Registrar pérdida` deja asentada la merma sin descontar nuevamente.
 - Para sobrantes: `Registrar excedente` deja trazabilidad de la diferencia positiva recibida en Medrano.
 - Una diferencia resuelta deja de aparecer como alerta pendiente.
+
+
+## V3.16.38 — Fix acceso Stock Palestina
+- Corrige un error de renderizado en las alertas de diferencias de recepción que impedía abrir Stock Palestina.
+- Se reemplaza una referencia inexistente `canManageStock()` por el permiso real ya utilizado por la app.

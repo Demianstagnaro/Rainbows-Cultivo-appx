@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.37';
+const APP_VERSION='3.16.38';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1650,7 +1650,7 @@ function renderPalestinaTransfers(){
       const actions=d<0
         ? `<details class="transfer-resolve-menu"><summary class="secondary compact-button">Resolver</summary><div class="transfer-resolve-options"><button type="button" class="secondary compact-button" data-resolve-transfer-item="${i.id}" data-resolution="recuperado_palestina">Recuperado</button><button type="button" class="danger compact-button" data-resolve-transfer-item="${i.id}" data-resolution="perdida">Registrar pérdida</button></div></details>`
         : `<button type="button" class="secondary compact-button" data-resolve-transfer-item="${i.id}" data-resolution="excedente">Registrar excedente</button>`;
-      return `<div><strong>${escapeHtml(i.numero_lote||'—')} · ${escapeHtml(i.nombre_historico||'')}</strong><span>Enviado: ${formatGrams(i.gramos_enviados)} · Recibido: ${formatGrams(i.gramos_recibidos)}</span><b>${escapeHtml(transferDifferenceText(i))}</b>${canManageStock()?actions:''}</div>`;
+      return `<div><strong>${escapeHtml(i.numero_lote||'—')} · ${escapeHtml(i.nombre_historico||'')}</strong><span>Enviado: ${formatGrams(i.gramos_enviados)} · Recibido: ${formatGrams(i.gramos_recibidos)}</span><b>${escapeHtml(transferDifferenceText(i))}</b>${canEditTasks()?actions:''}</div>`;
     }).join('')}</div></div>`;
   }).join('')}</div></section>`:'';
   return inTransitHtml+diffHtml;
