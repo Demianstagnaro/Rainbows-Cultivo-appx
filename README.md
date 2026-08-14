@@ -973,3 +973,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - El detalle de cada ciclo se abre como una pantalla propia con botón para volver a la sala.
 - No modifica cálculos, movimientos, permisos ni estructura de Supabase.
 - Actualiza APP_VERSION, referencias y caché a 3.16.31.
+
+
+## V3.16.32 — Número de lote en Stock Palestina
+
+- Agrega la columna **Número de lote** al detalle de stock por genética de cada ciclo en Flora 1, Flora 2 y Flora 3.
+- El número de lote se guarda en `stock_existencias.numero_lote` y sigue la regla Sala + Ciclo + Nomenclatura + fecha DDMMYY (por ejemplo `F3C9MC110826`).
+- Incluye SQL para agregar/backfillear el campo y mantenerlo automáticamente en nuevos registros.
+- Actualiza APP_VERSION, referencias y caché a 3.16.32.

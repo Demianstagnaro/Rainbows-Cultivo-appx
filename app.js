@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.31';
+const APP_VERSION='3.16.32';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1548,7 +1548,7 @@ function renderStockCycleDetail(cycle,canManage){
   const items=stockCycleItems(cycle.id);
   const movements=stockCycleMovements(cycle.id);
   return `<section class="stock-kpis"><div class="panel"><span>Stock inicial</span><strong>${formatGrams(cycle.stock_inicial)}</strong></div><div class="panel"><span>Stock actual</span><strong>${formatGrams(stockCycleCurrent(cycle))}</strong></div><div class="panel"><span>Genéticas</span><strong>${items.length}</strong></div><div class="panel"><span>Movimientos</span><strong>${movements.length}</strong></div></section>
-  <section class="panel stock-detail-panel"><h3>Stock por genética</h3><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Genética</th><th>Stock inicial</th><th>Stock actual</th></tr></thead><tbody>${items.length?items.map(item=>`<tr><td>${escapeHtml(item.nombre_historico)}</td><td>${formatGrams(Number(item.stock_inicial)||0)}</td><td><strong>${formatGrams(stockItemCurrent(item))}</strong></td></tr>`).join(''):'<tr><td colspan="3">Sin detalle cargado.</td></tr>'}</tbody></table></div></section>
+  <section class="panel stock-detail-panel"><h3>Stock por genética</h3><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Número de lote</th><th>Genética</th><th>Stock inicial</th><th>Stock actual</th></tr></thead><tbody>${items.length?items.map(item=>`<tr><td><strong>${escapeHtml(item.numero_lote||'—')}</strong></td><td>${escapeHtml(item.nombre_historico)}</td><td>${formatGrams(Number(item.stock_inicial)||0)}</td><td><strong>${formatGrams(stockItemCurrent(item))}</strong></td></tr>`).join(''):'<tr><td colspan="4">Sin detalle cargado.</td></tr>'}</tbody></table></div></section>
   <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Los movimientos históricos se conservan tal como estaban registrados en el Excel.</p></div>${canManage?`<button class="primary compact-button" data-stock-add-cycle="${cycle.id}">+ Movimiento</button>`:''}</div><div class="stock-table-wrap"><table class="stock-table movements"><thead><tr><th>Fecha</th><th>Genética / detalle</th><th>Tipo</th><th>Destino</th><th>Gramos</th></tr></thead><tbody>${movements.length?movements.map(m=>`<tr><td>${escapeHtml(stockMovementDate(m))}</td><td>${escapeHtml(stockMovementTitle(m))}</td><td><span class="stock-movement-type ${m.tipo}">${escapeHtml(m.tipo)}</span></td><td>${escapeHtml(m.destino||'—')}</td><td><strong>${formatGrams(m.gramos)}</strong></td></tr>`).join(''):'<tr><td colspan="5">No hay movimientos registrados.</td></tr>'}</tbody></table></div></section>`;
 }
 function openStockMovement(preselectedCycleId=null){
