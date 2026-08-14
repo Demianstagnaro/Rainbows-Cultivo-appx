@@ -809,3 +809,31 @@ body{
 .medrano-stock-card strong{font-size:15px;margin-bottom:2px}
 .medrano-stock-card span{font-size:11px}
 @media(max-width:560px){.medrano-top-nav{gap:4px;padding:6px}.medrano-top-nav button{font-size:10.5px;padding:8px 5px}.medrano-stock-grid{grid-template-columns:1fr}.medrano-stock-card{padding:11px 12px}}
+
+/* V3.16.26 — botones de navegación de Palestina con estilo visual de Medrano */
+.top-nav{
+  gap:6px;
+  padding:8px 12px;
+  background:rgba(11,16,32,.96);
+}
+.top-nav button{
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#1f2937;
+  color:var(--text);
+  padding:9px 8px;
+  min-height:38px;
+  font-weight:800;
+  font-size:12px;
+  cursor:pointer;
+}
+.top-nav button.active{
+  background:rgba(249,115,22,.18);
+  border-color:rgba(249,115,22,.48);
+  color:#fed7aa;
+}
+.top-nav button.active::after{display:none!important}
+@media(max-width:560px){
+  .top-nav{gap:4px;padding:6px 8px}
+  .top-nav button{font-size:10.5px;padding:8px 6px}
+}

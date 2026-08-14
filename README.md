@@ -928,3 +928,9 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Muestra la fecha actual debajo del nombre del módulo activo de Medrano, igual que en Palestina.
 - Mantiene la navegación compacta entre Stock Medrano, Administración y Dispensario.
 - Actualiza APP_VERSION, referencias y caché a 3.16.25.
+
+
+## V3.16.26 — Navegación Palestina con estilo Medrano
+- Los botones de navegación de Palestina adoptan el estilo compacto de Medrano: borde, fondo oscuro y selección naranja.
+- No cambia la estructura ni la funcionalidad de navegación.
+- Actualiza APP_VERSION, referencias y caché a 3.16.26.
