@@ -1008,3 +1008,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Al confirmar, los gramos recibidos ingresan al stock de Medrano conservando sala, genética y número de lote.
 - Si la cantidad recibida difiere de la enviada, el envío queda `Recibido con diferencia` y Stock Palestina muestra una alerta detallada.
 - La creación del envío y la recepción se ejecutan mediante RPCs transaccionales en Supabase.
+
+
+## V3.16.36 — Orden completo en Stock Palestina
+- Agrega ordenamiento por columnas al detalle del Stock general de Palestina.
+- Agrega ordenamiento por Ciclo, Stock inicial, Stock actual y cantidad de genéticas en la lista de ciclos de cada Flora.
+- Incorpora búsqueda instantánea también en esas dos tablas para mantener el mismo comportamiento que el resto del Stock.
+- Conserva el ordenamiento existente en Stock por genética y Registro de movimientos.
+- Actualiza APP_VERSION, referencias y caché a 3.16.36.
