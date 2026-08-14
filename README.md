@@ -940,3 +940,15 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Cambia únicamente el orden de los módulos principales de Medrano a: Administración, Dispensario, Stock Medrano.
 - Sin cambios funcionales adicionales.
 - Actualiza APP_VERSION y caché a 3.16.27.
+
+
+## V3.16.28 — Roles Administrador, Cultivo y Medrano
+- Se simplifican los perfiles de usuario a tres categorías: Administrador, Cultivo y Medrano.
+- Administrador conserva acceso total a Palestina, Medrano, Config, Cosechas y Stock.
+- Cultivo reemplaza al antiguo Encargado: acceso operativo a Palestina con creación/edición/completado/reprogramación de tareas, sin acceso a Medrano, Cosechas ni Stock Palestina.
+- Medrano puede entrar a Medrano y también consultar en Palestina Hoy, Calendario, Genéticas, Salas y Stock; en Palestina queda en modo lectura y no accede a Cosechas ni Config.
+- Los roles antiguos Encargado, Empleado y Lectura se interpretan temporalmente como Cultivo para evitar bloquear usuarios antes de guardar los nuevos roles.
+- Config queda exclusivamente visible para Administradores.
+- El botón Medrano se oculta y bloquea para usuarios Cultivo, incluso si el dispositivo tenía Medrano guardado como sede anterior.
+- Stock Palestina se carga para Administrador y Medrano; Cosechas sigue cargándose únicamente para Administrador.
+- Requiere ejecutar el SQL V3.16.28 para migrar los roles y habilitar la nueva función segura de actualización de perfiles.

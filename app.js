@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.27';
+const APP_VERSION='3.16.28';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -193,7 +193,9 @@ async function load(){
   const selfProfile=await db.from('perfiles').select('*').eq('id',state.session.user.id).maybeSingle();
   if(selfProfile.error)throw selfProfile.error;
   state.profile=selfProfile.data||null;
-  const admin=normalizeRole(state.profile?.rol||state.session?.user?.user_metadata?.rol)==='administrador';
+  const role=normalizeRole(state.profile?.rol||state.session?.user?.user_metadata?.rol);
+  const admin=role==='administrador';
+  const stockAccess=['administrador','medrano'].includes(role);
   const empty=()=>Promise.resolve({data:[],error:null});
   const qs=await Promise.all([
     db.from('salas').select('*'),
@@ -202,9 +204,9 @@ async function load(){
     db.from('geneticas').select('*').order('nombre'),
     admin?db.from('cosechas').select('*').order('fecha',{ascending:false}):empty(),
     admin?db.from('cosecha_geneticas').select('*'):empty(),
-    admin?db.from('stock_ciclos').select('*').order('sala').order('ciclo',{ascending:false}):empty(),
-    admin?db.from('stock_existencias').select('*').order('orden'):empty(),
-    admin?db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
+    stockAccess?db.from('stock_ciclos').select('*').order('sala').order('ciclo',{ascending:false}):empty(),
+    stockAccess?db.from('stock_existencias').select('*').order('orden'):empty(),
+    stockAccess?db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
     db.from('empleados').select('*').eq('activo',true).order('nombre'),
     db.from('tareas').select('*'),
     db.from('realizaciones_tarea').select('*'),
@@ -219,8 +221,10 @@ async function load(){
   state.generalTasks=qs[14].data||[];
   state.generalJoins=qs[15].data||[];
   if(!admin){
-    state.cosechas=[];state.cosechaDetalles=[];state.stockCycles=[];state.stockItems=[];state.stockMovements=[];
-    state.selectedHarvest=null;state.editHarvest=null;state.stockRoom=null;state.stockCycle=null;
+    state.cosechas=[];state.cosechaDetalles=[];state.selectedHarvest=null;state.editHarvest=null;
+  }
+  if(!stockAccess){
+    state.stockCycles=[];state.stockItems=[];state.stockMovements=[];state.stockRoom=null;state.stockCycle=null;
   }
 }async function refresh(){try{await load();render()}catch(e){console.error(e);app.innerHTML=`<section class="panel error-panel"><strong>Error</strong><p>${e.message}</p></section>`}}
 function subscribe(){if(state.channel)db.removeChannel(state.channel);state.channel=db.channel('rainbows-shared').on('postgres_changes',{event:'*',schema:'public'},refresh).subscribe()}
@@ -232,7 +236,12 @@ function row(t){const r=real(t),historic=historicalDone(t)&&!r,label=t.type==='e
 function findTask(id,d){return tasks(d).find(t=>String(t.id)===String(id))}
 
 function normalizeRole(value){
-  return String(value||'').trim().toLowerCase();
+  const role=String(value||'').trim().toLowerCase();
+  // Compatibilidad con roles anteriores: cualquier rol operativo de Palestina
+  // pasa a comportarse como Cultivo hasta que el administrador lo guarde con
+  // una de las tres categorías nuevas.
+  if(['encargado','empleado','lectura'].includes(role))return 'cultivo';
+  return role;
 }
 
 function currentProfile(){
@@ -244,25 +253,27 @@ function currentProfile(){
 function currentRole(){
   const profile=currentProfile();
   const metadataRole=state.session?.user?.user_metadata?.rol;
-  return normalizeRole(profile?.rol||metadataRole||'empleado');
+  return normalizeRole(profile?.rol||metadataRole||'cultivo');
 }
 
 function canViewOperations(){
-  return ['administrador','encargado','empleado','lectura'].includes(currentRole());
+  return ['administrador','cultivo','medrano'].includes(currentRole());
 }
-
-function canViewHarvestAndStock(){
+function canAccessMedrano(){
+  return ['administrador','medrano'].includes(currentRole());
+}
+function canViewHarvests(){
   return currentRole()==='administrador';
 }
-
+function canViewStock(){
+  return ['administrador','medrano'].includes(currentRole());
+}
 function canComplete(){
-  return ['administrador','encargado','empleado'].includes(currentRole());
+  return ['administrador','cultivo'].includes(currentRole());
 }
-
 function canEditTasks(){
-  return ['administrador','encargado'].includes(currentRole());
+  return ['administrador','cultivo'].includes(currentRole());
 }
-
 function canModify(){
   return canComplete();
 }
@@ -481,7 +492,7 @@ function openTaskMenu(task,d){
 
 function openRoomMenu(roomName,dateString){
   if(!canEditTasks()){
-    alert('Solo administradores y encargados pueden agregar tareas.');
+    alert('Solo Administrador y Cultivo pueden agregar tareas.');
     return;
   }
   state.menuRoom=roomName;
@@ -557,7 +568,7 @@ function bindGeneralTasks(){
 
 function openGeneralTask(task){
   if(!canEditTasks()){
-    alert('Solo administradores y encargados pueden crear o editar tareas generales.');
+    alert('Solo Administrador y Cultivo pueden crear o editar tareas generales.');
     return;
   }
   state.editGeneralTask=task||null;
@@ -640,7 +651,7 @@ function fillRoomSelect(selectedRoom=''){
 
 function openTask(dateString,t,roomName=''){
   if(!canEditTasks()){
-    alert('Solo administradores y encargados pueden crear o editar tareas.');
+    alert('Solo Administrador y Cultivo pueden crear o editar tareas.');
     return;
   }
 
@@ -905,6 +916,12 @@ $('save-genetic').onclick=async()=>{
 
 function setSite(site){
   const next=site==='medrano'?'medrano':'palestina';
+  if(next==='medrano'&&!canAccessMedrano()){
+    state.site='palestina';
+    localStorage.setItem('rainbows_site','palestina');
+    render();
+    return;
+  }
   if(state.site===next)return;
   if(next==='medrano'&&typeof stopVoiceRecognition==='function')stopVoiceRecognition({hidePanel:true,message:'Micrófono cerrado.'});
   state.site=next;
@@ -912,6 +929,10 @@ function setSite(site){
   render();
 }
 function renderSiteShell(){
+  if(state.site==='medrano'&&!canAccessMedrano()){
+    state.site='palestina';
+    localStorage.setItem('rainbows_site','palestina');
+  }
   const isPalestina=state.site!=='medrano';
   const nav=document.querySelector('.top-nav');
   const voiceButton=$('voice-button');
@@ -928,7 +949,12 @@ function renderSiteShell(){
   if(config&&!isPalestina){config.hidden=true;config.style.display='none'}
   if(help){help.hidden=!isPalestina;help.style.display=isPalestina?'inline-flex':'none'}
   if(palestina)palestina.classList.toggle('active',isPalestina);
-  if(medrano)medrano.classList.toggle('active',!isPalestina);
+  if(medrano){
+    const allowed=canAccessMedrano();
+    medrano.hidden=!allowed;
+    medrano.style.display=allowed?'':'none';
+    medrano.classList.toggle('active',allowed&&!isPalestina);
+  }
   return isPalestina;
 }
 function renderMedrano(){
@@ -977,7 +1003,7 @@ $('harvest-total').oninput=updateHarvestLineTotal;
 $('save-harvest').onclick=async()=>{try{await saveHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la cosecha.')}};
 $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
 
-document.querySelectorAll('.top-nav button').forEach(b=>{const sensitive=b.dataset.view==='harvests'||b.dataset.view==='stock';const allowed=canViewOperations()&&(!sensitive||canViewHarvestAndStock());b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',b.dataset.view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if((state.view==='harvests'||state.view==='stock')&&!canViewHarvestAndStock()){state.view='today';state.stockRoom=null;state.stockCycle=null;state.selectedHarvest=null;}if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
+document.querySelectorAll('.top-nav button').forEach(b=>{const view=b.dataset.view;const allowed=canViewOperations()&&(view==='harvests'?canViewHarvests():view==='stock'?canViewStock():true);b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='harvests'&&!canViewHarvests()){state.view='today';state.selectedHarvest=null;}if(state.view==='stock'&&!canViewStock()){state.view='today';state.stockRoom=null;state.stockCycle=null;}if(state.view==='settings'&&currentRole()!=='administrador')state.view='today';if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
 function renderHelp(){
   $('screen-title').textContent='Ayuda';
   app.innerHTML=`
@@ -1706,7 +1732,7 @@ async function restoreBackup(){
 function renderSettings(){
   if(currentRole()!=='administrador'){state.view='today';render();return}
   $('screen-title').textContent='Config';
-  const permissions={administrador:'Acceso total: puede gestionar usuarios, roles, empleados, genéticas, tareas, configuración y backups.',encargado:'Puede crear, editar, completar y reprogramar tareas, además de consultar Hoy, Salas y Calendario. No accede a resultados de Cosechas ni a Stock Palestina.',empleado:'Puede consultar Hoy, Salas y Calendario, y completar tareas indicando quiénes las realizaron. No accede a resultados de Cosechas ni a Stock Palestina.',lectura:'Puede consultar Hoy, Salas y Calendario; no puede modificar información ni acceder a resultados de Cosechas o Stock Palestina.'};
+  const permissions={administrador:'Acceso total a Palestina y Medrano. Puede gestionar usuarios, roles, empleados, genéticas, tareas, configuración, cosechas, stock y backups.',cultivo:'Acceso únicamente a Palestina. Tiene los mismos permisos operativos que el antiguo Encargado: puede crear, editar, completar y reprogramar tareas y trabajar con Hoy, Calendario, Salas y Genéticas. No accede a Medrano, Cosechas ni Stock Palestina.',medrano:'Acceso a toda la sección Medrano y acceso de consulta en Palestina a Hoy, Calendario, Genéticas, Salas y Stock. No puede modificar la operación de Palestina ni acceder a Cosechas o Config.'};
   app.innerHTML=`
     <section class="panel backup-panel">
       <div class="backup-panel-head"><div><h3>Copias de seguridad</h3><p class="muted">Backup completo diario, conservación por 30 días y descarga local.</p></div><button id="refresh-backups" class="secondary compact-button">Actualizar</button></div>
@@ -1717,15 +1743,15 @@ function renderSettings(){
     </section>
     <section class="panel"><h3>Empleados compartidos</h3><textarea id="emps" class="text-input" style="min-height:150px">${state.empleados.map(e=>e.nombre).join('\n')}</textarea></section>
     <button id="save-conf" class="primary">Guardar configuración</button>
-    <section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>`<div class="user-row"><div><strong>${p.nombre||'Sin nombre'}</strong><div class="user-email">${p.email||''}</div></div><select class="text-input user-role" data-role="${p.id}">${['administrador','encargado','empleado','lectura'].map(r=>`<option value="${r}" ${p.rol===r?'selected':''}>${r}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${p.id}" ${p.activo?'checked':''}> Activo</label>${p.id!==state.session.user.id?`<button class="danger user-delete" data-delete-user="${p.id}" data-delete-name="${p.nombre||p.email||'este usuario'}">Eliminar cuenta</button>`:'<span class="self-account">Tu cuenta</span>'}</div>`).join('')}</div><p><button id="save-users" class="primary">Guardar usuarios</button></p></section>
+    <section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>`<div class="user-row"><div><strong>${p.nombre||'Sin nombre'}</strong><div class="user-email">${p.email||''}</div></div><select class="text-input user-role" data-role="${p.id}">${['administrador','cultivo','medrano'].map(r=>`<option value="${r}" ${normalizeRole(p.rol)===r?'selected':''}>${r.charAt(0).toUpperCase()+r.slice(1)}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${p.id}" ${p.activo?'checked':''}> Activo</label>${p.id!==state.session.user.id?`<button class="danger user-delete" data-delete-user="${p.id}" data-delete-name="${p.nombre||p.email||'este usuario'}">Eliminar cuenta</button>`:'<span class="self-account">Tu cuenta</span>'}</div>`).join('')}</div><p><button id="save-users" class="primary">Guardar usuarios</button></p></section>
     <section class="panel"><h3>Permisos por rol</h3><div class="role-permissions">${Object.entries(permissions).map(([role,text])=>`<div class="role-permission"><strong>${role}</strong><p>${text}</p></div>`).join('')}</div></section>
-    <section class="panel account-summary"><p><strong>Usuario:</strong> ${state.session.user.email}</p><p><strong>Rol:</strong> ${state.profile?.rol||'empleado'}</p><p><strong>Tus permisos:</strong> ${permissions[state.profile?.rol||'empleado']}</p><p><strong>Versión:</strong> ${APP_VERSION}</p></section>`;
+    <section class="panel account-summary"><p><strong>Usuario:</strong> ${state.session.user.email}</p><p><strong>Rol:</strong> ${currentRole().charAt(0).toUpperCase()+currentRole().slice(1)}</p><p><strong>Tus permisos:</strong> ${permissions[currentRole()]||''}</p><p><strong>Versión:</strong> ${APP_VERSION}</p></section>`;
   $('save-conf').onclick=saveConfig;
   $('create-backup').onclick=createManualBackup;
   $('download-backup').onclick=downloadBackup;
   $('restore-backup').onclick=restoreBackup;
   $('refresh-backups').onclick=loadBackups;
-  $('save-users').onclick=async()=>{try{for(const p of state.perfiles){const q=await db.rpc('admin_actualizar_perfil',{objetivo_id:p.id,nuevo_rol:document.querySelector(`[data-role="${p.id}"]`).value,nuevo_activo:document.querySelector(`[data-active="${p.id}"]`).checked});if(q.error)throw q.error}await refresh();alert('Usuarios actualizados.')}catch(e){console.error(e);alert(e.message||'No se pudieron actualizar los usuarios.')}};
+  $('save-users').onclick=async()=>{try{for(const p of state.perfiles){const q=await db.rpc('admin_actualizar_perfil_v2',{objetivo_id:p.id,nuevo_rol:document.querySelector(`[data-role="${p.id}"]`).value,nuevo_activo:document.querySelector(`[data-active="${p.id}"]`).checked});if(q.error)throw q.error}await refresh();alert('Usuarios actualizados.')}catch(e){console.error(e);alert(e.message||'No se pudieron actualizar los usuarios.')}};
   app.querySelectorAll('[data-delete-user]').forEach(btn=>btn.onclick=async()=>{const name=btn.dataset.deleteName;if(!confirm(`¿Eliminar definitivamente la cuenta de ${name}? Esta acción no se puede deshacer.`))return;btn.disabled=true;try{const q=await db.rpc('admin_eliminar_usuario',{objetivo_id:btn.dataset.deleteUser});if(q.error)throw q.error;await refresh();alert('Cuenta eliminada.')}catch(e){console.error(e);btn.disabled=false;alert(e.message||'No se pudo eliminar la cuenta. Verificá que hayas ejecutado el SQL de V3.2.1.')}});
   loadBackups();
 }
@@ -1738,7 +1764,7 @@ $('save-harvest').onclick=async()=>{try{await saveHarvestDialog()}catch(e){conso
 $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
 
 $('site-palestina').onclick=()=>setSite('palestina');$('site-medrano').onclick=()=>setSite('medrano');
-document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{const target=b.dataset.view;if((target==='harvests'||target==='stock')&&!canViewHarvestAndStock()){state.view='today';render();return}state.view=target;state.room=null;state.roomDay=null;state.day=null;if(state.view!=='stock'){state.stockRoom=null;state.stockCycle=null}render()});$('sign-out').onclick=()=>db.auth.signOut();$('sign-in').onclick=async()=>{
+document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{const target=b.dataset.view;if(target==='harvests'&&!canViewHarvests()){state.view='today';render();return}if(target==='stock'&&!canViewStock()){state.view='today';render();return}state.view=target;state.room=null;state.roomDay=null;state.day=null;if(state.view!=='stock'){state.stockRoom=null;state.stockCycle=null}render()});$('sign-out').onclick=()=>db.auth.signOut();$('sign-in').onclick=async()=>{
   const message=$('auth-message');
   message.textContent='Ingresando…';
   try{
@@ -2073,7 +2099,8 @@ function stopVoiceRecognition({hidePanel=false,message='Micrófono cerrado.'}={}
 function closeVoicePanel(){stopVoiceRecognition({hidePanel:true});}
 function setVoiceView(view){
   if(!canViewOperations())return false;
-  if((view==='harvests'||view==='stock')&&!canViewHarvestAndStock())return false;
+  if(view==='harvests'&&!canViewHarvests())return false;
+  if(view==='stock'&&!canViewStock())return false;
   state.view=view;state.room=null;state.roomDay=null;state.day=null;
   if(view!=='stock'){state.stockRoom=null;state.stockCycle=null}
   render();
@@ -2343,9 +2370,9 @@ function voiceStockItemMatches(item,genetic){
 }
 function executeVoiceStockQuery(rawText){
   const text=normalizeVoiceText(rawText);
-  if(!canViewHarvestAndStock()){
+  if(!canViewStock()){
     const stockWords=['stock','existencia','existencias','disponible','disponibles','movimiento','movimientos','salida','salidas','entrada','entradas','ajuste','ajustes','medrano','consumo interno','descarte'];
-    if(stockWords.some(w=>text.includes(w)))return {ok:true,message:'El acceso a Stock Palestina está reservado a administradores.'};
+    if(stockWords.some(w=>text.includes(w)))return {ok:true,message:'Tu usuario no tiene acceso a Stock Palestina.'};
     return null;
   }
   // Si la frase habla explícitamente de tareas, no debe caer nunca en Stock aunque diga 'queda/quedan'.
@@ -2514,7 +2541,7 @@ function voiceHarvestCurrentTotal(){
 }
 function executeVoiceHarvestAction(rawText){
   const text=normalizeVoiceText(rawText);
-  if(!canViewHarvestAndStock()&&(text.includes('cosecha')||state.view==='harvests'))return {ok:true,message:'La carga y edición de cosechas está reservada a administradores.'};
+  if(!canViewHarvests()&&(text.includes('cosecha')||state.view==='harvests'))return {ok:true,message:'La carga y edición de cosechas está reservada a administradores.'};
   const dialogOpen=voiceHarvestDialogOpen();
   const createAction=/(^|\s)(nueva|nuevo|crear|crea|cargar|carga|registrar|registra|agregar|agrega)(\s|$)/.test(text)&&(text.includes('cosecha')||text.includes('cosechas'));
 
@@ -2715,7 +2742,7 @@ function voiceHarvestLabel(h){
 }
 function executeVoiceHarvestQuery(rawText){
   const text=normalizeVoiceText(rawText);
-  if(!canViewHarvestAndStock()){
+  if(!canViewHarvests()){
     // Las preguntas de calendario ("cuándo se cosecha") siguen permitidas y las resuelve Salas.
     if(text.includes('cuando')&&(text.includes('cosecha')||text.includes('cosechar')))return null;
     const harvestWords=['cosecha','cosechas','cosecho','cosechado','produjo','produccion','rindio','rinde','rendimiento','meta','desvio'];
@@ -3329,7 +3356,8 @@ function executeVoiceNavigation(rawText){
   const destination=destinations.find(item=>item.labels.some(label=>text.includes(label)));
   if(destination&&(text.includes('abrir')||text.includes('ir a')||text.includes('mostrar')||destination.labels.some(label=>text===label))){
     if(destination.view==='settings'&&currentRole()!=='administrador')return {ok:false,message:'La configuración solo está disponible para administradores.'};
-    if((destination.view==='harvests'||destination.view==='stock')&&!canViewHarvestAndStock())return {ok:false,message:`${destination.name} solo está disponible para administradores.`};
+    if(destination.view==='harvests'&&!canViewHarvests())return {ok:false,message:`${destination.name} solo está disponible para administradores.`};
+    if(destination.view==='stock'&&!canViewStock())return {ok:false,message:`Tu usuario no tiene acceso a ${destination.name}.`};
     setVoiceView(destination.view);
     return {ok:true,message:`Listo. Abrí ${destination.name}.`};
   }
