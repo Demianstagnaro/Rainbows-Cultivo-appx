@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.36';
+const APP_VERSION='3.16.37';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1613,13 +1613,46 @@ function transferDifferenceText(item){
   if(Math.abs(d)<0.005)return 'Sin diferencia';
   return d<0?`Faltan ${formatGrams(Math.abs(d))}`:`Sobran ${formatGrams(d)}`;
 }
+
+function transferDifferenceAmount(item){
+  return (Number(item.gramos_recibidos)||0)-(Number(item.gramos_enviados)||0);
+}
+function transferDifferenceResolved(item){
+  return !!item.diferencia_resolucion;
+}
+async function resolveTransferDifference(itemId, action){
+  const item=(state.stockTransferItems||[]).find(i=>String(i.id)===String(itemId));
+  if(!item)throw new Error('No se encontró la diferencia.');
+  const d=transferDifferenceAmount(item);
+  let label='';
+  if(action==='recuperado_palestina') label=`¿Confirmar que ${formatGrams(Math.abs(d))} fueron recuperados en Palestina y devolverlos al stock disponible del lote?`;
+  else if(action==='perdida') label=`¿Registrar ${formatGrams(Math.abs(d))} como pérdida definitiva del traslado? No se descontará stock otra vez porque ya salió de Palestina.`;
+  else if(action==='excedente') label=`¿Registrar ${formatGrams(Math.abs(d))} como excedente recibido en Medrano?`;
+  else throw new Error('Resolución inválida.');
+  if(!confirm(label))return;
+  const q=await db.rpc('resolver_diferencia_transferencia',{p_item_id:itemId,p_resolucion:action,p_observaciones:null});
+  if(q.error)throw q.error;
+  await refresh();
+}
 function isMedranoDestination(value){return stockSearchNormalize(value)==='medrano'}
 function renderPalestinaTransfers(){
   const inTransit=(state.stockTransfers||[]).filter(t=>t.estado==='en_viaje');
-  const differences=(state.stockTransfers||[]).filter(t=>t.estado==='recibido_con_diferencia');
+  const differences=(state.stockTransfers||[]).filter(t=>{
+    if(t.estado!=='recibido_con_diferencia')return false;
+    return transferItems(t.id).some(i=>Math.abs(transferDifferenceAmount(i))>=0.005&&!transferDifferenceResolved(i));
+  });
   if(!inTransit.length&&!differences.length)return '';
   const inTransitHtml=inTransit.length?`<section class="panel transfer-panel"><div class="stock-section-head"><div><h3>En viaje a Medrano</h3><p class="muted">Estas cantidades ya salieron del stock disponible de Palestina y todavía no ingresaron al stock de Medrano.</p></div><span class="transfer-badge en-viaje">${inTransit.length} envío${inTransit.length===1?'':'s'}</span></div><div class="transfer-list">${inTransit.map(t=>{const items=transferItems(t.id);return `<div class="transfer-card"><div class="transfer-card-head"><div><strong>${escapeHtml(t.sala_origen||'Palestina')} · Ciclo ${escapeHtml(String(t.ciclo_numero??'—'))}</strong><span>${t.fecha_envio?parse(t.fecha_envio).toLocaleDateString('es-AR'):'—'} · ${formatGrams(transferSentTotal(t))}</span></div><span class="transfer-badge en-viaje">En viaje</span></div><div class="transfer-items-mini">${items.map(i=>`<span><strong>${escapeHtml(i.numero_lote||'—')}</strong> · ${escapeHtml(i.nombre_historico||'Sin genética')} · ${formatGrams(i.gramos_enviados)}</span>`).join('')}</div></div>`}).join('')}</div></section>`:'';
-  const diffHtml=differences.length?`<section class="panel transfer-panel transfer-alert"><div class="stock-section-head"><div><h3>⚠ Diferencias de recepción en Medrano</h3><p class="muted">La cantidad confirmada en Medrano no coincide con la cantidad enviada desde Palestina.</p></div><span class="transfer-badge diferencia">${differences.length} alerta${differences.length===1?'':'s'}</span></div><div class="transfer-list">${differences.map(t=>{const items=transferItems(t.id).filter(i=>Math.abs((Number(i.gramos_recibidos)||0)-(Number(i.gramos_enviados)||0))>=0.005);return `<div class="transfer-card"><div class="transfer-card-head"><div><strong>${escapeHtml(t.sala_origen||'Palestina')} · Ciclo ${escapeHtml(String(t.ciclo_numero??'—'))}</strong><span>Recibido ${t.fecha_recepcion?new Date(t.fecha_recepcion).toLocaleString('es-AR'):'—'}</span></div><span class="transfer-badge diferencia">Con diferencia</span></div><div class="transfer-diff-grid">${items.map(i=>`<div><strong>${escapeHtml(i.numero_lote||'—')} · ${escapeHtml(i.nombre_historico||'')}</strong><span>Enviado: ${formatGrams(i.gramos_enviados)} · Recibido: ${formatGrams(i.gramos_recibidos)}</span><b>${escapeHtml(transferDifferenceText(i))}</b></div>`).join('')}</div></div>`}).join('')}</div></section>`:'';
+  const diffHtml=differences.length?`<section class="panel transfer-panel transfer-alert"><div class="stock-section-head"><div><h3>⚠ Diferencias de recepción en Medrano</h3><p class="muted">Revisá cada diferencia y cerrala indicando qué ocurrió con ese stock.</p></div><span class="transfer-badge diferencia">${differences.length} alerta${differences.length===1?'':'s'}</span></div><div class="transfer-list">${differences.map(t=>{
+    const items=transferItems(t.id).filter(i=>Math.abs(transferDifferenceAmount(i))>=0.005&&!transferDifferenceResolved(i));
+    return `<div class="transfer-card"><div class="transfer-card-head"><div><strong>${escapeHtml(t.sala_origen||'Palestina')} · Ciclo ${escapeHtml(String(t.ciclo_numero??'—'))}</strong><span>Recibido ${t.fecha_recepcion?new Date(t.fecha_recepcion).toLocaleString('es-AR'):'—'}</span></div><span class="transfer-badge diferencia">Con diferencia</span></div><div class="transfer-diff-grid">${items.map(i=>{
+      const d=transferDifferenceAmount(i);
+      const actions=d<0
+        ? `<details class="transfer-resolve-menu"><summary class="secondary compact-button">Resolver</summary><div class="transfer-resolve-options"><button type="button" class="secondary compact-button" data-resolve-transfer-item="${i.id}" data-resolution="recuperado_palestina">Recuperado</button><button type="button" class="danger compact-button" data-resolve-transfer-item="${i.id}" data-resolution="perdida">Registrar pérdida</button></div></details>`
+        : `<button type="button" class="secondary compact-button" data-resolve-transfer-item="${i.id}" data-resolution="excedente">Registrar excedente</button>`;
+      return `<div><strong>${escapeHtml(i.numero_lote||'—')} · ${escapeHtml(i.nombre_historico||'')}</strong><span>Enviado: ${formatGrams(i.gramos_enviados)} · Recibido: ${formatGrams(i.gramos_recibidos)}</span><b>${escapeHtml(transferDifferenceText(i))}</b>${canManageStock()?actions:''}</div>`;
+    }).join('')}</div></div>`;
+  }).join('')}</div></section>`:'';
   return inTransitHtml+diffHtml;
 }
 
@@ -1642,6 +1675,7 @@ function renderStock(){
     <button id="stock-current-toggle" class="panel stock-current-summary stock-current-toggle" type="button" aria-expanded="${state.stockOverviewExpanded?'true':'false'}" aria-controls="stock-current-detail"><span>Stock actual disponible</span><strong>${formatGrams(total)}</strong><small>${available.length} partida${available.length===1?'':'s'} con saldo · ${state.stockOverviewExpanded?'Ocultar detalle':'Ver detalle'}</small><span class="stock-toggle-icon" aria-hidden="true">${state.stockOverviewExpanded?'▲':'▼'}</span></button>
     <section id="stock-current-detail" class="panel stock-overview-panel ${state.stockOverviewExpanded?'':'stock-overview-collapsed'}" data-stock-table-tools>${stockTableToolbar('Buscar por sala, ciclo, genética o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Sala</th><th data-sort-type="number">Ciclo</th><th data-sort-type="text">Genética</th><th data-sort-type="number">Disponible</th></tr></thead><tbody>${available.length?available.map(x=>`<tr><td>${escapeHtml(x.cycle.sala)}</td><td data-sort-value="${Number(x.cycle.ciclo)||0}">Ciclo ${x.cycle.ciclo}</td><td>${escapeHtml(x.item.nombre_historico)}</td><td data-sort-value="${Number(x.current)||0}"><strong>${formatGrams(x.current)}</strong></td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="4">No hay stock disponible cargado.</td></tr>'}</tbody></table></div></section>`;
     bindStockTableTools(app);
+    app.querySelectorAll('[data-resolve-transfer-item]').forEach(b=>b.onclick=()=>resolveTransferDifference(b.dataset.resolveTransferItem,b.dataset.resolution));
     $('stock-current-toggle').onclick=()=>{state.stockOverviewExpanded=!state.stockOverviewExpanded;renderStock()};
     app.querySelectorAll('[data-stock-room]').forEach(b=>b.onclick=()=>{state.stockRoom=b.dataset.stockRoom;state.stockCycle=null;renderStock()});
     if(canManage)$('stock-add-movement').onclick=()=>openStockMovement();

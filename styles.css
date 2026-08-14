@@ -867,3 +867,9 @@ body{
 .transfer-diff-grid{display:grid;gap:8px;margin-top:10px}.transfer-diff-grid>div{display:grid;gap:2px;padding:8px 10px;border-radius:9px;background:rgba(255,173,51,.07)}.transfer-diff-grid span{font-size:.8rem;color:var(--muted)}.transfer-diff-grid b{font-size:.82rem;color:#ffc66d}
 .reception-items{display:grid;gap:9px;margin:12px 0}.reception-item-row{display:grid;grid-template-columns:minmax(0,1fr) 135px;gap:12px;align-items:end;padding:10px;border:1px solid var(--border);border-radius:10px}.reception-item-row>div{display:grid;gap:3px}.reception-item-row span{font-size:.8rem;color:var(--muted)}.reception-item-row label{font-size:.78rem;color:var(--muted)}.reception-help{margin-top:8px}
 @media(max-width:600px){.transfer-card-head{flex-direction:column}.reception-item-row{grid-template-columns:1fr}.reception-item-row label{max-width:180px}}
+
+/* V3.16.37 — resolución de diferencias Palestina → Medrano */
+.transfer-resolve-menu{margin-top:10px;position:relative}
+.transfer-resolve-menu>summary{list-style:none;display:inline-flex;cursor:pointer}
+.transfer-resolve-menu>summary::-webkit-details-marker{display:none}
+.transfer-resolve-options{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}

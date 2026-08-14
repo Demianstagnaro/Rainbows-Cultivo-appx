@@ -1016,3 +1016,10 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Incorpora búsqueda instantánea también en esas dos tablas para mantener el mismo comportamiento que el resto del Stock.
 - Conserva el ordenamiento existente en Stock por genética y Registro de movimientos.
 - Actualiza APP_VERSION, referencias y caché a 3.16.36.
+
+
+## V3.16.37 — Resolución de diferencias de transferencias
+- Las alertas de diferencias Palestina → Medrano se resuelven por lote/genética.
+- Para faltantes: `Recuperado` devuelve la diferencia al stock disponible de Palestina; `Registrar pérdida` deja asentada la merma sin descontar nuevamente.
+- Para sobrantes: `Registrar excedente` deja trazabilidad de la diferencia positiva recibida en Medrano.
+- Una diferencia resuelta deja de aparecer como alerta pendiente.
