@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.32';
+const APP_VERSION='3.16.33';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1549,7 +1549,7 @@ function renderStockCycleDetail(cycle,canManage){
   const movements=stockCycleMovements(cycle.id);
   return `<section class="stock-kpis"><div class="panel"><span>Stock inicial</span><strong>${formatGrams(cycle.stock_inicial)}</strong></div><div class="panel"><span>Stock actual</span><strong>${formatGrams(stockCycleCurrent(cycle))}</strong></div><div class="panel"><span>Genéticas</span><strong>${items.length}</strong></div><div class="panel"><span>Movimientos</span><strong>${movements.length}</strong></div></section>
   <section class="panel stock-detail-panel"><h3>Stock por genética</h3><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Número de lote</th><th>Genética</th><th>Stock inicial</th><th>Stock actual</th></tr></thead><tbody>${items.length?items.map(item=>`<tr><td><strong>${escapeHtml(item.numero_lote||'—')}</strong></td><td>${escapeHtml(item.nombre_historico)}</td><td>${formatGrams(Number(item.stock_inicial)||0)}</td><td><strong>${formatGrams(stockItemCurrent(item))}</strong></td></tr>`).join(''):'<tr><td colspan="4">Sin detalle cargado.</td></tr>'}</tbody></table></div></section>
-  <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Los movimientos históricos se conservan tal como estaban registrados en el Excel.</p></div>${canManage?`<button class="primary compact-button" data-stock-add-cycle="${cycle.id}">+ Movimiento</button>`:''}</div><div class="stock-table-wrap"><table class="stock-table movements"><thead><tr><th>Fecha</th><th>Genética / detalle</th><th>Tipo</th><th>Destino</th><th>Gramos</th></tr></thead><tbody>${movements.length?movements.map(m=>`<tr><td>${escapeHtml(stockMovementDate(m))}</td><td>${escapeHtml(stockMovementTitle(m))}</td><td><span class="stock-movement-type ${m.tipo}">${escapeHtml(m.tipo)}</span></td><td>${escapeHtml(m.destino||'—')}</td><td><strong>${formatGrams(m.gramos)}</strong></td></tr>`).join(''):'<tr><td colspan="5">No hay movimientos registrados.</td></tr>'}</tbody></table></div></section>`;
+  <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Los movimientos históricos se conservan tal como estaban registrados en el Excel.</p></div>${canManage?`<button class="primary compact-button" data-stock-add-cycle="${cycle.id}">+ Movimiento</button>`:''}</div><div class="stock-table-wrap"><table class="stock-table movements"><thead><tr><th>Fecha</th><th>Número de lote</th><th>Genética / detalle</th><th>Tipo</th><th>Destino</th><th>Gramos</th></tr></thead><tbody>${movements.length?movements.map(m=>{const item=state.stockItems.find(x=>String(x.id)===String(m.existencia_id));const lote=m.numero_lote||item?.numero_lote||'—';return`<tr><td>${escapeHtml(stockMovementDate(m))}</td><td><strong>${escapeHtml(lote)}</strong></td><td>${escapeHtml(stockMovementTitle(m))}</td><td><span class="stock-movement-type ${m.tipo}">${escapeHtml(m.tipo)}</span></td><td>${escapeHtml(m.destino||'—')}</td><td><strong>${formatGrams(m.gramos)}</strong></td></tr>`}).join(''):'<tr><td colspan="6">No hay movimientos registrados.</td></tr>'}</tbody></table></div></section>`;
 }
 function openStockMovement(preselectedCycleId=null){
   const cycles=state.stockCycles.filter(c=>!state.stockRoom||c.sala===state.stockRoom).sort((a,b)=>a.sala.localeCompare(b.sala)||Number(b.ciclo)-Number(a.ciclo));
@@ -1658,7 +1658,7 @@ async function saveStockMovement(){
     const available=stockItemCurrent(item);
     if(type==='salida'&&grams>available+0.0001)throw new Error(`La salida de ${item.nombre_historico} supera su stock disponible (${formatGrams(available)}).`);
     total+=grams;
-    payloads.push({ciclo_id:cycleId,existencia_id:itemId,genetica_id:item.genetica_id||null,nombre_historico:item.nombre_historico||null,fecha:date,fecha_text:null,tipo:type,destino:destination,gramos:grams,observaciones:notes,afecta_stock:true,origen:'app'});
+    payloads.push({ciclo_id:cycleId,existencia_id:itemId,genetica_id:item.genetica_id||null,nombre_historico:item.nombre_historico||null,numero_lote:item.numero_lote||null,fecha:date,fecha_text:null,tipo:type,destino:destination,gramos:grams,observaciones:notes,afecta_stock:true,origen:'app'});
   }
   const cycle=state.stockCycles.find(c=>String(c.id)===String(cycleId));
   const typeLabel=type==='salida'?'salida':'entrada';

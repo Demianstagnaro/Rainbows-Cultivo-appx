@@ -981,3 +981,12 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - El número de lote se guarda en `stock_existencias.numero_lote` y sigue la regla Sala + Ciclo + Nomenclatura + fecha DDMMYY (por ejemplo `F3C9MC110826`).
 - Incluye SQL para agregar/backfillear el campo y mantenerlo automáticamente en nuevos registros.
 - Actualiza APP_VERSION, referencias y caché a 3.16.32.
+
+
+## V3.16.33 — Número de lote en movimientos de Stock Palestina
+
+- Agrega `numero_lote` a los movimientos de Stock Palestina.
+- Los movimientos nuevos guardan el lote de la existencia seleccionada.
+- El registro de movimientos muestra una columna `Número de lote`.
+- Los movimientos históricos pueden completarse por SQL desde su existencia asociada.
+- Actualiza APP_VERSION, referencias y caché a 3.16.33.
