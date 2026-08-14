@@ -1000,3 +1000,11 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 - Incluye Stock por genética y Registro de movimientos en Palestina, y detalle general/lotes por Flora en Medrano.
 - No requiere cambios de Supabase.
 - Actualiza APP_VERSION, referencias y caché a 3.16.34.
+
+## V3.16.35 — Transferencias Palestina → Medrano
+- Una salida de Stock Palestina con destino exacto `Medrano` crea un envío `En viaje`.
+- El stock sale inmediatamente del disponible de Palestina, pero no ingresa a Medrano hasta la recepción.
+- Medrano > Stock Medrano > Dispensario muestra recepciones pendientes y permite confirmar gramos reales por lote.
+- Al confirmar, los gramos recibidos ingresan al stock de Medrano conservando sala, genética y número de lote.
+- Si la cantidad recibida difiere de la enviada, el envío queda `Recibido con diferencia` y Stock Palestina muestra una alerta detallada.
+- La creación del envío y la recepción se ejecutan mediante RPCs transaccionales en Supabase.

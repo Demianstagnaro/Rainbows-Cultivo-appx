@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.json?v=3.11.2">
   <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3.11.2">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.11.2">
-  <link rel="stylesheet" href="styles.css?v=3.16.34">
+  <link rel="stylesheet" href="styles.css?v=3.16.35">
 </head>
 <body>
   <section id="auth-screen" class="auth-screen">
@@ -78,10 +78,12 @@
     <menu><button type="button" id="cancel-stock-movement" class="secondary">Cancelar</button><button type="button" id="save-stock-movement" class="primary">Guardar movimientos</button></menu>
   </form></dialog>
 
+  <dialog id="medrano-reception-dialog" class="dialog stock-reception-dialog"><form method="dialog"><h3>Confirmar recepción de Palestina</h3><p id="medrano-reception-summary" class="muted"></p><div id="medrano-reception-items" class="reception-items"></div><label class="field-label">Observaciones de recepción<textarea id="medrano-reception-notes" class="text-input" placeholder="Opcional"></textarea></label><p class="muted reception-help">Las cantidades que confirmes son las que ingresarán efectivamente al stock de Medrano. Si difieren de lo enviado, Palestina verá una alerta.</p><menu><button type="button" id="cancel-medrano-reception" class="secondary">Cancelar</button><button type="button" id="confirm-medrano-reception" class="primary">Confirmar recepción</button></menu></form></dialog>
+
   <dialog id="medrano-lot-dialog" class="dialog"><form method="dialog"><h3>Ingresar lote al Dispensario</h3><label class="field-label">Sala<select id="medrano-lot-room" class="text-input"><option>Flora 1</option><option>Flora 2</option><option>Flora 3</option></select></label><label class="field-label">Código de lote<input id="medrano-lot-code" class="text-input" maxlength="80" placeholder="Ej.: F3C9MC110826"></label><label class="field-label">Genética<select id="medrano-lot-genetic" class="text-input"></select></label><label class="field-label">Cantidad ingresada (g)<input id="medrano-lot-grams" class="text-input" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0"></label><label class="field-label">Fecha de ingreso<input id="medrano-lot-date" class="text-input" type="date"></label><menu><button type="button" id="cancel-medrano-lot" class="secondary">Cancelar</button><button type="button" id="save-medrano-lot" class="primary">Guardar lote</button></menu></form></dialog>
 
   <dialog id="plant-dialog" class="dialog"><form method="dialog"><h3 id="plant-dialog-title">Editar planta</h3><label class="field-label">Estado<select id="plant-status" class="text-input"><option value="occupied">Ocupada</option><option value="empty">Vacía</option></select></label><label class="field-label">Genética<select id="plant-genetics" class="text-input"></select></label><label class="field-label">Observaciones<textarea id="plant-notes" class="text-input"></textarea></label><menu><button type="button" id="cancel-plant" class="secondary">Cancelar</button><button type="button" id="save-plant" class="primary">Guardar</button></menu></form></dialog>
 
-  <script type="module" src="app.js?v=3.16.34"></script>
+  <script type="module" src="app.js?v=3.16.35"></script>
 </body>
 </html>

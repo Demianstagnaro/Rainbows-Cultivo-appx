@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.34';
+const APP_VERSION='3.16.35';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Vege 1',type:'vege'},{name:'Vege 2',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
+const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],stockTransfers:[],stockTransferItems:[],pendingStockTransfer:null,medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
 state.site=localStorage.getItem('rainbows_site')==='medrano'?'medrano':'palestina';
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
@@ -208,6 +208,8 @@ async function load(){
     stockAccess?db.from('stock_existencias').select('*').order('orden'):empty(),
     stockAccess?db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
     canAccessMedrano()?db.from('medrano_dispensario_lotes').select('*').order('fecha_ingreso',{ascending:false}).order('created_at',{ascending:false}):empty(),
+    (stockAccess||canAccessMedrano())?db.from('stock_transferencias').select('*').order('created_at',{ascending:false}):empty(),
+    (stockAccess||canAccessMedrano())?db.from('stock_transferencia_items').select('*').order('created_at'):empty(),
     db.from('empleados').select('*').eq('activo',true).order('nombre'),
     db.from('tareas').select('*'),
     db.from('realizaciones_tarea').select('*'),
@@ -217,10 +219,10 @@ async function load(){
     db.from('tarea_general_empleados').select('*')
   ]);
   for(const q of qs)if(q.error)throw q.error;
-  [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.medranoDispensarioLots,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,15).map(q=>q.data||[]);
+  [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.medranoDispensarioLots,state.stockTransfers,state.stockTransferItems,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,17).map(q=>q.data||[]);
   state.profile=state.profile||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;
-  state.generalTasks=qs[15].data||[];
-  state.generalJoins=qs[16].data||[];
+  state.generalTasks=qs[17].data||[];
+  state.generalJoins=qs[18].data||[];
   if(!admin){
     state.cosechas=[];state.cosechaDetalles=[];state.selectedHarvest=null;state.editHarvest=null;
   }
@@ -993,6 +995,43 @@ async function saveMedranoLot(){
   closeDialog('medrano-lot-dialog');
   await refresh();
 }
+
+function openMedranoReceptionDialog(transferId){
+  if(!canManageMedrano())return;
+  const transfer=(state.stockTransfers||[]).find(t=>String(t.id)===String(transferId));
+  if(!transfer||transfer.estado!=='en_viaje')return;
+  const items=transferItems(transfer.id);
+  state.pendingStockTransfer=transfer.id;
+  $('medrano-reception-summary').innerHTML=`<strong>${escapeHtml(transfer.sala_origen||'Palestina')} · Ciclo ${escapeHtml(String(transfer.ciclo_numero??'—'))}</strong><br>${transfer.fecha_envio?parse(transfer.fecha_envio).toLocaleDateString('es-AR'):'—'} · Enviado: ${formatGrams(transferSentTotal(transfer))}`;
+  $('medrano-reception-items').innerHTML=items.map(i=>`<div class="reception-item-row" data-reception-item="${i.id}"><div><strong>${escapeHtml(i.numero_lote||'—')}</strong><span>${escapeHtml(i.nombre_historico||'Sin genética')} · Enviado ${formatGrams(i.gramos_enviados)}</span></div><label>Recibido (g)<input class="text-input reception-grams" type="number" min="0" step="0.01" inputmode="decimal" value="${Number(i.gramos_enviados)||0}"></label></div>`).join('');
+  $('medrano-reception-notes').value='';
+  $('medrano-reception-dialog').showModal();
+}
+async function confirmMedranoReception(){
+  const transferId=state.pendingStockTransfer;
+  const transfer=(state.stockTransfers||[]).find(t=>String(t.id)===String(transferId));
+  if(!transfer)throw new Error('No se encontró el envío.');
+  const rows=[...$('medrano-reception-items').querySelectorAll('[data-reception-item]')];
+  if(!rows.length)throw new Error('El envío no tiene lotes para recibir.');
+  const items=rows.map(row=>{
+    const grams=Number(row.querySelector('.reception-grams')?.value);
+    if(!Number.isFinite(grams)||grams<0)throw new Error('Revisá las cantidades recibidas.');
+    return {item_id:row.dataset.receptionItem,gramos_recibidos:grams};
+  });
+  const hasDiff=items.some(x=>{
+    const source=transferItems(transferId).find(i=>String(i.id)===String(x.item_id));
+    return Math.abs((Number(source?.gramos_enviados)||0)-x.gramos_recibidos)>=0.005;
+  });
+  const msg=hasDiff?'Hay diferencias respecto de lo enviado. Se registrarán exactamente las cantidades que cargaste y Palestina recibirá una alerta.\n\n¿Confirmar recepción?':'Las cantidades coinciden con el envío de Palestina.\n\n¿Confirmar recepción?';
+  if(!confirm(msg))return;
+  const notes=$('medrano-reception-notes').value.trim()||null;
+  const q=await db.rpc('confirmar_transferencia_medrano',{p_transferencia_id:transferId,p_items:items,p_observaciones:notes});
+  if(q.error)throw q.error;
+  state.pendingStockTransfer=null;
+  closeDialog('medrano-reception-dialog');
+  await refresh();
+}
+
 function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
   const rooms=['Flora 1','Flora 2','Flora 3'];
   const lots=state.medranoDispensarioLots||[];
@@ -1000,7 +1039,10 @@ function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
   $('screen-title').textContent='Stock Dispensario';
   if(!state.medranoDispensarioRoom){
     const detailRows=[...lots].sort((a,b)=>String(b.fecha_ingreso||'').localeCompare(String(a.fecha_ingreso||''))||String(a.codigo_lote||'').localeCompare(String(b.codigo_lote||'')));
+    const pendingTransfers=(state.stockTransfers||[]).filter(t=>t.estado==='en_viaje');
+    const pendingHtml=pendingTransfers.length?`<section class="panel transfer-panel"><div class="stock-section-head"><div><h3>Recepciones pendientes</h3><p class="muted">Estos envíos salieron de Palestina pero todavía no forman parte del stock de Medrano.</p></div><span class="transfer-badge en-viaje">${pendingTransfers.length} pendiente${pendingTransfers.length===1?'':'s'}</span></div><div class="transfer-list">${pendingTransfers.map(t=>{const its=transferItems(t.id);return `<div class="transfer-card"><div class="transfer-card-head"><div><strong>${escapeHtml(t.sala_origen||'Palestina')} · Ciclo ${escapeHtml(String(t.ciclo_numero??'—'))}</strong><span>${t.fecha_envio?parse(t.fecha_envio).toLocaleDateString('es-AR'):'—'} · ${formatGrams(transferSentTotal(t))}</span></div>${canManageMedrano()?`<button type="button" class="primary compact-button" data-confirm-transfer="${t.id}">Confirmar recepción</button>`:''}</div><div class="transfer-items-mini">${its.map(i=>`<span><strong>${escapeHtml(i.numero_lote||'—')}</strong> · ${escapeHtml(i.nombre_historico||'')} · ${formatGrams(i.gramos_enviados)}</span>`).join('')}</div></div>`}).join('')}</div></section>`:'';
     app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-stock-list-back" class="secondary compact-button" type="button">← Stock Medrano</button><h2>Dispensario</h2><p class="muted">Stock general disponible en Medrano.</p></div></section>
+    ${pendingHtml}
     <section class="stock-room-selector">${rooms.map(room=>{const roomLots=lots.filter(l=>l.sala===room);const roomTotal=medranoDispensarioTotal(roomLots);return `<button class="panel stock-room-button" data-medrano-dispensario-room="${room}"><span>${room}</span><strong>${formatGrams(roomTotal)}</strong><small>${roomLots.length} lote${roomLots.length===1?'':'s'}</small></button>`}).join('')}</section>
     <button id="medrano-current-toggle" class="panel stock-current-summary stock-current-toggle" type="button" aria-expanded="${state.medranoDispensarioExpanded?'true':'false'}" aria-controls="medrano-current-detail"><span>Stock general Medrano</span><strong>${formatGrams(total)}</strong><small>${lots.length} lote${lots.length===1?'':'s'} cargado${lots.length===1?'':'s'} · ${state.medranoDispensarioExpanded?'Ocultar detalle':'Ver detalle'}</small><span class="stock-toggle-icon" aria-hidden="true">${state.medranoDispensarioExpanded?'▲':'▼'}</span></button>
     <section id="medrano-current-detail" class="panel stock-overview-panel ${state.medranoDispensarioExpanded?'':'stock-overview-collapsed'}" data-stock-table-tools>${stockTableToolbar('Buscar por sala, lote, genética, fecha o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Sala</th><th data-sort-type="text">Lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha</th><th data-sort-type="number">Disponible</th></tr></thead><tbody>${detailRows.length?detailRows.map(l=>`<tr><td>${escapeHtml(l.sala)}</td><td><strong>${escapeHtml(l.codigo_lote)}</strong></td><td>${escapeHtml(medranoLotGeneticName(l))}</td><td data-sort-value="${escapeHtml(l.fecha_ingreso||'')}">${l.fecha_ingreso?parse(l.fecha_ingreso).toLocaleDateString('es-AR'):'—'}</td><td data-sort-value="${Number(l.gramos_actual)||0}"><strong>${formatGrams(Number(l.gramos_actual)||0)}</strong></td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="5">No hay lotes cargados todavía.</td></tr>'}</tbody></table></div></section>`;
@@ -1009,6 +1051,7 @@ function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
     $('medrano-stock-list-back').onclick=()=>{state.medranoView='stock';render()};
     $('medrano-current-toggle').onclick=()=>{state.medranoDispensarioExpanded=!state.medranoDispensarioExpanded;render()};
     app.querySelectorAll('[data-medrano-dispensario-room]').forEach(b=>b.onclick=()=>{state.medranoDispensarioRoom=b.dataset.medranoDispensarioRoom;render()});
+    app.querySelectorAll('[data-confirm-transfer]').forEach(b=>b.onclick=()=>openMedranoReceptionDialog(b.dataset.confirmTransfer));
     return;
   }
   const room=state.medranoDispensarioRoom;
@@ -1059,6 +1102,8 @@ function renderMedrano(){
 }
 function render(){const isPalestina=renderSiteShell();const cb=$('header-config');if(cb&&isPalestina){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';state.room=null;state.roomDay=null;state.day=null;render()}}const hb=$('header-help');if(hb&&isPalestina){hb.onclick=()=>{state.view='help';state.room=null;state.roomDay=null;state.day=null;render()}}if(!isPalestina){renderMedrano();return} $('today-label').textContent=nice(today());
 $('cancel-medrano-lot').onclick=()=>closeDialog('medrano-lot-dialog');
+$('cancel-medrano-reception').onclick=()=>{state.pendingStockTransfer=null;closeDialog('medrano-reception-dialog')};
+$('confirm-medrano-reception').onclick=async()=>{const b=$('confirm-medrano-reception');b.disabled=true;try{await confirmMedranoReception()}catch(e){console.error(e);alert(e.message||'No se pudo confirmar la recepción.')}finally{b.disabled=false}};
 $('save-medrano-lot').onclick=async()=>{const b=$('save-medrano-lot');b.disabled=true;try{await saveMedranoLot()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el lote.')}finally{b.disabled=false}};
 $('cancel-stock-movement').onclick=()=>closeDialog('stock-movement-dialog');
 $('stock-movement-cycle').onchange=updateStockMovementItems;
@@ -1557,6 +1602,27 @@ function stockTableToolbar(placeholder='Buscar por lote, genética, fecha, peso.
   return `<div class="stock-table-toolbar"><input type="search" class="text-input stock-table-search" data-stock-search placeholder="${escapeHtml(placeholder)}" autocomplete="off" spellcheck="false"><span class="stock-table-hint">Tocá una columna para ordenar</span></div>`;
 }
 
+
+function transferItems(transferId){
+  return (state.stockTransferItems||[]).filter(x=>String(x.transferencia_id)===String(transferId));
+}
+function transferSentTotal(t){return transferItems(t.id).reduce((s,x)=>s+(Number(x.gramos_enviados)||0),0)}
+function transferReceivedTotal(t){return transferItems(t.id).reduce((s,x)=>s+(Number(x.gramos_recibidos)||0),0)}
+function transferDifferenceText(item){
+  const sent=Number(item.gramos_enviados)||0,rec=Number(item.gramos_recibidos)||0,d=rec-sent;
+  if(Math.abs(d)<0.005)return 'Sin diferencia';
+  return d<0?`Faltan ${formatGrams(Math.abs(d))}`:`Sobran ${formatGrams(d)}`;
+}
+function isMedranoDestination(value){return stockSearchNormalize(value)==='medrano'}
+function renderPalestinaTransfers(){
+  const inTransit=(state.stockTransfers||[]).filter(t=>t.estado==='en_viaje');
+  const differences=(state.stockTransfers||[]).filter(t=>t.estado==='recibido_con_diferencia');
+  if(!inTransit.length&&!differences.length)return '';
+  const inTransitHtml=inTransit.length?`<section class="panel transfer-panel"><div class="stock-section-head"><div><h3>En viaje a Medrano</h3><p class="muted">Estas cantidades ya salieron del stock disponible de Palestina y todavía no ingresaron al stock de Medrano.</p></div><span class="transfer-badge en-viaje">${inTransit.length} envío${inTransit.length===1?'':'s'}</span></div><div class="transfer-list">${inTransit.map(t=>{const items=transferItems(t.id);return `<div class="transfer-card"><div class="transfer-card-head"><div><strong>${escapeHtml(t.sala_origen||'Palestina')} · Ciclo ${escapeHtml(String(t.ciclo_numero??'—'))}</strong><span>${t.fecha_envio?parse(t.fecha_envio).toLocaleDateString('es-AR'):'—'} · ${formatGrams(transferSentTotal(t))}</span></div><span class="transfer-badge en-viaje">En viaje</span></div><div class="transfer-items-mini">${items.map(i=>`<span><strong>${escapeHtml(i.numero_lote||'—')}</strong> · ${escapeHtml(i.nombre_historico||'Sin genética')} · ${formatGrams(i.gramos_enviados)}</span>`).join('')}</div></div>`}).join('')}</div></section>`:'';
+  const diffHtml=differences.length?`<section class="panel transfer-panel transfer-alert"><div class="stock-section-head"><div><h3>⚠ Diferencias de recepción en Medrano</h3><p class="muted">La cantidad confirmada en Medrano no coincide con la cantidad enviada desde Palestina.</p></div><span class="transfer-badge diferencia">${differences.length} alerta${differences.length===1?'':'s'}</span></div><div class="transfer-list">${differences.map(t=>{const items=transferItems(t.id).filter(i=>Math.abs((Number(i.gramos_recibidos)||0)-(Number(i.gramos_enviados)||0))>=0.005);return `<div class="transfer-card"><div class="transfer-card-head"><div><strong>${escapeHtml(t.sala_origen||'Palestina')} · Ciclo ${escapeHtml(String(t.ciclo_numero??'—'))}</strong><span>Recibido ${t.fecha_recepcion?new Date(t.fecha_recepcion).toLocaleString('es-AR'):'—'}</span></div><span class="transfer-badge diferencia">Con diferencia</span></div><div class="transfer-diff-grid">${items.map(i=>`<div><strong>${escapeHtml(i.numero_lote||'—')} · ${escapeHtml(i.nombre_historico||'')}</strong><span>Enviado: ${formatGrams(i.gramos_enviados)} · Recibido: ${formatGrams(i.gramos_recibidos)}</span><b>${escapeHtml(transferDifferenceText(i))}</b></div>`).join('')}</div></div>`}).join('')}</div></section>`:'';
+  return inTransitHtml+diffHtml;
+}
+
 function renderStock(){
   $('screen-title').textContent='Stock Palestina';
   const canManage=canEditTasks();
@@ -1571,6 +1637,7 @@ function renderStock(){
 
   if(!state.stockRoom){
     app.innerHTML=`<section class="panel stock-page-head"><div><h2>Stock Palestina</h2><p class="muted">Stock disponible actualmente en el edificio Palestina.</p></div>${canManage?'<button id="stock-add-movement" class="primary compact-button">+ Registrar movimiento</button>':''}</section>
+    ${renderPalestinaTransfers()}
     <section class="stock-room-selector">${rooms.map(room=>{const cycles=state.stockCycles.filter(c=>c.sala===room);const roomTotal=cycles.reduce((s,c)=>s+stockCycleCurrent(c),0);return `<button class="panel stock-room-button" data-stock-room="${room}"><span>${room}</span><strong>${formatGrams(roomTotal)}</strong><small>${cycles.length} ciclos</small></button>`}).join('')}</section>
     <button id="stock-current-toggle" class="panel stock-current-summary stock-current-toggle" type="button" aria-expanded="${state.stockOverviewExpanded?'true':'false'}" aria-controls="stock-current-detail"><span>Stock actual disponible</span><strong>${formatGrams(total)}</strong><small>${available.length} partida${available.length===1?'':'s'} con saldo · ${state.stockOverviewExpanded?'Ocultar detalle':'Ver detalle'}</small><span class="stock-toggle-icon" aria-hidden="true">${state.stockOverviewExpanded?'▲':'▼'}</span></button>
     <section id="stock-current-detail" class="panel stock-overview-panel ${state.stockOverviewExpanded?'':'stock-overview-collapsed'}"><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Sala</th><th>Ciclo</th><th>Genética</th><th>Disponible</th></tr></thead><tbody>${available.length?available.map(x=>`<tr><td>${escapeHtml(x.cycle.sala)}</td><td>Ciclo ${x.cycle.ciclo}</td><td>${escapeHtml(x.item.nombre_historico)}</td><td><strong>${formatGrams(x.current)}</strong></td></tr>`).join(''):'<tr><td colspan="4">No hay stock disponible cargado.</td></tr>'}</tbody></table></div></section>`;
@@ -1726,8 +1793,16 @@ async function saveStockMovement(){
   const destinationLabel=destination?`\nDestino / origen: ${destination}`:'';
   const ok=confirm(`Se registrarán ${payloads.length} ${typeLabel}${payloads.length===1?'':'s'} por un total de ${formatGrams(total)}.\n${cycle?`${cycle.sala} · Ciclo ${cycle.ciclo}`:'Stock'}${destinationLabel}\n\n¿Confirmar movimientos?`);
   if(!ok)return;
-  const q=await db.from('stock_movimientos').insert(payloads);
-  if(q.error)throw q.error;
+  if(type==='salida'&&isMedranoDestination(destination)){
+    const missingLot=payloads.find(p=>!String(p.numero_lote||'').trim());
+    if(missingLot)throw new Error(`No se puede enviar ${missingLot.nombre_historico||'una genética'} a Medrano porque no tiene número de lote.`);
+    const rpcItems=payloads.map(p=>({existencia_id:p.existencia_id,gramos:p.gramos}));
+    const q=await db.rpc('crear_transferencia_medrano',{p_ciclo_id:cycleId,p_fecha:date,p_observaciones:notes,p_items:rpcItems});
+    if(q.error)throw q.error;
+  }else{
+    const q=await db.from('stock_movimientos').insert(payloads);
+    if(q.error)throw q.error;
+  }
   closeDialog('stock-movement-dialog');
   state.stockRoom=cycle?.sala||state.stockRoom;
   state.stockCycle=cycleId;
