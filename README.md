@@ -1028,3 +1028,7 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 ## V3.16.38 — Fix acceso Stock Palestina
 - Corrige un error de renderizado en las alertas de diferencias de recepción que impedía abrir Stock Palestina.
 - Se reemplaza una referencia inexistente `canManageStock()` por el permiso real ya utilizado por la app.
+
+
+## V3.16.39 — Administración Medrano · Pacientes
+Registro de pacientes con alta/edición, orden por columnas y búsqueda instantánea.

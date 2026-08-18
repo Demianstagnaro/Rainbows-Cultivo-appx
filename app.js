@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.38';
+const APP_VERSION='3.16.39';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Vege 1',type:'vege'},{name:'Vege 2',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],stockTransfers:[],stockTransferItems:[],pendingStockTransfer:null,medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
+const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],medranoPatients:[],editMedranoPatient:null,stockTransfers:[],stockTransferItems:[],pendingStockTransfer:null,medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
 state.site=localStorage.getItem('rainbows_site')==='medrano'?'medrano':'palestina';
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
@@ -208,6 +208,7 @@ async function load(){
     stockAccess?db.from('stock_existencias').select('*').order('orden'):empty(),
     stockAccess?db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
     canAccessMedrano()?db.from('medrano_dispensario_lotes').select('*').order('fecha_ingreso',{ascending:false}).order('created_at',{ascending:false}):empty(),
+    canAccessMedrano()?db.from('medrano_pacientes').select('*').order('apellido').order('nombre'):empty(),
     (stockAccess||canAccessMedrano())?db.from('stock_transferencias').select('*').order('created_at',{ascending:false}):empty(),
     (stockAccess||canAccessMedrano())?db.from('stock_transferencia_items').select('*').order('created_at'):empty(),
     db.from('empleados').select('*').eq('activo',true).order('nombre'),
@@ -219,10 +220,10 @@ async function load(){
     db.from('tarea_general_empleados').select('*')
   ]);
   for(const q of qs)if(q.error)throw q.error;
-  [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.medranoDispensarioLots,state.stockTransfers,state.stockTransferItems,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,17).map(q=>q.data||[]);
+  [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.medranoDispensarioLots,state.medranoPatients,state.stockTransfers,state.stockTransferItems,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,18).map(q=>q.data||[]);
   state.profile=state.profile||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;
-  state.generalTasks=qs[17].data||[];
-  state.generalJoins=qs[18].data||[];
+  state.generalTasks=qs[18].data||[];
+  state.generalJoins=qs[19].data||[];
   if(!admin){
     state.cosechas=[];state.cosechaDetalles=[];state.selectedHarvest=null;state.editHarvest=null;
   }
@@ -1065,6 +1066,69 @@ function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
   $('medrano-dispensario-back').onclick=()=>{state.medranoDispensarioRoom=null;render()};
   const addLot=$('medrano-add-lot');if(addLot)addLot.onclick=()=>openMedranoLotDialog(room);
 }
+
+function medranoPatientDate(value){return value?parse(value).toLocaleDateString('es-AR'):'—'}
+function openMedranoPatientDialog(patient=null){
+  if(!canManageMedrano())return;
+  state.editMedranoPatient=patient||null;
+  $('medrano-patient-dialog-title').textContent=patient?'Editar paciente':'Nuevo paciente';
+  $('medrano-patient-member').value=patient?.numero_socio||'';
+  $('medrano-patient-name').value=patient?.nombre||'';
+  $('medrano-patient-lastname').value=patient?.apellido||'';
+  $('medrano-patient-dni').value=patient?.dni||'';
+  $('medrano-patient-phone').value=patient?.telefono||'';
+  $('medrano-patient-address').value=patient?.domicilio||'';
+  $('medrano-patient-link-code').value=patient?.codigo_vinculacion||'';
+  $('medrano-patient-entry-date').value=patient?.fecha_ingreso||ymd(today());
+  $('medrano-patient-sex').value=patient?.sexo||'';
+  $('medrano-patient-referred').value=patient?.referido||'';
+  $('medrano-patient-reprocann-expiry').value=patient?.fecha_vencimiento_reprocann||'';
+  $('medrano-patient-dialog').showModal();
+}
+async function saveMedranoPatient(){
+  if(!canManageMedrano())throw new Error('No tenés permiso para modificar pacientes.');
+  const payload={
+    numero_socio:$('medrano-patient-member').value.trim(),
+    nombre:$('medrano-patient-name').value.trim(),
+    apellido:$('medrano-patient-lastname').value.trim(),
+    dni:$('medrano-patient-dni').value.trim(),
+    telefono:$('medrano-patient-phone').value.trim()||null,
+    domicilio:$('medrano-patient-address').value.trim()||null,
+    codigo_vinculacion:$('medrano-patient-link-code').value.trim()||null,
+    fecha_ingreso:$('medrano-patient-entry-date').value||null,
+    sexo:$('medrano-patient-sex').value||null,
+    referido:$('medrano-patient-referred').value.trim()||null,
+    fecha_vencimiento_reprocann:$('medrano-patient-reprocann-expiry').value||null,
+    updated_at:new Date().toISOString()
+  };
+  if(!payload.numero_socio||!payload.nombre||!payload.apellido||!payload.dni)throw new Error('Completá Número de socio, Nombre, Apellido y DNI.');
+  let q;
+  if(state.editMedranoPatient?.id)q=await db.from('medrano_pacientes').update(payload).eq('id',state.editMedranoPatient.id);
+  else{payload.creado_por=state.session.user.id;q=await db.from('medrano_pacientes').insert(payload);}
+  if(q.error)throw q.error;
+  state.editMedranoPatient=null;
+  closeDialog('medrano-patient-dialog');
+  await refresh();
+}
+function renderMedranoPatients(medranoNav,bindModuleNav){
+  $('screen-title').textContent='Pacientes';
+  const rows=state.medranoPatients||[];
+  app.innerHTML=`${medranoNav}
+  <section class="panel stock-page-head"><div><button id="medrano-patients-back" class="secondary compact-button" type="button">← Administración</button><h2>Pacientes</h2><p class="muted">Registro general de pacientes de Medrano.</p></div>${canManageMedrano()?'<button id="medrano-add-patient" class="primary compact-button" type="button">+ Nuevo paciente</button>':''}</section>
+  <section class="panel stock-detail-panel medrano-patients-panel" data-stock-table-tools>
+    <div class="stock-section-head"><div><h3>Registro de pacientes</h3><p class="muted">${rows.length} paciente${rows.length===1?'':'s'} registrado${rows.length===1?'':'s'}</p></div></div>
+    ${stockTableToolbar('Buscar por socio, nombre, apellido, DNI, teléfono, domicilio, código, sexo, referido o fecha...')}
+    <div class="stock-table-wrap medrano-patients-table-wrap"><table class="stock-table medrano-patients-table">
+      <thead><tr><th data-sort-type="text">Nº socio</th><th data-sort-type="text">Nombre</th><th data-sort-type="text">Apellido</th><th data-sort-type="text">DNI</th><th data-sort-type="text">Teléfono</th><th data-sort-type="text">Domicilio</th><th data-sort-type="text">Código de vinculación</th><th data-sort-type="date">Fecha de ingreso</th><th data-sort-type="text">Sexo</th><th data-sort-type="text">Referido</th><th data-sort-type="date">Vencimiento Reprocann</th>${canManageMedrano()?'<th>Acción</th>':''}</tr></thead>
+      <tbody>${rows.length?rows.map(p=>`<tr><td><strong>${escapeHtml(p.numero_socio||'')}</strong></td><td>${escapeHtml(p.nombre||'')}</td><td>${escapeHtml(p.apellido||'')}</td><td>${escapeHtml(p.dni||'')}</td><td>${escapeHtml(p.telefono||'—')}</td><td>${escapeHtml(p.domicilio||'—')}</td><td>${escapeHtml(p.codigo_vinculacion||'—')}</td><td data-sort-value="${escapeHtml(p.fecha_ingreso||'')}">${medranoPatientDate(p.fecha_ingreso)}</td><td>${escapeHtml(p.sexo||'—')}</td><td>${escapeHtml(p.referido||'—')}</td><td data-sort-value="${escapeHtml(p.fecha_vencimiento_reprocann||'')}">${medranoPatientDate(p.fecha_vencimiento_reprocann)}</td>${canManageMedrano()?`<td><button type="button" class="secondary compact-button" data-edit-medrano-patient="${p.id}">Editar</button></td>`:''}</tr>`).join(''):`<tr data-empty-row="1"><td colspan="${canManageMedrano()?12:11}">Todavía no hay pacientes registrados.</td></tr>`}</tbody>
+    </table></div>
+  </section>`;
+  bindModuleNav(); bindStockTableTools(app);
+  $('medrano-patients-back').onclick=()=>{state.medranoView='administracion';render()};
+  const add=$('medrano-add-patient');if(add)add.onclick=()=>openMedranoPatientDialog();
+  app.querySelectorAll('[data-edit-medrano-patient]').forEach(b=>b.onclick=()=>{const p=(state.medranoPatients||[]).find(x=>String(x.id)===String(b.dataset.editMedranoPatient));if(p)openMedranoPatientDialog(p)});
+}
+
 function renderMedrano(){
   $('today-label').textContent=nice(today());
   let mv=state.medranoView||'stock';
@@ -1074,12 +1138,16 @@ function renderMedrano(){
   const medranoNav=`<nav class="medrano-top-nav" aria-label="Módulos de Medrano"><button type="button" data-medrano-module="administracion" class="${module==='administracion'?'active':''}">Administración</button><button type="button" data-medrano-module="dispensario" class="${module==='dispensario'?'active':''}">Dispensario</button><button type="button" data-medrano-module="stock" class="${module==='stock'?'active':''}">Stock Medrano</button></nav>`;
   const bindModuleNav=()=>document.querySelectorAll('[data-medrano-module]').forEach(b=>b.onclick=()=>{state.medranoView=b.dataset.medranoModule;state.medranoDispensarioRoom=null;render()});
 
-  if(mv==='administracion'||mv==='dispensario'){
-    const label=mv==='administracion'?'Administración':'Dispensario';
-    $('screen-title').textContent=label;
+  if(mv==='administracion'){
+    $('screen-title').textContent='Administración';
+    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Administración</h2></div></div><div class="medrano-stock-grid"><button class="medrano-stock-card" id="medrano-open-patients" type="button"><strong>Pacientes</strong><span>Registro de pacientes</span></button></div></section>`;
+    bindModuleNav(); $('medrano-open-patients').onclick=()=>{state.medranoView='administracion-pacientes';render()}; return;
+  }
+  if(mv==='administracion-pacientes'){renderMedranoPatients(medranoNav,bindModuleNav);return}
+  if(mv==='dispensario'){
+    const label='Dispensario'; $('screen-title').textContent=label;
     app.innerHTML=`${medranoNav}<section class="panel medrano-stock-detail medrano-module-panel"><div class="medrano-section-head"><div><h2>${label}</h2></div></div><div class="medrano-empty-stock"><strong>${label}</strong><p class="muted">Todavía no configuramos el contenido de esta sección.</p></div></section>`;
-    bindModuleNav();
-    return;
+    bindModuleNav(); return;
   }
   if(mv==='stock'){
     $('screen-title').textContent='Stock Medrano';
@@ -1105,6 +1173,8 @@ $('cancel-medrano-lot').onclick=()=>closeDialog('medrano-lot-dialog');
 $('cancel-medrano-reception').onclick=()=>{state.pendingStockTransfer=null;closeDialog('medrano-reception-dialog')};
 $('confirm-medrano-reception').onclick=async()=>{const b=$('confirm-medrano-reception');b.disabled=true;try{await confirmMedranoReception()}catch(e){console.error(e);alert(e.message||'No se pudo confirmar la recepción.')}finally{b.disabled=false}};
 $('save-medrano-lot').onclick=async()=>{const b=$('save-medrano-lot');b.disabled=true;try{await saveMedranoLot()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el lote.')}finally{b.disabled=false}};
+$('cancel-medrano-patient').onclick=()=>{state.editMedranoPatient=null;closeDialog('medrano-patient-dialog')};
+$('save-medrano-patient').onclick=async()=>{const b=$('save-medrano-patient');b.disabled=true;try{await saveMedranoPatient()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el paciente.')}finally{b.disabled=false}};
 $('cancel-stock-movement').onclick=()=>closeDialog('stock-movement-dialog');
 $('stock-movement-cycle').onchange=updateStockMovementItems;
 $('stock-movement-type').onchange=updateStockMovementItems;
