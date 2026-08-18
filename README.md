@@ -1050,3 +1050,11 @@ Registro de pacientes con alta/edición, orden por columnas y búsqueda instant�
 - Registro diario con Producto, Cantidad, Nombre de paciente y Fecha.
 - Alta/edición de comandas.
 - Lista del día con búsqueda instantánea y orden por columnas.
+
+
+## V3.16.43 — Comandas · historial y navegación
+- En Administración, Comandas aparece antes que Pacientes.
+- Se elimina el texto auxiliar “Tocá en cada columna para ordenar” de las listas.
+- “+ Nueva comanda” pasa al panel Comandas del día.
+- Nuevo Historial de comandas con navegación Año → Mes → Día.
+- Cada día histórico conserva búsqueda, orden por columnas y edición.
