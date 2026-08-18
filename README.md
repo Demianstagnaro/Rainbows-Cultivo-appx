@@ -1036,3 +1036,10 @@ Registro de pacientes con alta/edición, orden por columnas y búsqueda instant�
 
 ## V3.16.40 — Fix Cancelar Paciente
 - El botón Cancelar del diálogo de alta/edición de pacientes ahora cierra correctamente sin guardar cambios.
+
+
+## V3.16.41 — Fix creación de cuentas
+- El alta muestra el error real de Supabase en lugar de `[]`.
+- Validación de nombre, correo y contraseña.
+- La migración asociada reemplaza el trigger antiguo de perfiles por uno compatible con los roles actuales.
+- Las cuentas nuevas ingresan por defecto con rol `cultivo`; un Administrador puede cambiarlas luego a `medrano` o `administrador` desde Config.

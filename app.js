@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.40';
+const APP_VERSION='3.16.41';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2145,26 +2145,56 @@ $('save-reset-password').onclick=async()=>{
     message.textContent=error.message||'No se pudo actualizar la contraseña.';
   }
 };
+
+function readableAuthError(error){
+  if(!error)return 'No se pudo crear la cuenta.';
+  if(typeof error==='string')return error;
+  const parts=[
+    error.message,
+    error.error_description,
+    error.details,
+    error.hint,
+    error.code&&`Código: ${error.code}`
+  ].filter(Boolean);
+  if(parts.length)return parts.join(' · ');
+  try{
+    const json=JSON.stringify(error);
+    return json&&json!=='{}'&&json!=='[]'?json:'No se pudo crear la cuenta. Revisá la configuración de usuarios en Supabase.';
+  }catch(_){
+    return 'No se pudo crear la cuenta. Revisá la configuración de usuarios en Supabase.';
+  }
+}
 $('sign-up').onclick=async()=>{
   const message=$('auth-message');
+  const button=$('sign-up');
+  const nombre=$('auth-name').value.trim();
+  const email=$('auth-email').value.trim();
+  const password=$('auth-password').value;
+  if(!nombre){message.textContent='Ingresá el nombre.';return}
+  if(!email){message.textContent='Ingresá el correo.';return}
+  if(password.length<6){message.textContent='La contraseña debe tener al menos 6 caracteres.';return}
   message.textContent='Creando cuenta…';
+  button.disabled=true;
   try{
     const q=await db.auth.signUp({
-      email:$('auth-email').value.trim(),
-      password:$('auth-password').value,
+      email,
+      password,
       options:{
-        data:{nombre:$('auth-name').value.trim()},
+        data:{nombre},
         emailRedirectTo:'https://demianstagnaro.github.io/Rainbows-Cultivo-appx/'
       }
     });
-    if(q.error) throw q.error;
+    if(q.error)throw q.error;
+    if(!q.data?.user)throw new Error('Supabase no devolvió el usuario creado.');
     message.textContent=q.data.session
       ? 'Cuenta creada. Cargando datos…'
       : 'Cuenta creada. Revisá el correo de confirmación.';
-    if(q.data.session) scheduleStart(q.data.session);
+    if(q.data.session)scheduleStart(q.data.session);
   }catch(error){
-    console.error(error);
-    message.textContent=error.message||'No se pudo crear la cuenta.';
+    console.error('Error al crear cuenta:',error);
+    message.textContent=readableAuthError(error);
+  }finally{
+    button.disabled=false;
   }
 };
 let startingSessionId=null;
