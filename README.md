@@ -1043,3 +1043,10 @@ Registro de pacientes con alta/edición, orden por columnas y búsqueda instant�
 - Validación de nombre, correo y contraseña.
 - La migración asociada reemplaza el trigger antiguo de perfiles por uno compatible con los roles actuales.
 - Las cuentas nuevas ingresan por defecto con rol `cultivo`; un Administrador puede cambiarlas luego a `medrano` o `administrador` desde Config.
+
+
+## V3.16.42 — Administración Medrano · Comandas
+- Nuevo módulo Administración > Comandas.
+- Registro diario con Producto, Cantidad, Nombre de paciente y Fecha.
+- Alta/edición de comandas.
+- Lista del día con búsqueda instantánea y orden por columnas.

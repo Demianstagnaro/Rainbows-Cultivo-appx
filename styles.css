@@ -875,3 +875,6 @@ body{
 .transfer-resolve-options{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 
 .medrano-patients-table{min-width:1550px}.medrano-patients-table-wrap{overflow-x:auto}.patient-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.patient-form-wide{grid-column:1/-1}@media(max-width:700px){.patient-form-grid{grid-template-columns:1fr}.patient-form-wide{grid-column:auto}}
+
+/* V3.16.42 — Comandas Medrano */
+.medrano-orders-table{min-width:760px}
