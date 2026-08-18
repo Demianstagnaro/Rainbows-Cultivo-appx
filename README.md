@@ -1032,3 +1032,7 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 
 ## V3.16.39 — Administración Medrano · Pacientes
 Registro de pacientes con alta/edición, orden por columnas y búsqueda instantánea.
+
+
+## V3.16.40 — Fix Cancelar Paciente
+- El botón Cancelar del diálogo de alta/edición de pacientes ahora cierra correctamente sin guardar cambios.

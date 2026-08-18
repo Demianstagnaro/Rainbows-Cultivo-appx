@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.39';
+const APP_VERSION='3.16.40';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1173,7 +1173,7 @@ $('cancel-medrano-lot').onclick=()=>closeDialog('medrano-lot-dialog');
 $('cancel-medrano-reception').onclick=()=>{state.pendingStockTransfer=null;closeDialog('medrano-reception-dialog')};
 $('confirm-medrano-reception').onclick=async()=>{const b=$('confirm-medrano-reception');b.disabled=true;try{await confirmMedranoReception()}catch(e){console.error(e);alert(e.message||'No se pudo confirmar la recepción.')}finally{b.disabled=false}};
 $('save-medrano-lot').onclick=async()=>{const b=$('save-medrano-lot');b.disabled=true;try{await saveMedranoLot()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el lote.')}finally{b.disabled=false}};
-$('cancel-medrano-patient').onclick=()=>{state.editMedranoPatient=null;closeDialog('medrano-patient-dialog')};
+$('cancel-medrano-patient').onclick=()=>{state.editMedranoPatient=null;const d=$('medrano-patient-dialog');if(d?.open)d.close();};
 $('save-medrano-patient').onclick=async()=>{const b=$('save-medrano-patient');b.disabled=true;try{await saveMedranoPatient()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el paciente.')}finally{b.disabled=false}};
 $('cancel-stock-movement').onclick=()=>closeDialog('stock-movement-dialog');
 $('stock-movement-cycle').onchange=updateStockMovementItems;
