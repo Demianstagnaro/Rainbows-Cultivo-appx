@@ -878,3 +878,20 @@ body{
 
 /* V3.16.42 — Comandas Medrano */
 .medrano-orders-table{min-width:760px}
+
+
+/* V3.16.44 — Stock: movimientos agrupados por día + buscador de genéticas */
+.stock-day-list{display:grid;gap:10px;margin-top:12px}
+.stock-day-group{border:1px solid var(--border);border-radius:14px;background:var(--panel);overflow:hidden}
+.stock-day-group>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px}
+.stock-day-group>summary::-webkit-details-marker{display:none}
+.stock-day-group>summary>div:first-child{display:grid;gap:3px}
+.stock-day-group>summary span{font-size:.86rem;color:var(--muted)}
+.stock-day-total{text-align:right;display:grid;gap:2px;white-space:nowrap}
+.stock-day-total strong{font-size:1.08rem}
+.stock-day-detail{border-top:1px solid var(--border);padding:10px 12px 14px}
+.stock-day-empty{padding:18px 4px;color:var(--muted)}
+.stock-movement-search-wrap{display:flex;align-items:center;gap:10px;margin:10px 0}
+.stock-movement-search-wrap .text-input{flex:1}
+.stock-movement-search-wrap .muted{white-space:nowrap;font-size:.85rem}
+@media(max-width:620px){.stock-day-group>summary{align-items:flex-start}.stock-day-total{text-align:right}.stock-movement-search-wrap{align-items:stretch;flex-direction:column}.stock-movement-search-wrap .muted{white-space:normal}}

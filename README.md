@@ -1058,3 +1058,10 @@ Registro de pacientes con alta/edición, orden por columnas y búsqueda instant�
 - “+ Nueva comanda” pasa al panel Comandas del día.
 - Nuevo Historial de comandas con navegación Año → Mes → Día.
 - Cada día histórico conserva búsqueda, orden por columnas y edición.
+
+
+## V3.16.44 — Stock · movimientos por día y búsqueda de genéticas
+- Palestina: el registro de movimientos de cada ciclo se agrupa por fecha; cada día muestra total movido y detalle desplegable.
+- Medrano: se agrega registro de traslados recibidos desde Palestina agrupado por fecha, con total transportado y detalle por lote/genética.
+- Registrar movimiento: genéticas ordenadas alfabéticamente.
+- Registrar movimiento: nuevo buscador instantáneo de genéticas.

@@ -8,7 +8,7 @@
   <link rel="manifest" href="manifest.json?v=3.11.2">
   <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3.11.2">
   <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.11.2">
-  <link rel="stylesheet" href="styles.css?v=3.16.43">
+  <link rel="stylesheet" href="styles.css?v=3.16.44">
 </head>
 <body>
   <section id="auth-screen" class="auth-screen">
@@ -66,7 +66,8 @@
 
   <dialog id="stock-movement-dialog" class="dialog stock-movement-dialog"><form method="dialog"><h3>Registrar movimientos de stock</h3>
     <label class="field-label">Sala y ciclo<select id="stock-movement-cycle" class="text-input"></select></label>
-    <div class="stock-batch-head"><div><strong>Genéticas</strong><p class="muted">Seleccioná una o varias y cargá las cantidades sin cerrar esta ventana.</p></div><div class="stock-batch-actions"><button type="button" id="stock-select-all" class="secondary compact-button">Seleccionar todas</button><button type="button" id="stock-clear-all" class="secondary compact-button">Limpiar</button><button type="button" id="stock-use-all" class="secondary compact-button">Usar todo disponible</button></div></div>
+    <div class="stock-batch-head"><div><strong>Genéticas</strong><p class="muted">Ordenadas alfabéticamente. Seleccioná una o varias y cargá las cantidades.</p></div><div class="stock-batch-actions"><button type="button" id="stock-select-all" class="secondary compact-button">Seleccionar todas</button><button type="button" id="stock-clear-all" class="secondary compact-button">Limpiar</button><button type="button" id="stock-use-all" class="secondary compact-button">Usar todo disponible</button></div></div>
+    <div class="stock-movement-search-wrap"><input id="stock-movement-search" type="search" class="text-input" placeholder="Buscar genética..." autocomplete="off" spellcheck="false"><span id="stock-movement-search-count" class="muted"></span></div>
     <div id="stock-movement-items" class="stock-movement-items"></div>
     <p id="stock-movement-summary" class="stock-movement-summary">Ninguna genética seleccionada.</p>
     <div class="stock-movement-form-grid">
@@ -100,6 +101,6 @@
 
   <dialog id="plant-dialog" class="dialog"><form method="dialog"><h3 id="plant-dialog-title">Editar planta</h3><label class="field-label">Estado<select id="plant-status" class="text-input"><option value="occupied">Ocupada</option><option value="empty">Vacía</option></select></label><label class="field-label">Genética<select id="plant-genetics" class="text-input"></select></label><label class="field-label">Observaciones<textarea id="plant-notes" class="text-input"></textarea></label><menu><button type="button" id="cancel-plant" class="secondary">Cancelar</button><button type="button" id="save-plant" class="primary">Guardar</button></menu></form></dialog>
 
-  <script type="module" src="app.js?v=3.16.43"></script>
+  <script type="module" src="app.js?v=3.16.44"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.43';
+const APP_VERSION='3.16.44';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1047,7 +1047,8 @@ function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
     ${pendingHtml}
     <section class="stock-room-selector">${rooms.map(room=>{const roomLots=lots.filter(l=>l.sala===room);const roomTotal=medranoDispensarioTotal(roomLots);return `<button class="panel stock-room-button" data-medrano-dispensario-room="${room}"><span>${room}</span><strong>${formatGrams(roomTotal)}</strong><small>${roomLots.length} lote${roomLots.length===1?'':'s'}</small></button>`}).join('')}</section>
     <button id="medrano-current-toggle" class="panel stock-current-summary stock-current-toggle" type="button" aria-expanded="${state.medranoDispensarioExpanded?'true':'false'}" aria-controls="medrano-current-detail"><span>Stock general Medrano</span><strong>${formatGrams(total)}</strong><small>${lots.length} lote${lots.length===1?'':'s'} cargado${lots.length===1?'':'s'} · ${state.medranoDispensarioExpanded?'Ocultar detalle':'Ver detalle'}</small><span class="stock-toggle-icon" aria-hidden="true">${state.medranoDispensarioExpanded?'▲':'▼'}</span></button>
-    <section id="medrano-current-detail" class="panel stock-overview-panel ${state.medranoDispensarioExpanded?'':'stock-overview-collapsed'}" data-stock-table-tools>${stockTableToolbar('Buscar por sala, lote, genética, fecha o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Sala</th><th data-sort-type="text">Lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha</th><th data-sort-type="number">Disponible</th></tr></thead><tbody>${detailRows.length?detailRows.map(l=>`<tr><td>${escapeHtml(l.sala)}</td><td><strong>${escapeHtml(l.codigo_lote)}</strong></td><td>${escapeHtml(medranoLotGeneticName(l))}</td><td data-sort-value="${escapeHtml(l.fecha_ingreso||'')}">${l.fecha_ingreso?parse(l.fecha_ingreso).toLocaleDateString('es-AR'):'—'}</td><td data-sort-value="${Number(l.gramos_actual)||0}"><strong>${formatGrams(Number(l.gramos_actual)||0)}</strong></td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="5">No hay lotes cargados todavía.</td></tr>'}</tbody></table></div></section>`;
+    <section id="medrano-current-detail" class="panel stock-overview-panel ${state.medranoDispensarioExpanded?'':'stock-overview-collapsed'}" data-stock-table-tools>${stockTableToolbar('Buscar por sala, lote, genética, fecha o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Sala</th><th data-sort-type="text">Lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha</th><th data-sort-type="number">Disponible</th></tr></thead><tbody>${detailRows.length?detailRows.map(l=>`<tr><td>${escapeHtml(l.sala)}</td><td><strong>${escapeHtml(l.codigo_lote)}</strong></td><td>${escapeHtml(medranoLotGeneticName(l))}</td><td data-sort-value="${escapeHtml(l.fecha_ingreso||'')}">${l.fecha_ingreso?parse(l.fecha_ingreso).toLocaleDateString('es-AR'):'—'}</td><td data-sort-value="${Number(l.gramos_actual)||0}"><strong>${formatGrams(Number(l.gramos_actual)||0)}</strong></td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="5">No hay lotes cargados todavía.</td></tr>'}</tbody></table></div></section>
+    <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Traslados recibidos desde Palestina, agrupados por día.</p></div></div>${renderMedranoMovementDays()}</section>`;
     bindModuleNav();
     bindStockTableTools(app);
     $('medrano-stock-list-back').onclick=()=>{state.medranoView='stock';render()};
@@ -1329,6 +1330,7 @@ $('save-medrano-order').onclick=async()=>{const b=$('save-medrano-order');b.disa
 $('cancel-stock-movement').onclick=()=>closeDialog('stock-movement-dialog');
 $('stock-movement-cycle').onchange=updateStockMovementItems;
 $('stock-movement-type').onchange=updateStockMovementItems;
+$('stock-movement-search').oninput=filterStockMovementGenetics;
 $('stock-select-all').onclick=()=>selectAllStockMovementItems();
 $('stock-clear-all').onclick=()=>clearStockMovementItems();
 $('stock-use-all').onclick=()=>useAllAvailableStock();
@@ -1877,6 +1879,52 @@ function renderPalestinaTransfers(){
   return inTransitHtml+diffHtml;
 }
 
+
+function stockMovementDayKey(m){
+  if(m?.fecha)return String(m.fecha).slice(0,10);
+  if(m?.created_at)return String(m.created_at).slice(0,10);
+  return 'sin-fecha';
+}
+function stockMovementDayLabel(key){
+  if(!key||key==='sin-fecha')return 'Sin fecha';
+  try{return parse(key).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}catch(_){return key}
+}
+function groupStockMovementsByDay(movements){
+  const map=new Map();
+  (movements||[]).forEach(m=>{
+    const key=stockMovementDayKey(m);
+    if(!map.has(key))map.set(key,[]);
+    map.get(key).push(m);
+  });
+  return [...map.entries()].sort((a,b)=>String(b[0]).localeCompare(String(a[0])));
+}
+function renderPalestinaMovementDays(movements){
+  const groups=groupStockMovementsByDay(movements);
+  if(!groups.length)return '<div class="stock-day-empty">No hay movimientos registrados.</div>';
+  return `<div class="stock-day-list">${groups.map(([day,rows])=>{
+    const total=rows.reduce((sum,m)=>sum+(Number(m.gramos)||0),0);
+    return `<details class="stock-day-group"><summary><div><strong>${escapeHtml(stockMovementDayLabel(day))}</strong><span>${rows.length} movimiento${rows.length===1?'':'s'}</span></div><div class="stock-day-total"><span>Total movido</span><strong>${formatGrams(total)}</strong></div></summary><div class="stock-day-detail"><div class="stock-table-wrap"><table class="stock-table movements"><thead><tr><th>Número de lote</th><th>Genética / detalle</th><th>Tipo</th><th>Destino / origen</th><th>Gramos</th></tr></thead><tbody>${rows.map(m=>{const item=state.stockItems.find(x=>String(x.id)===String(m.existencia_id));const lote=m.numero_lote||item?.numero_lote||'—';return `<tr><td><strong>${escapeHtml(lote)}</strong></td><td>${escapeHtml(stockMovementTitle(m))}</td><td><span class="stock-movement-type ${escapeHtml(m.tipo||'')}">${escapeHtml(m.tipo||'—')}</span></td><td>${escapeHtml(m.destino||'—')}</td><td><strong>${formatGrams(m.gramos)}</strong></td></tr>`}).join('')}</tbody></table></div></div></details>`;
+  }).join('')}</div>`;
+}
+function medranoCompletedTransferRows(){
+  return (state.stockTransfers||[]).filter(t=>t.estado==='recibido'||t.estado==='recibido_con_diferencia');
+}
+function medranoTransferDayKey(t){
+  return String(t.fecha_recepcion||t.fecha_envio||t.created_at||'').slice(0,10)||'sin-fecha';
+}
+function renderMedranoMovementDays(){
+  const transfers=medranoCompletedTransferRows();
+  const map=new Map();
+  transfers.forEach(t=>{const key=medranoTransferDayKey(t);if(!map.has(key))map.set(key,[]);map.get(key).push(t)});
+  const groups=[...map.entries()].sort((a,b)=>String(b[0]).localeCompare(String(a[0])));
+  if(!groups.length)return '<div class="stock-day-empty">Todavía no hay movimientos recibidos desde Palestina.</div>';
+  return `<div class="stock-day-list">${groups.map(([day,trs])=>{
+    const detail=trs.flatMap(t=>transferItems(t.id).map(i=>({t,i})));
+    const total=detail.reduce((sum,x)=>sum+(Number(x.i.gramos_recibidos ?? x.i.gramos_enviados)||0),0);
+    return `<details class="stock-day-group"><summary><div><strong>${escapeHtml(stockMovementDayLabel(day))}</strong><span>${trs.length} traslado${trs.length===1?'':'s'} · ${detail.length} lote${detail.length===1?'':'s'}</span></div><div class="stock-day-total"><span>Total transportado</span><strong>${formatGrams(total)}</strong></div></summary><div class="stock-day-detail"><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Sala</th><th>Ciclo</th><th>Lote</th><th>Genética</th><th>Enviado</th><th>Recibido</th></tr></thead><tbody>${detail.map(({t,i})=>`<tr><td>${escapeHtml(t.sala_origen||i.sala_origen||'Palestina')}</td><td>${escapeHtml(String(t.ciclo_numero??i.ciclo_numero??'—'))}</td><td><strong>${escapeHtml(i.numero_lote||'—')}</strong></td><td>${escapeHtml(i.nombre_historico||'—')}</td><td>${formatGrams(i.gramos_enviados)}</td><td><strong>${formatGrams(i.gramos_recibidos ?? i.gramos_enviados)}</strong></td></tr>`).join('')}</tbody></table></div></div></details>`;
+  }).join('')}</div>`;
+}
+
 function renderStock(){
   $('screen-title').textContent='Stock Palestina';
   const canManage=canEditTasks();
@@ -1933,7 +1981,7 @@ function renderStockCycleDetail(cycle,canManage){
   const movements=stockCycleMovements(cycle.id);
   return `<section class="stock-kpis"><div class="panel"><span>Stock inicial</span><strong>${formatGrams(cycle.stock_inicial)}</strong></div><div class="panel"><span>Stock actual</span><strong>${formatGrams(stockCycleCurrent(cycle))}</strong></div><div class="panel"><span>Genéticas</span><strong>${items.length}</strong></div><div class="panel"><span>Movimientos</span><strong>${movements.length}</strong></div></section>
   <section class="panel stock-detail-panel" data-stock-table-tools><h3>Stock por genética</h3>${stockTableToolbar('Buscar por lote, genética o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Número de lote</th><th data-sort-type="text">Genética</th><th data-sort-type="number">Stock inicial</th><th data-sort-type="number">Stock actual</th></tr></thead><tbody>${items.length?items.map(item=>`<tr><td><strong>${escapeHtml(item.numero_lote||'—')}</strong></td><td>${escapeHtml(item.nombre_historico)}</td><td data-sort-value="${Number(item.stock_inicial)||0}">${formatGrams(Number(item.stock_inicial)||0)}</td><td data-sort-value="${stockItemCurrent(item)}"><strong>${formatGrams(stockItemCurrent(item))}</strong></td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="4">Sin detalle cargado.</td></tr>'}</tbody></table></div></section>
-  <section class="panel stock-detail-panel" data-stock-table-tools><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Los movimientos históricos se conservan tal como estaban registrados en el Excel.</p></div>${canManage?`<button class="primary compact-button" data-stock-add-cycle="${cycle.id}">+ Movimiento</button>`:''}</div>${stockTableToolbar('Buscar por fecha, lote, genética, tipo, destino o peso...')}<div class="stock-table-wrap"><table class="stock-table movements"><thead><tr><th data-sort-type="date">Fecha</th><th data-sort-type="text">Número de lote</th><th data-sort-type="text">Genética / detalle</th><th data-sort-type="text">Tipo</th><th data-sort-type="text">Destino</th><th data-sort-type="number">Gramos</th></tr></thead><tbody>${movements.length?movements.map(m=>{const item=state.stockItems.find(x=>String(x.id)===String(m.existencia_id));const lote=m.numero_lote||item?.numero_lote||'—';return`<tr><td data-sort-value="${escapeHtml(m.fecha||'')}">${escapeHtml(stockMovementDate(m))}</td><td><strong>${escapeHtml(lote)}</strong></td><td>${escapeHtml(stockMovementTitle(m))}</td><td><span class="stock-movement-type ${m.tipo}">${escapeHtml(m.tipo)}</span></td><td>${escapeHtml(m.destino||'—')}</td><td data-sort-value="${Number(m.gramos)||0}"><strong>${formatGrams(m.gramos)}</strong></td></tr>`}).join(''):'<tr data-empty-row="1"><td colspan="6">No hay movimientos registrados.</td></tr>'}</tbody></table></div></section>`;
+  <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Agrupado por día. Abrí una fecha para ver el detalle completo.</p></div>${canManage?`<button class="primary compact-button" data-stock-add-cycle="${cycle.id}">+ Movimiento</button>`:''}</div>${renderPalestinaMovementDays(movements)}</section>`;
 }
 
 function openStockMovement(preselectedCycleId=null){
@@ -1944,13 +1992,28 @@ function openStockMovement(preselectedCycleId=null){
   $('stock-movement-type').value='salida';
   $('stock-movement-destination').value='Medrano';
   $('stock-movement-notes').value='';
+  if($('stock-movement-search'))$('stock-movement-search').value='';
   updateStockMovementItems();
   $('stock-movement-dialog').showModal();
 }
 function stockMovementSelectableItems(){
   const cycleId=$('stock-movement-cycle').value;
-  return stockCycleItems(cycleId);
+  return [...stockCycleItems(cycleId)].sort((a,b)=>String(a.nombre_historico||'').localeCompare(String(b.nombre_historico||''),'es',{sensitivity:'base'}));
 }
+
+function filterStockMovementGenetics(){
+  const input=$('stock-movement-search');
+  const q=normalize(input?.value||'').trim();
+  const rows=[...$('stock-movement-items').querySelectorAll('[data-stock-movement-row]')];
+  rows.forEach(row=>{
+    const name=normalize(row.querySelector('.stock-movement-item-name strong')?.textContent||'');
+    row.hidden=!!q&&!name.includes(q);
+  });
+  const visible=rows.filter(r=>!r.hidden).length;
+  const count=$('stock-movement-search-count');
+  if(count)count.textContent=q?`${visible} genética${visible===1?'':'s'} encontrada${visible===1?'':'s'}`:'';
+}
+
 function updateStockMovementItems(){
   const type=$('stock-movement-type').value;
   const items=stockMovementSelectableItems();
@@ -1964,6 +2027,7 @@ function updateStockMovementItems(){
       <label class="stock-movement-grams-label">Cantidad (g)<input class="text-input stock-movement-item-grams" type="number" min="0.01" step="0.01" inputmode="decimal" placeholder="0" disabled></label>
     </div>`;
   }).join(''):'<p class="muted">Este ciclo no tiene genéticas cargadas.</p>';
+  filterStockMovementGenetics();
   container.querySelectorAll('[data-stock-movement-row]').forEach(row=>{
     const check=row.querySelector('.stock-movement-check');
     const grams=row.querySelector('.stock-movement-item-grams');
