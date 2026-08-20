@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.44';
+const APP_VERSION='3.16.45';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2001,12 +2001,15 @@ function stockMovementSelectableItems(){
   return [...stockCycleItems(cycleId)].sort((a,b)=>String(a.nombre_historico||'').localeCompare(String(b.nombre_historico||''),'es',{sensitivity:'base'}));
 }
 
+function normalizeStockSearch(value=''){
+  return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
 function filterStockMovementGenetics(){
   const input=$('stock-movement-search');
-  const q=normalize(input?.value||'').trim();
+  const q=normalizeStockSearch(input?.value||'');
   const rows=[...$('stock-movement-items').querySelectorAll('[data-stock-movement-row]')];
   rows.forEach(row=>{
-    const name=normalize(row.querySelector('.stock-movement-item-name strong')?.textContent||'');
+    const name=normalizeStockSearch(row.querySelector('.stock-movement-item-name strong')?.textContent||'');
     row.hidden=!!q&&!name.includes(q);
   });
   const visible=rows.filter(r=>!r.hidden).length;

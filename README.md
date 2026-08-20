@@ -1065,3 +1065,8 @@ Registro de pacientes con alta/edición, orden por columnas y búsqueda instant�
 - Medrano: se agrega registro de traslados recibidos desde Palestina agrupado por fecha, con total transportado y detalle por lote/genética.
 - Registrar movimiento: genéticas ordenadas alfabéticamente.
 - Registrar movimiento: nuevo buscador instantáneo de genéticas.
+
+
+## V3.16.45 — Fix Registrar movimiento
+- Corrige el buscador de genéticas que impedía abrir el diálogo Registrar movimiento.
+- Mantiene orden alfabético, filtro instantáneo y movimientos agrupados por día.
