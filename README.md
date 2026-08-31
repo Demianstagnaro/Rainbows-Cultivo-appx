@@ -1070,3 +1070,8 @@ Registro de pacientes con alta/edición, orden por columnas y búsqueda instant�
 ## V3.16.45 — Fix Registrar movimiento
 - Corrige el buscador de genéticas que impedía abrir el diálogo Registrar movimiento.
 - Mantiene orden alfabético, filtro instantáneo y movimientos agrupados por día.
+
+
+## V3.16.46 — Cosechas destacadas en Calendario
+- Los días con tarea Cosecha muestran una etiqueta roja `COSECHA` directamente en la vista mensual.
+- La celda del día recibe además un leve resaltado rojo para facilitar su identificación de un vistazo.
