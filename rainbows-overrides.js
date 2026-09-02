@@ -1,25 +1,82 @@
-const __rainbowsStyle=document.createElement('style');
-__rainbowsStyle.textContent=`
-.calendar-harvest-badge{display:none!important}
-.day-cell.harvest-day:not(.today){box-shadow:0 10px 30px rgba(0,0,0,.18)}
-.calendar-room-state{display:flex;align-items:center;justify-content:space-between;gap:3px;min-width:0;white-space:nowrap}
-.calendar-room-state>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis}
-.calendar-room-harvest-badge{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;margin-left:3px;padding:1px 4px;border-radius:999px;background:rgba(196,35,35,.10);border:1px solid rgba(196,35,35,.34);color:#ef4444;font-size:.50rem;font-weight:850;line-height:1.15;letter-spacing:.015em}
-.amendment-intro{margin-bottom:14px}.amendment-intro h2{margin:0 0 4px}.amendment-panel{margin-bottom:14px;overflow:hidden}.amendment-title-row{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.amendment-title-row h2{margin:0;font-size:20px}.amendment-flora-start{display:inline-flex;margin-top:5px;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.04);border:1px solid var(--line);color:var(--muted);font-size:11px;font-weight:800}.amendment-table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:14px}.amendment-table{width:100%;min-width:1080px;border-collapse:collapse;background:rgba(11,16,32,.35);font-size:12px}.amendment-table th,.amendment-table td{padding:9px 10px;border-right:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07);text-align:center;white-space:nowrap}.amendment-table th{position:sticky;top:0;background:#172033;color:#f8fafc;font-weight:850;z-index:1}.amendment-table th:first-child,.amendment-table td:first-child{position:sticky;left:0;text-align:left;z-index:2}.amendment-table th:first-child{background:#172033;z-index:3}.amendment-table td:first-child{background:#111827}.amendment-product{font-weight:800}.amendment-empty{color:#64748b}.amendment-table tr:last-child td{border-bottom:0}.amendment-table th:last-child,.amendment-table td:last-child{border-right:0}
+const RAINBOWS_OVERRIDES_VERSION='3.16.51';
+
+const harvestStarts={F1:'2026-05-20',F2:'2026-07-01',F3:'2026-05-20'};
+function utcDay(value){const [y,m,d]=String(value).split('-').map(Number);return Date.UTC(y,m-1,d)/86400000}
+function roomHarvest(room,date){const days=utcDay(date)-utcDay(harvestStarts[room]);return days>=56&&(days-56)%77===0}
+function markCalendarHarvests(){
+  document.querySelectorAll('.day-cell[data-date]').forEach(cell=>{
+    const stateEl=cell.querySelector('.day-state');
+    if(!stateEl)return;
+    const date=cell.dataset.date;
+    const lines=(stateEl.innerText||stateEl.textContent||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);
+    if(!lines.length)return;
+    stateEl.innerHTML=lines.map(line=>{
+      const m=line.match(/^F([123]):/);
+      const room=m?'F'+m[1]:null;
+      const badge=room&&roomHarvest(room,date)?'<span class="calendar-room-harvest-badge">COSECHA</span>':'';
+      return '<span class="calendar-room-state"><span>'+escapeHtml(line)+'</span>'+badge+'</span>';
+    }).join('');
+    cell.querySelectorAll('.calendar-harvest-badge').forEach(el=>el.remove());
+  });
+}
+
+const amendmentHeaders=['Producto','Transplante / V1','Vege 2','Vege 3','Semana 1','Semana 2','Semana 3','Semana 4','Semana 5','Semana 6','Semana 7','Semana 8'];
+const amendments={
+  'Flora 1 y 2':[
+    ['Compost','105L','-','-','50L','-','-','20L','-','-','-','-'],['Turba','105L','-','-','50L','-','-','20L','-','-','-','-'],['Harina de hueso','13000g','-','-','-','-','-','-','-','-','-','-'],['Harina de pescado','4500g','-','-','5000g','-','-','11000g','-','-','-','-'],['Basalto','15000g','-','-','-','-','-','-','-','-','-','-'],['Bokashi','1000g','-','-','400g','-','-','400g','-','-','-','-'],['Harina de dolomita','2250g','-','-','-','-','-','-','-','-','-','-'],['Azufre agrícola','3000g','-','-','-','-','-','-','-','-','-','-'],['Tierra de diatomeas','2500g','-','-','-','-','-','-','-','-','-','-'],['Harina de alfalfa (top dress)','-','-','-','4 L','-','4 L','-','-','-','-','-'],['FPJ','5ml x L','2,5ml x L','2,5ml x L','5ml x L','-','-','-','-','-','-','-'],['FFJ','-','-','-','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','-','-','-'],['FRJ','-','-','-','-','-','-','2,5ml x L','5ml x L','-','-','-'],['LAB','5ml x L','2,5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','1ml x L','-','-'],['OHN (Ajo, jengibre, canela)','5ml x L','2,5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','-','-','-']
+  ],
+  'Flora 3':[
+    ['Compost','55L','-','-','25L','-','-','10L','-','-','-','-'],['Turba','55L','-','-','25L','-','-','10L','-','-','-','-'],['Harina de hueso','6500g','-','-','-','-','-','-','-','-','-','-'],['Harina de pescado','2250g','-','-','2500g','-','-','5500g','-','-','-','-'],['Basalto','7500g','-','-','-','-','-','-','-','-','-','-'],['Bokashi','500g','-','-','200g','-','-','200g','-','-','-','-'],['Harina de dolomita','1150g','-','-','-','-','-','-','-','-','-','-'],['Azufre agrícola','1500g','-','-','-','-','-','-','-','-','-','-'],['Tierra de diatomeas','1250g','-','-','-','-','-','-','-','-','-','-'],['Harina de alfalfa (top dress)','-','-','-','2 L','-','2 L','-','-','-','-','-'],['FPJ','5ml x L','2,5ml x L','2,5ml x L','5ml x L','-','-','-','-','-','-','-'],['FFJ','-','-','-','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','-','-','-'],['FRJ','-','-','-','-','-','-','2,5ml x L','5ml x L','-','-','-'],['LAB','5ml x L','2,5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','1ml x L','-','-'],['OHN (Ajo, jengibre, canela)','5ml x L','2,5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','-','-','-']
+  ]
+};
+
+function escapeHtml(value){return String(value??'').replace(/[&<>\"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[ch]))}
+function amendmentTable(title,rows){
+  return '<section class="panel amendment-panel"><div class="amendment-title-row"><h2>'+escapeHtml(title)+'</h2></div><div class="amendment-table-scroll"><table class="amendment-table"><thead><tr>'+amendmentHeaders.map(h=>'<th>'+escapeHtml(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map((v,i)=>'<td class="'+(i===0?'amendment-product ':'')+(v==='-'?'amendment-empty':'')+'">'+escapeHtml(v)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div></section>';
+}
+function renderAmendments(){
+  const app=document.getElementById('app');
+  const title=document.getElementById('screen-title');
+  if(!app||!title)return;
+  title.textContent='Enmiendas';
+  app.innerHTML='<section class="panel amendment-intro"><h2>Enmienda completa</h2><p class="muted">Composición y dosis por etapa del ciclo.</p></section>'+Object.entries(amendments).map(([name,rows])=>amendmentTable(name,rows)).join('');
+  document.querySelectorAll('.top-nav button').forEach(b=>b.classList.toggle('active',b.dataset.view==='amendments'));
+}
+function isPalestina(){return document.getElementById('site-palestina')?.classList.contains('active')!==false}
+function ensureAmendmentsNav(){
+  const nav=document.querySelector('.top-nav');
+  if(!nav)return;
+  let btn=nav.querySelector('[data-view="amendments"]');
+  if(!btn){
+    btn=document.createElement('button');
+    btn.type='button';
+    btn.dataset.view='amendments';
+    btn.textContent='Enmiendas';
+    const stock=nav.querySelector('[data-view="stock"]');
+    stock?nav.insertBefore(btn,stock):nav.appendChild(btn);
+    btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();if(isPalestina())renderAmendments()});
+  }
+  btn.hidden=!isPalestina();
+}
+function installStyles(){
+  if(document.getElementById('rainbows-overrides-style'))return;
+  const style=document.createElement('style');
+  style.id='rainbows-overrides-style';
+  style.textContent=`
+.calendar-harvest-badge{display:none!important}.day-cell.harvest-day:not(.today){box-shadow:0 10px 30px rgba(0,0,0,.18)}.calendar-room-state{display:flex;align-items:center;justify-content:space-between;gap:3px;min-width:0;white-space:nowrap}.calendar-room-state>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis}.calendar-room-harvest-badge{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;margin-left:3px;padding:1px 4px;border-radius:999px;background:rgba(196,35,35,.10);border:1px solid rgba(196,35,35,.34);color:#ef4444;font-size:.50rem;font-weight:850;line-height:1.15;letter-spacing:.015em}
+.amendment-intro{margin-bottom:14px}.amendment-intro h2{margin:0 0 4px}.amendment-panel{margin-bottom:14px;overflow:hidden}.amendment-title-row{margin-bottom:12px}.amendment-title-row h2{margin:0;font-size:20px}.amendment-table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:14px}.amendment-table{width:100%;min-width:1080px;border-collapse:collapse;background:rgba(11,16,32,.35);font-size:12px}.amendment-table th,.amendment-table td{padding:9px 10px;border-right:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07);text-align:center;white-space:nowrap}.amendment-table th{position:sticky;top:0;background:#172033;color:#f8fafc;font-weight:850;z-index:1}.amendment-table th:first-child,.amendment-table td:first-child{position:sticky;left:0;text-align:left;z-index:2}.amendment-table th:first-child{background:#172033;z-index:3}.amendment-table td:first-child{background:#111827}.amendment-product{font-weight:800}.amendment-empty{color:#64748b}.amendment-table tr:last-child td{border-bottom:0}.amendment-table th:last-child,.amendment-table td:last-child{border-right:0}
 @media(max-width:700px){.calendar-room-harvest-badge{font-size:.44rem;padding:1px 3px;margin-left:2px}.calendar-room-state{gap:2px}.amendment-panel{padding:12px}.amendment-table{font-size:11px;min-width:1000px}.amendment-table th,.amendment-table td{padding:8px}.amendment-title-row h2{font-size:18px}}
 `;
-document.head.appendChild(__rainbowsStyle);
+  document.head.appendChild(style);
+}
+function refreshEnhancements(){installStyles();ensureAmendmentsNav();markCalendarHarvests()}
 
-const __rainbowsHarvestStarts={F1:'2026-05-20',F2:'2026-07-01',F3:'2026-05-20'};
-function __rainbowsUtcDay(value){const [y,m,d]=String(value).split('-').map(Number);return Date.UTC(y,m-1,d)/86400000}
-function __rainbowsRoomHarvest(room,date){const days=__rainbowsUtcDay(date)-__rainbowsUtcDay(__rainbowsHarvestStarts[room]);return days>=56&&(days-56)%77===0}
-function __rainbowsMarkCalendarHarvests(){document.querySelectorAll('.day-cell[data-date]').forEach(cell=>{if(cell.dataset.harvestRoomLabels==='1')return;const stateEl=cell.querySelector('.day-state');if(!stateEl)return;cell.dataset.harvestRoomLabels='1';cell.querySelectorAll('.calendar-harvest-badge').forEach(el=>el.remove());const date=cell.dataset.date;const lines=(stateEl.innerText||stateEl.textContent||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);stateEl.innerHTML=lines.map(line=>{const match=line.match(/^F([123]):/);const room=match?'F'+match[1]:null;const badge=room&&__rainbowsRoomHarvest(room,date)?'<span class="calendar-room-harvest-badge">COSECHA</span>':'';return '<span class="calendar-room-state"><span>'+line+'</span>'+badge+'</span>'}).join('')})}
-setTimeout(__rainbowsMarkCalendarHarvests,0);const __rainbowsCalendarObserver=new MutationObserver(()=>__rainbowsMarkCalendarHarvests());const __rainbowsCalendarRoot=document.getElementById('app');if(__rainbowsCalendarRoot)__rainbowsCalendarObserver.observe(__rainbowsCalendarRoot,{childList:true,subtree:true});
-
-const __rainbowsAmendmentHeaders=['Producto','Transplante / V1','Vege 2','Vege 3','Semana 1','Semana 2','Semana 3','Semana 4','Semana 5','Semana 6','Semana 7','Semana 8'];
-const __rainbowsAmendments={'Flora 1 y 2':[['Compost','105L','-','-','50L','-','-','20L','-','-','-','-'],['Turba','105L','-','-','50L','-','-','20L','-','-','-','-'],['Harina de hueso','13000g','-','-','-','-','-','-','-','-','-','-'],['Harina de pescado','4500g','-','-','5000g','-','-','11000g','-','-','-','-'],['Basalto','15000g','-','-','-','-','-','-','-','-','-','-'],['Bokashi','1000g','-','-','400g','-','-','400g','-','-','-','-'],['Harina de dolomita','2250g','-','-','-','-','-','-','-','-','-','-'],['Azufre agrícola','3000g','-','-','-','-','-','-','-','-','-','-'],['Tierra de diatomeas','2500g','-','-','-','-','-','-','-','-','-','-'],['Harina de alfalfa (top dress)','-','-','-','4 L','-','4 L','-','-','-','-','-'],['FPJ','5ml x L','2,5ml x L','2,5ml x L','5ml x L','-','-','-','-','-','-','-'],['FFJ','-','-','-','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','-','-','-'],['FRJ','-','-','-','-','-','-','2,5ml x L','5ml x L','-','-','-'],['LAB','5ml x L','2,5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','1ml x L','-','-'],['OHN (Ajo, jengibre, canela)','5ml x L','2,5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','-','-','-']], 'Flora 3':[['Compost','55L','-','-','25L','-','-','10L','-','-','-','-'],['Turba','55L','-','-','25L','-','-','10L','-','-','-','-'],['Harina de hueso','6500g','-','-','-','-','-','-','-','-','-','-'],['Harina de pescado','2250g','-','-','2500g','-','-','5500g','-','-','-','-'],['Basalto','7500g','-','-','-','-','-','-','-','-','-','-'],['Bokashi','500g','-','-','200g','-','-','200g','-','-','-','-'],['Harina de dolomita','1150g','-','-','-','-','-','-','-','-','-','-'],['Azufre agrícola','1500g','-','-','-','-','-','-','-','-','-','-'],['Tierra de diatomeas','1250g','-','-','-','-','-','-','-','-','-','-'],['Harina de alfalfa (top dress)','-','-','-','2 L','-','2 L','-','-','-','-','-'],['FPJ','5ml x L','2,5ml x L','2,5ml x L','5ml x L','-','-','-','-','-','-','-'],['FFJ','-','-','-','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','-','-','-'],['FRJ','-','-','-','-','-','-','2,5ml x L','5ml x L','-','-','-'],['LAB','5ml x L','2,5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','1ml x L','-','-'],['OHN (Ajo, jengibre, canela)','5ml x L','2,5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','-','-','-']]};
-function __rainbowsEscape(value){return String(value??'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]))}
-function __rainbowsAmendmentTable(title,rows){return '<section class="panel amendment-panel"><div class="amendment-title-row"><div><h2>'+__rainbowsEscape(title)+'</h2><span class="amendment-flora-start">INICIA FLORA · Semana 1</span></div></div><div class="amendment-table-scroll"><table class="amendment-table"><thead><tr>'+__rainbowsAmendmentHeaders.map(h=>'<th>'+__rainbowsEscape(h)+'</th>').join('')+'</tr></thead><tbody>'+rows.map(row=>'<tr>'+row.map((v,i)=>'<td class="'+(i===0?'amendment-product ':'')+(v==='-'?'amendment-empty':'')+'">'+__rainbowsEscape(v)+'</td>').join('')+'</tr>').join('')+'</tbody></table></div></section>'}
-function renderAmendments(){$('screen-title').textContent='Enmiendas';state.day=null;app.innerHTML='<section class="panel amendment-intro"><h2>Enmienda completa</h2><p class="muted">Composición y dosis por etapa del ciclo.</p></section>'+Object.entries(__rainbowsAmendments).map(([title,rows])=>__rainbowsAmendmentTable(title,rows)).join('');document.querySelectorAll('.top-nav button').forEach(b=>b.classList.toggle('active',b.dataset.view==='amendments'))}
-function __rainbowsEnsureAmendmentsNav(){const nav=document.querySelector('.top-nav');if(!nav)return;let btn=nav.querySelector('[data-view="amendments"]');if(!btn){btn=document.createElement('button');btn.type='button';btn.dataset.view='amendments';btn.textContent='Enmiendas';const stock=nav.querySelector('[data-view="stock"]');if(stock)nav.insertBefore(btn,stock);else nav.appendChild(btn);btn.addEventListener('click',()=>{if(state.site!=='palestina')return;state.view='amendments';renderAmendments()})}btn.hidden=state.site!=='palestina'}
-const __rainbowsOriginalRender=render;render=function(){__rainbowsEnsureAmendmentsNav();if(state.site==='palestina'&&state.view==='amendments'){renderAmendments();return}const result=__rainbowsOriginalRender();setTimeout(__rainbowsEnsureAmendmentsNav,0);return result};__rainbowsEnsureAmendmentsNav();setTimeout(__rainbowsEnsureAmendmentsNav,0);
+document.addEventListener('click',e=>{
+  if(e.target.closest('#site-palestina,#site-medrano,.top-nav button'))setTimeout(refreshEnhancements,0);
+},true);
+const observer=new MutationObserver(()=>{
+  clearTimeout(observer._timer);
+  observer._timer=setTimeout(refreshEnhancements,20);
+});
+observer.observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['class','hidden']});
+refreshEnhancements();
