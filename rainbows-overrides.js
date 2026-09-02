@@ -1,4 +1,4 @@
-const RAINBOWS_OVERRIDES_VERSION='3.16.52';
+const RAINBOWS_OVERRIDES_VERSION='3.16.53';
 
 const harvestStarts={F1:'2026-05-20',F2:'2026-07-01',F3:'2026-05-20'};
 function utcDay(value){const [y,m,d]=String(value).split('-').map(Number);return Date.UTC(y,m-1,d)/86400000}
@@ -9,15 +9,17 @@ function markCalendarHarvests(){
   if(!cells.length)return;
   cells.forEach(cell=>{
     const stateEl=cell.querySelector('.day-state');
-    if(!stateEl)return;
+    if(!stateEl||stateEl.dataset.harvestDecorated==='1')return;
     const date=cell.dataset.date;
     const lines=(stateEl.innerText||stateEl.textContent||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);
     if(!lines.length)return;
+    stateEl.dataset.harvestDecorated='1';
     stateEl.innerHTML=lines.map(line=>{
-      const m=line.match(/^F([123]):/);
+      const clean=line.replace(/\s*COSECHA\s*$/,'').trim();
+      const m=clean.match(/^F([123]):/);
       const room=m?'F'+m[1]:null;
       const badge=room&&roomHarvest(room,date)?'<span class="calendar-room-harvest-badge">COSECHA</span>':'';
-      return '<span class="calendar-room-state"><span>'+escapeHtml(line)+'</span>'+badge+'</span>';
+      return '<span class="calendar-room-state"><span>'+escapeHtml(clean)+'</span>'+badge+'</span>';
     }).join('');
     cell.querySelectorAll('.calendar-harvest-badge').forEach(el=>el.remove());
   });
@@ -44,5 +46,4 @@ document.addEventListener('click',e=>{
   const target=e.target.closest('#site-palestina,#site-medrano,.top-nav button,#prev,#next,#back-today,[data-date],#back-cal');
   if(target)setTimeout(refreshEnhancements,0);
 },true);
-installStyles();ensureAmendmentsNav();
-setTimeout(markCalendarHarvests,0);
+installStyles();ensureAmendmentsNav();setTimeout(markCalendarHarvests,0);
