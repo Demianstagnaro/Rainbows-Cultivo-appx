@@ -1,5 +1,8 @@
 \set ON_ERROR_STOP on
 
+-- Cada paso de GitHub Actions abre una conexión nueva a PostgreSQL.
+set request.jwt.claim.sub = '00000000-0000-0000-0000-000000000001';
+
 do $$
 declare
   v_count integer;
