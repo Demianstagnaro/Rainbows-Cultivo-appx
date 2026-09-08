@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.16.46';
+const APP_VERSION='3.17.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -12,6 +12,11 @@ const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(ne
 state.site=localStorage.getItem('rainbows_site')==='medrano'?'medrano':'palestina';
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
+function requiredRoomId(name){
+  const room=sr(name);
+  if(!room?.id)throw new Error(`La sala “${name}” no está configurada en la base. Ejecutá la migración V3.17.0.`);
+  return room.id;
+}
 function cycle(r,date){if(r.type!=='flora')return{label:'Permanente',stage:'permanente'};const days=77,bt=parse(r.transplant),bf=parse(r.floraStart);let c=Math.floor(diff(date,bt)/days);if(diff(date,bt)<0)c=-1;const tr=add(bt,c*days),fl=add(bf,c*days),day=diff(date,tr);if(day<0)return{label:'Pendiente',stage:'pendiente',tr,fl};if(diff(date,fl)<0){const w=Math.min(Math.floor(day/7)+1,3);return{label:`Vege S${w}`,stage:'vege',week:w,tr,fl}}const fd=diff(date,fl),w=Math.min(Math.floor(fd/7)+1,8);return{label:`Flora S${w}`,stage:'flora',week:w,tr,fl}}
 function cut(date){const groups=[{dest:['Flora 1','Flora 3'],start:parse('2026-05-20'),opp:parse('2026-07-01')},{dest:['Flora 2'],start:parse('2026-07-01'),opp:parse('2026-05-20')}],active=[];for(const g of groups){const approx=Math.floor(diff(date,g.start)/77);for(let o=-2;o<=2;o++){const fl=add(g.start,(approx+o)*77),intake=add(fl,-1);/* Esquejes: Día 1 = día anterior a Flora S1 */const harvestBase=add(g.opp,56);const harvestOffset=Math.ceil(diff(intake,harvestBase)/77);let h=add(harvestBase,harvestOffset*77);while(diff(h,intake)<=0)h=add(h,77);const exit=add(h,2);if(diff(date,intake)>=0&&diff(date,exit)<0)active.push({dest:g.dest,intake,exit})}}if(!active.length)return{active:false,label:'Vacía'};active.sort((a,b)=>b.intake-a.intake);const x=active[0];return{active:true,label:`Día ${diff(date,x.intake)+1}`,dest:x.dest,exit:x.exit}}
 function cloneTransfer(date){
@@ -47,6 +52,16 @@ function vegesOccupied(date){
     });
   return !emptiedAfterTransfer;
 }
+/* RAINBOWS_PERF_CACHE_V2 */
+const __cyclePerfCache=new Map();
+const __cutPerfCache=new Map();
+const __cloneTransferPerfCache=new Map();
+const __vegesOccupiedPerfCache=new Map();
+const __rawCycle=cycle,__rawCut=cut,__rawCloneTransfer=cloneTransfer,__rawVegesOccupied=vegesOccupied;
+cycle=function(r,date){const k=r.name+'|'+ymd(date);if(__cyclePerfCache.has(k))return __cyclePerfCache.get(k);const v=__rawCycle(r,date);__cyclePerfCache.set(k,v);return v};
+cut=function(date){const k=ymd(date);if(__cutPerfCache.has(k))return __cutPerfCache.get(k);const v=__rawCut(date);__cutPerfCache.set(k,v);return v};
+cloneTransfer=function(date){const k=ymd(date);if(__cloneTransferPerfCache.has(k))return __cloneTransferPerfCache.get(k);const v=__rawCloneTransfer(date);__cloneTransferPerfCache.set(k,v);return v};
+vegesOccupied=function(date){const k=ymd(date);if(__vegesOccupiedPerfCache.has(k))return __vegesOccupiedPerfCache.get(k);const v=__rawVegesOccupied(date);__vegesOccupiedPerfCache.set(k,v);return v};
 function cycleNumber(r,d){
   if(r.type!=='flora')return null;
   const synchronized=r.name==='Flora 1'||r.name==='Flora 3';
@@ -100,26 +115,43 @@ function chainRows(chain){
   const prefix=continuationPrefix(chain);
   return state.tareas.filter(x=>x.clave_externa===chain||x.clave_externa?.startsWith(prefix)||(chain.startsWith('CUSTOM:')&&String(x.id)===chain.slice(7)));
 }
-function directRealByTaskId(id){return state.realizaciones.find(r=>String(r.tarea_id)===String(id))}
+function directRealByTaskId(id){return __realForTaskPerf(id)}
 function real(t){return directRealByTaskId(t.db?.id||t.id)}
 function chainFinishedDate(chain){
+  if(__chainFinishedPerfCache.has(chain))return __chainFinishedPerfCache.get(chain);
   const finals=chainRows(chain)
     .filter(x=>x.estado==='realizada'&&directRealByTaskId(x.id)&&!rowContinues(x))
     .sort((a,b)=>String(a.fecha).localeCompare(String(b.fecha)));
-  return finals.length?finals[0].fecha:null;
+  const value=finals.length?finals[0].fecha:null;
+  __chainFinishedPerfCache.set(chain,value);
+  return value;
 }
 function withContinuationDay(t,dayNumber){
   const parts=String(t.detail||'').split(' · ').filter(Boolean).filter(x=>!/^Día \d+$/.test(x));
   parts.push(`Día ${dayNumber}`);
   return{...t,detail:parts.join(' · '),continuationDay:dayNumber};
 }
+const __baseTasksPerfCache=new Map();
+const __continuationOriginsPerfCache=new Map();
+const __chainFinishedPerfCache=new Map();
+let __taskRowsByDatePerf=null;
+let __realByTaskPerf=null;
+function __resetDataPerfCaches(){__baseTasksPerfCache.clear();__continuationOriginsPerfCache.clear();__chainFinishedPerfCache.clear();__taskRowsByDatePerf=null;__realByTaskPerf=null}
+function __rowsForDatePerf(day){if(!__taskRowsByDatePerf){__taskRowsByDatePerf=new Map();for(const row of state.tareas){const k=row.fecha||'';if(!__taskRowsByDatePerf.has(k))__taskRowsByDatePerf.set(k,[]);__taskRowsByDatePerf.get(k).push(row)}}return __taskRowsByDatePerf.get(day)||[]}
+function __realForTaskPerf(id){if(!__realByTaskPerf){__realByTaskPerf=new Map();for(const row of state.realizaciones)__realByTaskPerf.set(String(row.tarea_id),row)}return __realByTaskPerf.get(String(id))}
 function baseTasks(date){
-  const day=ymd(date),rows=state.tareas.filter(t=>t.fecha===day),map=new Map(rows.filter(t=>t.clave_externa).map(t=>[t.clave_externa,t]));
+  const __cacheKey=ymd(date);
+  if(__baseTasksPerfCache.has(__cacheKey))return __baseTasksPerfCache.get(__cacheKey);
+  const day=ymd(date),rows=__rowsForDatePerf(day),map=new Map(rows.filter(t=>t.clave_externa).map(t=>[t.clave_externa,t]));
   const rt=routine(date).filter(t=>map.get(t.key)?.estado!=='cancelada').map(t=>map.get(t.key)?{...t,id:map.get(t.key).id,detail:cleanContinuationDetail(map.get(t.key).detalle||t.detail),db:map.get(t.key)}:t);
   const custom=rows.filter(t=>!t.clave_externa).filter(t=>t.estado!=='cancelada').map(uiTask);
-  return[...rt,...custom];
+  const __result=[...rt,...custom];
+  __baseTasksPerfCache.set(__cacheKey,__result);
+  return __result;
 }
 function continuationOrigins(untilDate){
+  const __key=ymd(untilDate);
+  if(__continuationOriginsPerfCache.has(__key))return __continuationOriginsPerfCache.get(__key);
   const origins=[];
   const start=parse(CONTINUABLE_FROM);
   for(let d=start;diff(d,untilDate)<=0;d=add(d,1)){
@@ -127,6 +159,7 @@ function continuationOrigins(untilDate){
       if(isContinuable(t)&&!t.chain)origins.push({...t,chain:taskChain(t),originDate:t.date});
     }
   }
+  __continuationOriginsPerfCache.set(__key,origins);
   return origins;
 }
 function tasks(date){
@@ -157,7 +190,7 @@ function names(t){const r=real(t);if(!r)return[];const ids=state.joins.filter(j=
 function actor(t){const r=real(t);if(!r?.registrada_por)return'';const p=state.perfiles.find(x=>x.id===r.registrada_por);return p?.nombre||p?.email||'Usuario'}
 async function ensure(t){
   if(t.db?.id)return t.db;
-  const payload={clave_externa:t.key,sala_id:sr(t.room)?.id||null,fecha:t.date,nombre:t.task,detalle:cleanContinuationDetail(t.detail),tipo:'rutina',estado:'pendiente'};
+  const payload={clave_externa:t.key,sala_id:requiredRoomId(t.room),fecha:t.date,nombre:t.task,detalle:cleanContinuationDetail(t.detail),tipo:'rutina',estado:'pendiente'};
   const q=await db.from('tareas').upsert(payload,{onConflict:'clave_externa'}).select().single();
   if(q.error)throw q.error;
   return q.data;
@@ -193,7 +226,7 @@ async function load(){
   const selfProfile=await db.from('perfiles').select('*').eq('id',state.session.user.id).maybeSingle();
   if(selfProfile.error)throw selfProfile.error;
   state.profile=selfProfile.data||null;
-  const role=normalizeRole(state.profile?.rol||state.session?.user?.user_metadata?.rol);
+  const role=state.profile?.activo===true?normalizeRole(state.profile.rol):'';
   const admin=role==='administrador';
   const stockAccess=['administrador','medrano'].includes(role);
   const empty=()=>Promise.resolve({data:[],error:null});
@@ -216,7 +249,7 @@ async function load(){
     db.from('tareas').select('*'),
     db.from('realizaciones_tarea').select('*'),
     db.from('realizacion_empleados').select('*'),
-    db.from('perfiles').select('*').order('nombre'),
+    admin?db.from('perfiles').select('*').order('nombre'):db.rpc('listar_perfiles_directorio'),
     db.from('tareas_generales').select('*').order('created_at',{ascending:false}),
     db.from('tarea_general_empleados').select('*')
   ]);
@@ -231,22 +264,18 @@ async function load(){
   if(!stockAccess){
     state.stockCycles=[];state.stockItems=[];state.stockMovements=[];state.stockRoom=null;state.stockCycle=null;
   }
-}async function refresh(){try{await load();render()}catch(e){console.error(e);app.innerHTML=`<section class="panel error-panel"><strong>Error</strong><p>${e.message}</p></section>`}}
+}async function refresh(){try{__resetDataPerfCaches();await load();__resetDataPerfCaches();render()}catch(e){console.error(e);app.innerHTML=`<section class="panel error-panel"><strong>Error</strong><p>${escapeHtml(e.message||'Error desconocido')}</p></section>`}}
 function subscribe(){if(state.channel)db.removeChannel(state.channel);state.channel=db.channel('rainbows-shared').on('postgres_changes',{event:'*',schema:'public'},refresh).subscribe()}
 function progress(r,d){const x=tasks(d).filter(t=>t.room===r.name),n=x.filter(done).length;return{total:x.length,done:n,pct:x.length?Math.round(n/x.length*100):100}}
 function taskCounter(doneCount,totalCount){const complete=totalCount>0&&doneCount===totalCount;return `<span class="task-counter ${complete?'is-complete':''}">Tareas ${doneCount}/${totalCount}</span>`}
 function taskPriority(t){const critical=['Cosecha','Trasplante','Esquejes','Inicio flora'];const important=['Enmienda','Schwazzing','Calibrar riego','Poda bajos','Redes'];if(critical.includes(t.task))return{rank:0,cls:'priority-critical',label:'Crítica'};if(important.includes(t.task)||t.task.startsWith('Trimming - '))return{rank:1,cls:'priority-important',label:'Importante'};return{rank:2,cls:'priority-routine',label:'Rutina'}}
 function orderedTasks(list){return [...list].sort((a,b)=>taskPriority(a).rank-taskPriority(b).rank||a.task.localeCompare(b.task,'es'))}
-function row(t){const r=real(t),historic=historicalDone(t)&&!r,label=t.type==='extraordinaria'?'Extraordinaria':t.type==='reprogramada'?'Reprogramada':'',priority=taskPriority(t),meta=historic?'<span class="historical-complete">Completada</span>':r?`${names(t).join(', ')}<br>${new Date(r.realizada_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}<div class="actor-line">Registrado por: ${actor(t)}</div>`:'';return`<div class="task-row ${priority.cls} ${done(t)?'done':''}"><input type="checkbox" data-task-id="${t.id}" ${done(t)?'checked':''} ${historic?'disabled':''}><label><strong>${t.task}</strong><div class="task-subline">${label?`<span class="task-category">${label}</span>`:`<span class="priority-badge">${priority.label}</span>`}${t.detail?`<span class="stage">${t.detail}</span>`:''}</div></label><div class="task-meta">${meta}</div><button class="task-menu" data-menu="${t.id}">⋮</button></div>`}
+function row(t){const r=real(t),historic=historicalDone(t)&&!r,label=t.type==='extraordinaria'?'Extraordinaria':t.type==='reprogramada'?'Reprogramada':'',priority=taskPriority(t),meta=historic?'<span class="historical-complete">Completada</span>':r?`${names(t).map(escapeHtml).join(', ')}<br>${new Date(r.realizada_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}<div class="actor-line">Registrado por: ${escapeHtml(actor(t))}</div>`:'',safeId=escapeHtml(t.id);return`<div class="task-row ${priority.cls} ${done(t)?'done':''}"><input type="checkbox" data-task-id="${safeId}" ${done(t)?'checked':''} ${historic?'disabled':''}><label><strong>${escapeHtml(t.task)}</strong><div class="task-subline">${label?`<span class="task-category">${label}</span>`:`<span class="priority-badge">${priority.label}</span>`}${t.detail?`<span class="stage">${escapeHtml(t.detail)}</span>`:''}</div></label><div class="task-meta">${meta}</div><button class="task-menu" type="button" data-menu="${safeId}" aria-label="Opciones de ${escapeHtml(t.task)}">⋮</button></div>`}
 function findTask(id,d){return tasks(d).find(t=>String(t.id)===String(id))}
 
 function normalizeRole(value){
   const role=String(value||'').trim().toLowerCase();
-  // Compatibilidad con roles anteriores: cualquier rol operativo de Palestina
-  // pasa a comportarse como Cultivo hasta que el administrador lo guarde con
-  // una de las tres categorías nuevas.
-  if(['encargado','empleado','lectura'].includes(role))return 'cultivo';
-  return role;
+  return ['administrador','cultivo','medrano'].includes(role)?role:'';
 }
 
 function currentProfile(){
@@ -257,12 +286,11 @@ function currentProfile(){
 
 function currentRole(){
   const profile=currentProfile();
-  const metadataRole=state.session?.user?.user_metadata?.rol;
-  return normalizeRole(profile?.rol||metadataRole||'cultivo');
+  return profile?.activo===true?normalizeRole(profile.rol):'';
 }
 
 function canViewOperations(){
-  return ['administrador','cultivo','medrano'].includes(currentRole());
+  return Boolean(currentProfile()?.activo)&&['administrador','cultivo','medrano'].includes(currentRole());
 }
 function canAccessMedrano(){
   return ['administrador','medrano'].includes(currentRole());
@@ -287,6 +315,7 @@ function closeDialog(id){
   const dialog=$(id);
   if(dialog?.open) dialog.close();
 }
+document.querySelectorAll('[data-close-dialog]').forEach(button=>button.addEventListener('click',()=>button.closest('dialog')?.close()));
 
 function openWorker(t,kind='dated',preselected=[]){
   if(!canComplete()){
@@ -523,13 +552,14 @@ function generalTaskRow(t){
   const names=generalTaskNames(t);
   const actorProfile=state.perfiles.find(p=>p.id===t.registrada_por);
   const meta=generalDone(t)
-    ? `${names.join(', ')}${t.realizada_at?`<br>${new Date(t.realizada_at).toLocaleDateString('es-AR')} ${new Date(t.realizada_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}`:''}${actorProfile?`<div class="actor-line">Registrado por: ${actorProfile.nombre||actorProfile.email}</div>`:''}`
+    ? `${names.map(escapeHtml).join(', ')}${t.realizada_at?`<br>${new Date(t.realizada_at).toLocaleDateString('es-AR')} ${new Date(t.realizada_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'})}`:''}${actorProfile?`<div class="actor-line">Registrado por: ${escapeHtml(actorProfile.nombre||actorProfile.email)}</div>`:''}`
     : '';
+  const safeId=escapeHtml(t.id);
   return `<div class="task-row general-task-row ${generalDone(t)?'done':''}">
-    <input type="checkbox" data-general-check="${t.id}" ${generalDone(t)?'checked':''} ${canComplete()?'':'disabled'}>
-    <label><strong>${t.nombre}</strong>${t.detalle?`<div class="stage">${t.detalle}</div>`:''}</label>
+    <input type="checkbox" data-general-check="${safeId}" ${generalDone(t)?'checked':''} ${canComplete()?'':'disabled'}>
+    <label><strong>${escapeHtml(t.nombre)}</strong>${t.detalle?`<div class="stage">${escapeHtml(t.detalle)}</div>`:''}</label>
     <div class="task-meta">${meta}</div>
-    ${canEditTasks()?`<button class="task-menu" type="button" data-general-menu="${t.id}" aria-label="Editar tarea general">⋮</button>`:''}
+    ${canEditTasks()?`<button class="task-menu" type="button" data-general-menu="${safeId}" aria-label="Editar tarea general">⋮</button>`:''}
   </div>`;
 }
 
@@ -700,7 +730,7 @@ async function saveTaskDialog(){
         if(cancelOriginal.error) throw cancelOriginal.error;
 
         const createMoved=await db.from('tareas').insert({
-          sala_id:sr(room)?.id||null,
+          sala_id:requiredRoomId(room),
           fecha:date,
           nombre:name,
           detalle:detail,
@@ -715,7 +745,7 @@ async function saveTaskDialog(){
           : 'rutina';
 
         const q=await db.from('tareas').update({
-          sala_id:sr(room)?.id||null,
+          sala_id:requiredRoomId(room),
           fecha:date,
           nombre:name,
           detalle:detail,
@@ -726,7 +756,7 @@ async function saveTaskDialog(){
       }
     }else{
       const q=await db.from('tareas').insert({
-        sala_id:sr(room)?.id||null,
+        sala_id:requiredRoomId(room),
         fecha:date,
         nombre:name,
         detalle:detail,
@@ -747,6 +777,7 @@ async function saveTaskDialog(){
 }
 
 function openBed(id){
+  if(!canModify())return;
   const bed=state.camas.find(x=>String(x.id)===String(id));
   if(!bed) return;
   state.editBed=bed;
@@ -757,6 +788,7 @@ function openBed(id){
 }
 
 async function saveBedDialog(){
+  if(!canModify())throw new Error('No tenés permiso para modificar el croquis de Palestina.');
   if(!state.editBed) return;
   const payload={capacidad:Number($('bed-capacity').value)};
   if(Object.prototype.hasOwnProperty.call(state.editBed,'observaciones')) payload.observaciones=$('bed-notes').value.trim();
@@ -770,6 +802,7 @@ async function saveBedDialog(){
 }
 
 function openPlant(id){
+  if(!canModify())return;
   const plant=state.plantas.find(x=>String(x.id)===String(id));
   if(!plant) return;
   state.editPlant=plant;
@@ -790,6 +823,7 @@ function openPlant(id){
 }
 
 async function savePlantDialog(){
+  if(!canModify())throw new Error('No tenés permiso para modificar el croquis de Palestina.');
   if(!state.editPlant) return;
   const occupied=$('plant-status').value==='occupied';
   const payload={
@@ -1481,7 +1515,11 @@ function croquisGeneticColor(genetic){
   return palette[Math.abs(hash)%palette.length];
 }
 function renderRooms(){ $('screen-title').textContent='Salas';if(!state.room){app.innerHTML=`<div class="list">${rules.map(r=>{const pr=progress(r,today());return`<section class="room-card" data-room="${r.name}"><div class="room-head"><div><div class="room-title">${r.name}</div><div class="stage">${roomStatus(r,today())}</div></div><div class="room-head-actions">${taskCounter(pr.done,pr.total)}${canEditTasks()?`<button class="task-menu room-options-button" type="button" data-room-menu="${r.name}" data-room-date="${ymd(today())}" aria-label="Opciones de ${r.name}" title="Opciones de sala">⋮</button>`:''}</div></div></section>`}).join('')}</div>`;app.querySelectorAll('[data-room]').forEach(x=>x.onclick=()=>{state.room=x.dataset.room;state.roomDay=today();render()});app.querySelectorAll('[data-room-menu]').forEach(button=>button.onclick=event=>{event.stopPropagation();openRoomMenu(button.dataset.roomMenu,button.dataset.roomDate)});return}const r=rr(state.room),cro=r.type==='flora',d=state.roomDay||today(),rt=orderedTasks(tasks(d).filter(t=>t.room===r.name)),pr=progress(r,d);app.innerHTML=`<button id="back-room" class="secondary">← Volver</button><section class="panel room-detail-header"><div class="room-head"><div><h2>${r.name}</h2><p class="muted">${roomStatus(r,d)}</p></div><div class="room-head-actions">${taskCounter(pr.done,pr.total)}${canEditTasks()?`<button class="task-menu room-options-button" type="button" data-room-menu="${r.name}" data-room-date="${ymd(d)}" aria-label="Opciones de ${r.name}" title="Opciones de sala">⋮</button>`:''}</div></div><div class="room-date-controls"><button id="room-today" class="secondary room-back-today" ${same(d,today())?'disabled':''}>${same(d,today())?'Hoy':'Volver a hoy'}</button><div class="day-navigator"><button id="room-prev" class="secondary nav-day" aria-label="Día anterior">◀</button><div class="room-date-label">${shortRoomDate(d)}</div><button id="room-next" class="secondary nav-day" aria-label="Día siguiente">▶</button></div></div></section>${cro?`<div class="room-tabs"><button data-tab="summary" class="${state.tab==='summary'?'active':''}">Resumen</button><button data-tab="croquis" class="${state.tab==='croquis'?'active':''}">Croquis</button></div>`:''}${state.tab==='croquis'&&cro?renderCroquis(r):`<div class="section-title">Tareas del ${nice(d)}</div>${rt.length?rt.map(row).join(''):'<div class="empty-room-tasks">Sin tareas programadas</div>'}`}`;$('back-room').onclick=()=>{state.room=null;state.roomDay=null;state.tab='summary';render()};$('room-prev').onclick=()=>{state.roomDay=add(d,-1);render()};$('room-next').onclick=()=>{state.roomDay=add(d,1);render()};$('room-today').onclick=()=>{state.roomDay=today();render()};app.querySelectorAll('[data-tab]').forEach(x=>x.onclick=()=>{state.tab=x.dataset.tab;render()});app.querySelectorAll('[data-bed]').forEach(x=>x.onclick=()=>openBed(x.dataset.bed));app.querySelectorAll('[data-plant]').forEach(x=>x.onclick=()=>openPlant(x.dataset.plant));bind(d);app.querySelectorAll('[data-room-menu]').forEach(button=>button.onclick=event=>{event.stopPropagation();openRoomMenu(button.dataset.roomMenu,button.dataset.roomDate||ymd(d))})}
-function renderCroquis(r){const bs=beds(r.name),ps=bs.flatMap(plants),occ=ps.filter(p=>p.ocupada),cols=r.name==='Flora 3'?4:3;return`<section class="panel"><div class="croquis-metrics"><div><span>Plantas</span><strong>${occ.length}</strong></div><div><span>Capacidad</span><strong>${ps.length}</strong></div><div><span>Camas</span><strong>${bs.length}</strong></div></div></section><section class="croquis-shell"><div class="side-aisle"><span>Pasillo lateral</span></div><div class="beds-grid" style="--bed-columns:${cols}">${bs.map(b=>{const pp=plants(b),n=pp.filter(p=>p.ocupada).length;return`<article class="bed-card"><button class="bed-edit-button" data-bed="${b.id}"><div class="bed-card-head"><strong>Cama ${String(b.numero).padStart(2,'0')}</strong><span>${n}/${b.capacidad}</span></div></button><div class="plant-grid">${Array.from({length:9},(_,i)=>{const p=pp.find(x=>x.posicion===i+1);if(!p)return'<span class="plant-position plant-spacer"></span>';const genetic=state.geneticas.find(x=>String(x.id)===String(p.genetica_id));const g=genetic?(genetic.nomenclatura?`${genetic.nomenclatura} — ${genetic.nombre}`:genetic.nombre):'Sin genética asignada';const code=croquisGeneticCode(genetic);const style=p.ocupada?` style="--plant-color:${croquisGeneticColor(genetic)}"`:'';return`<button class="plant-position ${p.ocupada?'occupied':''}" data-plant="${p.id}" title="${p.ocupada?g:'Vacía'}" aria-label="${p.ocupada?`Planta ${p.posicion}: ${g}`:`Posición ${p.posicion} vacía`}"${style}>${p.ocupada?`<span class="plant-code">${code}</span>`:''}</button>`}).join('')}</div></article>`}).join('')}</div><div class="side-aisle"><span>Pasillo lateral</span></div></section>`}
+function renderCroquis(r){
+  const bs=beds(r.name),ps=bs.flatMap(plants),occ=ps.filter(p=>p.ocupada),cols=r.name==='Flora 3'?4:3;
+  const readOnly=!canModify();
+  return`<section class="panel"><div class="croquis-metrics"><div><span>Plantas</span><strong>${occ.length}</strong></div><div><span>Capacidad</span><strong>${ps.length}</strong></div><div><span>Camas</span><strong>${bs.length}</strong></div></div></section><section class="croquis-shell"><div class="side-aisle"><span>Pasillo lateral</span></div><div class="beds-grid" style="--bed-columns:${cols}">${bs.map(b=>{const pp=plants(b),n=pp.filter(p=>p.ocupada).length,safeBedId=escapeHtml(b.id);return`<article class="bed-card"><button class="bed-edit-button" type="button" data-bed="${safeBedId}" ${readOnly?'disabled':''}><div class="bed-card-head"><strong>Cama ${String(b.numero).padStart(2,'0')}</strong><span>${n}/${b.capacidad}</span></div></button><div class="plant-grid">${Array.from({length:9},(_,i)=>{const p=pp.find(x=>x.posicion===i+1);if(!p)return'<span class="plant-position plant-spacer"></span>';const genetic=state.geneticas.find(x=>String(x.id)===String(p.genetica_id));const g=genetic?(genetic.nomenclatura?`${genetic.nomenclatura} — ${genetic.nombre}`:genetic.nombre):'Sin genética asignada';const code=croquisGeneticCode(genetic);const style=p.ocupada?` style="--plant-color:${croquisGeneticColor(genetic)}"`:'';const label=p.ocupada?`Planta ${p.posicion}: ${g}`:`Posición ${p.posicion} vacía`;return`<button class="plant-position ${p.ocupada?'occupied':''}" type="button" data-plant="${escapeHtml(p.id)}" title="${escapeHtml(p.ocupada?g:'Vacía')}" aria-label="${escapeHtml(label)}" ${readOnly?'disabled':''}${style}>${p.ocupada?`<span class="plant-code">${escapeHtml(code)}</span>`:''}</button>`}).join('')}</div></article>`}).join('')}</div><div class="side-aisle"><span>Pasillo lateral</span></div></section>`;
+}
 
 
 function escapeHtml(value){
@@ -1679,13 +1717,13 @@ function updateHarvestLineTotal(){
     :'Agregá el detalle por genética para calcular el total automáticamente.';
 }
 function openHarvest(id=null){
-  if(!canEditTasks())return;
+  if(!canViewHarvests())return;
   const h=id?state.cosechas.find(x=>String(x.id)===String(id)):null;state.editHarvest=h||null;
   $('harvest-dialog-title').textContent=h?'Editar cosecha':'Nueva cosecha';$('harvest-date').value=h?.fecha||ymd(today());$('harvest-room').value=h?.sala||'Flora 1';$('harvest-cycle').value=h?.ciclo||'';$('harvest-goal').value=h?.meta_gramos??'';$('harvest-total').value=h?.total_gramos??'';$('harvest-plants').value=h?.cantidad_plantas??'';$('harvest-notes').value=h?.observaciones||'';$('delete-harvest').hidden=!h;
   $('harvest-lines').innerHTML=(h?harvestDetails(h.id):[]).map(harvestLineTemplate).join('');bindHarvestLines();$('harvest-dialog').showModal();
 }
 async function saveHarvestDialog(){
-  if(!canEditTasks())throw new Error('No tenés permiso para editar cosechas.');
+  if(!canViewHarvests())throw new Error('Solo un administrador puede editar cosechas.');
   const detailRows=[...$('harvest-lines').querySelectorAll('.harvest-line')];
   const calculatedTotal=detailRows.reduce((total,row)=>total+(Number(row.querySelector('.harvest-line-grams')?.value)||0),0);
   const useCalculatedTotal=!state.editHarvest||detailRows.length>0;
@@ -1750,7 +1788,7 @@ async function saveHarvestDialog(){
   }
   state.editHarvest=null;await refresh();state.view='harvests';render();
 }
-async function deleteHarvestDialog(){if(!state.editHarvest||!confirm(`¿Eliminar ${state.editHarvest.sala} · Ciclo ${state.editHarvest.ciclo}?`))return;const q=await db.from('cosechas').delete().eq('id',state.editHarvest.id);if(q.error)throw q.error;closeDialog('harvest-dialog');state.editHarvest=null;state.selectedHarvest=null;await refresh();state.view='harvests';render()}
+async function deleteHarvestDialog(){if(!canViewHarvests())throw new Error('Solo un administrador puede eliminar cosechas.');if(!state.editHarvest||!confirm(`¿Eliminar ${state.editHarvest.sala} · Ciclo ${state.editHarvest.ciclo}?`))return;const q=await db.from('cosechas').delete().eq('id',state.editHarvest.id);if(q.error)throw q.error;closeDialog('harvest-dialog');state.editHarvest=null;state.selectedHarvest=null;await refresh();state.view='harvests';render()}
 
 
 function stockCycleItems(cycleId){return state.stockItems.filter(x=>String(x.ciclo_id)===String(cycleId))}
@@ -1760,7 +1798,7 @@ function stockItemCurrent(item){
     const grams=Number(m.gramos)||0;
     return sum+(m.tipo==='entrada'?grams:m.tipo==='salida'?-grams:Number(m.ajuste_delta)||0);
   },0);
-  return Math.max(0,(Number(item.stock_actual_base)||0)+delta);
+  return Math.round(((Number(item.stock_actual_base)||0)+delta)*100)/100;
 }
 function stockCycleCurrent(cycle){return stockCycleItems(cycle.id).reduce((sum,item)=>sum+stockItemCurrent(item),0)}
 function stockMovementTitle(m){
@@ -2193,7 +2231,7 @@ async function loadBackups(){
     const select=$('backup-select');
     if(select){
       select.innerHTML=state.backups.length
-        ?state.backups.map(b=>`<option value="${b.id}">${backupDate(b.created_at)} · ${backupSize(b.size_in_bytes)}</option>`).join('')
+        ?state.backups.map(b=>`<option value="${escapeHtml(b.id)}">${escapeHtml(backupDate(b.created_at))} · ${escapeHtml(backupSize(b.size_in_bytes))}</option>`).join('')
         :'<option value="">Todavía no hay backups disponibles</option>';
       select.disabled=!state.backups.length;
     }
@@ -2279,18 +2317,18 @@ function renderSettings(){
       <p id="backup-status" class="backup-status" aria-live="polite">Consultando copias guardadas…</p>
       <p class="backup-warning">La restauración requiere doble confirmación y se ejecuta del lado del servidor. Ninguna clave privada queda dentro de la app.</p>
     </section>
-    <section class="panel"><h3>Empleados compartidos</h3><textarea id="emps" class="text-input" style="min-height:150px">${state.empleados.map(e=>e.nombre).join('\n')}</textarea></section>
+    <section class="panel"><h3>Empleados compartidos</h3><textarea id="emps" class="text-input" style="min-height:150px">${escapeHtml(state.empleados.map(e=>e.nombre).join('\n'))}</textarea></section>
     <button id="save-conf" class="primary">Guardar configuración</button>
-    <section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>`<div class="user-row"><div><strong>${p.nombre||'Sin nombre'}</strong><div class="user-email">${p.email||''}</div></div><select class="text-input user-role" data-role="${p.id}">${['administrador','cultivo','medrano'].map(r=>`<option value="${r}" ${normalizeRole(p.rol)===r?'selected':''}>${r.charAt(0).toUpperCase()+r.slice(1)}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${p.id}" ${p.activo?'checked':''}> Activo</label>${p.id!==state.session.user.id?`<button class="danger user-delete" data-delete-user="${p.id}" data-delete-name="${p.nombre||p.email||'este usuario'}">Eliminar cuenta</button>`:'<span class="self-account">Tu cuenta</span>'}</div>`).join('')}</div><p><button id="save-users" class="primary">Guardar usuarios</button></p></section>
+    <section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>{const safeId=escapeHtml(p.id),safeName=escapeHtml(p.nombre||'Sin nombre'),safeEmail=escapeHtml(p.email||''),safeDeleteName=escapeHtml(p.nombre||p.email||'este usuario'),self=p.id===state.session.user.id;return`<div class="user-row"><div><strong>${safeName}</strong><div class="user-email">${safeEmail}</div></div><select class="text-input user-role" data-role="${safeId}" ${self?'disabled aria-label="El rol de tu propia cuenta está protegido"':''}>${['administrador','cultivo','medrano'].map(r=>`<option value="${r}" ${normalizeRole(p.rol)===r?'selected':''}>${r.charAt(0).toUpperCase()+r.slice(1)}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${safeId}" ${p.activo?'checked':''} ${self?'disabled':''}> Activo</label>${self?'<span class="self-account">Tu cuenta protegida</span>':`<button class="danger user-delete" type="button" data-delete-user="${safeId}" data-delete-name="${safeDeleteName}">Eliminar cuenta</button>`}</div>`}).join('')}</div><p class="muted">Tu propia cuenta no puede cambiar de rol ni desactivarse desde la aplicación.</p><p><button id="save-users" class="primary">Guardar usuarios</button></p></section>
     <section class="panel"><h3>Permisos por rol</h3><div class="role-permissions">${Object.entries(permissions).map(([role,text])=>`<div class="role-permission"><strong>${role}</strong><p>${text}</p></div>`).join('')}</div></section>
-    <section class="panel account-summary"><p><strong>Usuario:</strong> ${state.session.user.email}</p><p><strong>Rol:</strong> ${currentRole().charAt(0).toUpperCase()+currentRole().slice(1)}</p><p><strong>Tus permisos:</strong> ${permissions[currentRole()]||''}</p><p><strong>Versión:</strong> ${APP_VERSION}</p></section>`;
+    <section class="panel account-summary"><p><strong>Usuario:</strong> ${escapeHtml(state.session.user.email)}</p><p><strong>Rol:</strong> ${currentRole().charAt(0).toUpperCase()+currentRole().slice(1)}</p><p><strong>Tus permisos:</strong> ${permissions[currentRole()]||''}</p><p><strong>Versión:</strong> ${APP_VERSION}</p></section>`;
   $('save-conf').onclick=saveConfig;
   $('create-backup').onclick=createManualBackup;
   $('download-backup').onclick=downloadBackup;
   $('restore-backup').onclick=restoreBackup;
   $('refresh-backups').onclick=loadBackups;
   $('save-users').onclick=async()=>{try{for(const p of state.perfiles){const q=await db.rpc('admin_actualizar_perfil_v2',{objetivo_id:p.id,nuevo_rol:document.querySelector(`[data-role="${p.id}"]`).value,nuevo_activo:document.querySelector(`[data-active="${p.id}"]`).checked});if(q.error)throw q.error}await refresh();alert('Usuarios actualizados.')}catch(e){console.error(e);alert(e.message||'No se pudieron actualizar los usuarios.')}};
-  app.querySelectorAll('[data-delete-user]').forEach(btn=>btn.onclick=async()=>{const name=btn.dataset.deleteName;if(!confirm(`¿Eliminar definitivamente la cuenta de ${name}? Esta acción no se puede deshacer.`))return;btn.disabled=true;try{const q=await db.rpc('admin_eliminar_usuario',{objetivo_id:btn.dataset.deleteUser});if(q.error)throw q.error;await refresh();alert('Cuenta eliminada.')}catch(e){console.error(e);btn.disabled=false;alert(e.message||'No se pudo eliminar la cuenta. Verificá que hayas ejecutado el SQL de V3.2.1.')}});
+  app.querySelectorAll('[data-delete-user]').forEach(btn=>btn.onclick=async()=>{const name=btn.dataset.deleteName;if(!confirm(`¿Eliminar definitivamente la cuenta de ${name}? Esta acción no se puede deshacer.`))return;btn.disabled=true;try{const q=await db.rpc('admin_eliminar_usuario',{objetivo_id:btn.dataset.deleteUser});if(q.error)throw q.error;await refresh();alert('Cuenta eliminada definitivamente.')}catch(e){console.error(e);btn.disabled=false;alert(e.message||'No se pudo eliminar la cuenta. Verificá que esté aplicada la migración V3.17.0.')}});
   loadBackups();
 }
 async function saveConfig(){const emp=[...new Set($('emps').value.split('\n').map(x=>x.trim()).filter(Boolean))];for(const n of emp)await db.from('empleados').upsert({nombre:n,activo:true},{onConflict:'nombre'});for(const e of state.empleados.filter(e=>!emp.includes(e.nombre)))await db.from('empleados').update({activo:false}).eq('id',e.id);await refresh();alert('Configuración guardada.')}
@@ -2432,14 +2470,16 @@ async function start(session){
 
   try{
     await load();
-    if(state.profile&&!state.profile.activo){await db.auth.signOut();throw new Error('Tu usuario está desactivado.');}
+    if(!state.profile){const message='Tu cuenta no tiene un perfil habilitado. Pedile acceso a un administrador.';$('auth-message').textContent=message;await db.auth.signOut();throw new Error(message);}
+    if(!state.profile.activo){const message='Tu usuario está desactivado.';$('auth-message').textContent=message;await db.auth.signOut();throw new Error(message);}
+    __resetDataPerfCaches();
     subscribe();
     render();
   }catch(error){
     console.error(error);
     $('app').innerHTML=`<section class="panel error-panel">
       <strong>No se pudieron cargar los datos</strong>
-      <p>${error.message||'Error desconocido'}</p>
+      <p>${escapeHtml(error.message||'Error desconocido')}</p>
       <button type="button" id="retry-load" class="primary">Reintentar</button>
     </section>`;
     const retry=$('retry-load');
@@ -4295,5 +4335,5 @@ $('voice-speech-stop')?.addEventListener('click',()=>stopVoiceSpeech({resume:tru
 if(!VoiceRecognition){const button=$('voice-button');if(button){button.classList.add('unsupported');button.title='Reconocimiento de voz no disponible en este navegador';}}
 
 if('serviceWorker'in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js?v=3.16.15').catch(console.error));
+  window.addEventListener('load',()=>navigator.serviceWorker.register(`./sw.js?v=${APP_VERSION}`).catch(console.error));
 }

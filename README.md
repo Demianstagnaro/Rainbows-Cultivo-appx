@@ -1,6 +1,6 @@
-# rainbows V3.0
+# Rainbows
 
-Primera versión compartida con Supabase.
+Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 
 - Login por correo y contraseña.
 - Tareas, realizaciones y responsables compartidos.
@@ -9,7 +9,7 @@ Primera versión compartida con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La primera cuenta puede crearse desde la app. Si la confirmación de correo está activa en Supabase, hay que confirmar el correo antes de ingresar.
+La versión actual es V3.17.0. El registro público permanece deshabilitado: las altas se administran de forma controlada y toda cuenta nueva queda inactiva hasta que un Administrador la habilite.
 
 
 ## V3.0.1
@@ -1075,3 +1075,18 @@ Registro de pacientes con alta/edición, orden por columnas y búsqueda instant�
 ## V3.16.46 — Cosechas destacadas en Calendario
 - Los días con tarea Cosecha muestran una etiqueta roja `COSECHA` directamente en la vista mensual.
 - La celda del día recibe además un leve resaltado rojo para facilitar su identificación de un vistazo.
+
+
+## V3.17.0 — Corrección integral posterior a auditoría
+
+- Endurece permisos de Supabase para los roles definitivos Administrador, Cultivo y Medrano.
+- Impide la autoelevación de rol y conserva siempre al menos un Administrador activo.
+- La eliminación de usuarios borra también la cuenta real de Authentication.
+- Las cuentas nuevas quedan inactivas y el registro público deja de ofrecerse en la interfaz.
+- Evita inyección de HTML en tareas, responsables, usuarios y mensajes de error.
+- Agrega `Sala de trabajo` a la base y evita guardar tareas con una sala inexistente.
+- Mantiene el total de cada cosecha sincronizado con su desglose por genética.
+- Corrige el caché PWA y elimina la modificación dinámica de archivos desde el service worker.
+- Unifica la versión de todos los recursos y agrega controles automáticos de JavaScript, HTML, PWA, calendario, seguridad y migración PostgreSQL.
+- Requiere aplicar `Rainbows_V3.17.0_seguridad_integral.sql` antes de publicar el frontend.
+- El procedimiento completo está en `DESPLIEGUE_V3.17.0.md`.
