@@ -71,6 +71,14 @@ test('la configuración escapa empleados, nombres, correos y usuario actual',()=
   assert.match(app,/escapeHtml\(state\.session\.user\.email\)/);
 });
 
+test('la interfaz impide cambiar el rol o desactivar la cuenta propia',()=>{
+  const settings=between(app,'function renderSettings(){','async function saveConfig');
+  assert.match(settings,/self=p\.id===state\.session\.user\.id/);
+  assert.match(settings,/self\?'disabled aria-label="El rol de tu propia cuenta está protegido"'/);
+  assert.match(settings,/data-active="\$\{safeId\}"[^>]*\$\{self\?'disabled'/);
+  assert.match(settings,/Tu propia cuenta no puede cambiar de rol ni desactivarse/);
+});
+
 test('el frontend no concede permisos por roles históricos ni metadatos de Auth',()=>{
   const roleCode=between(app,'function normalizeRole(value){','function currentProfile');
   assert.doesNotMatch(roleCode,/encargado|empleado|lectura/);
