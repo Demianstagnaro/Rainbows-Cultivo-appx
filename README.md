@@ -9,7 +9,7 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.17.0. El registro público permanece deshabilitado: las altas se administran de forma controlada y toda cuenta nueva queda inactiva hasta que un Administrador la habilite.
+La versión actual es V3.18.0. El registro público permanece deshabilitado: las altas se administran de forma controlada y toda cuenta nueva queda inactiva hasta que un Administrador la habilite.
 
 
 ## V3.0.1
@@ -1090,3 +1090,11 @@ Registro de pacientes con alta/edición, orden por columnas y búsqueda instant�
 - Unifica la versión de todos los recursos y agrega controles automáticos de JavaScript, HTML, PWA, calendario, seguridad y migración PostgreSQL.
 - Requiere aplicar `Rainbows_V3.17.0_seguridad_integral.sql` antes de publicar el frontend.
 - El procedimiento completo está en `DESPLIEGUE_V3.17.0.md`.
+
+
+## V3.18.0 — Info cultivo
+
+- Agrega `Info cultivo` al menú principal de Palestina.
+- Agrupa dentro de esa sección `Enmiendas`, `Genéticas` y `Salas`, conservando toda su información y funcionamiento.
+- Agrega la nueva sección `Parámetros`, preparada para diseñar luego la información de luz, riego, CO₂ y otras variables.
+- Reduce el menú principal a cinco accesos y mantiene la navegación adaptada a celular.

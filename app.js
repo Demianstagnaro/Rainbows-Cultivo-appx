@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.17.0';
+const APP_VERSION='3.18.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1352,6 +1352,35 @@ function renderMedrano(){
   bindModuleNav();
   $('medrano-stock-list-back').onclick=()=>{state.medranoView='stock';render()};
 }
+const cultivoInfoViews=new Set(['cultivo-info','amendments','genetics','rooms','parameters']);
+function openCultivoInfo(){state.view='cultivo-info';state.room=null;state.roomDay=null;state.tab='summary';render()}
+function renderCultivoInfo(){
+  $('screen-title').textContent='Info cultivo';
+  app.innerHTML=`
+    <section class="panel cultivo-info-head">
+      <h2>Info cultivo</h2>
+      <p class="muted">Información de referencia y configuración del cultivo.</p>
+    </section>
+    <section class="cultivo-info-grid" aria-label="Secciones de información de cultivo">
+      <button class="cultivo-info-card" type="button" data-cultivo-info-view="amendments"><strong>Enmiendas</strong><span>Composición y dosis por etapa.</span></button>
+      <button class="cultivo-info-card" type="button" data-cultivo-info-view="genetics"><strong>Genéticas</strong><span>Variedades, nomenclaturas y características.</span></button>
+      <button class="cultivo-info-card" type="button" data-cultivo-info-view="rooms"><strong>Salas</strong><span>Estado, tareas y croquis de cada sala.</span></button>
+      <button class="cultivo-info-card" type="button" data-cultivo-info-view="parameters"><strong>Parámetros</strong><span>Sección preparada para luz, riego, CO₂ y otros parámetros.</span></button>
+    </section>`;
+  app.querySelectorAll('[data-cultivo-info-view]').forEach(button=>button.onclick=()=>{state.view=button.dataset.cultivoInfoView;state.room=null;state.roomDay=null;state.tab='summary';render()});
+}
+function renderParameters(){
+  $('screen-title').textContent='Parámetros';
+  app.innerHTML=`<button id="back-cultivo-info" class="secondary cultivo-info-back" type="button">← Info cultivo</button><section class="panel cultivo-info-placeholder"><h2>Parámetros</h2><p class="muted">Sección preparada. Próximamente vamos a diseñar acá los parámetros de luz, riego, CO₂ y demás variables del cultivo.</p></section>`;
+  $('back-cultivo-info').onclick=openCultivoInfo;
+}
+function renderAmendmentsView(){
+  if(typeof window.renderAmendments!=='function'){
+    $('screen-title').textContent='Enmiendas';
+    app.innerHTML='<button id="back-cultivo-info" class="secondary cultivo-info-back" type="button">← Info cultivo</button><section class="panel error-panel"><strong>No se pudo cargar Enmiendas.</strong><p>Actualizá la aplicación e intentá nuevamente.</p></section>';
+  }else window.renderAmendments();
+  const back=$('back-cultivo-info');if(back)back.onclick=openCultivoInfo;
+}
 function render(){const isPalestina=renderSiteShell();const cb=$('header-config');if(cb&&isPalestina){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';state.room=null;state.roomDay=null;state.day=null;render()}}const hb=$('header-help');if(hb&&isPalestina){hb.onclick=()=>{state.view='help';state.room=null;state.roomDay=null;state.day=null;render()}}if(!isPalestina){renderMedrano();return} $('today-label').textContent=nice(today());
 $('cancel-medrano-lot').onclick=()=>closeDialog('medrano-lot-dialog');
 $('cancel-medrano-reception').onclick=()=>{state.pendingStockTransfer=null;closeDialog('medrano-reception-dialog')};
@@ -1375,7 +1404,7 @@ $('harvest-total').oninput=updateHarvestLineTotal;
 $('save-harvest').onclick=async()=>{try{await saveHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la cosecha.')}};
 $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
 
-document.querySelectorAll('.top-nav button').forEach(b=>{const view=b.dataset.view;const allowed=canViewOperations()&&(view==='harvests'?canViewHarvests():view==='stock'?canViewStock():true);b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='harvests'&&!canViewHarvests()){state.view='today';state.selectedHarvest=null;}if(state.view==='stock'&&!canViewStock()){state.view='today';state.stockRoom=null;state.stockCycle=null;}if(state.view==='settings'&&currentRole()!=='administrador')state.view='today';if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
+document.querySelectorAll('.top-nav button').forEach(b=>{const view=b.dataset.view;const allowed=canViewOperations()&&(view==='harvests'?canViewHarvests():view==='stock'?canViewStock():true);b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',view==='cultivo-info'?cultivoInfoViews.has(state.view):view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='harvests'&&!canViewHarvests()){state.view='today';state.selectedHarvest=null;}if(state.view==='stock'&&!canViewStock()){state.view='today';state.stockRoom=null;state.stockCycle=null;}if(state.view==='settings'&&currentRole()!=='administrador')state.view='today';if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='cultivo-info')renderCultivoInfo();if(state.view==='amendments')renderAmendmentsView();if(state.view==='parameters')renderParameters();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
 function renderHelp(){
   $('screen-title').textContent='Ayuda';
   app.innerHTML=`
@@ -1514,7 +1543,7 @@ function croquisGeneticColor(genetic){
   for(const character of key)hash=((hash<<5)-hash)+character.charCodeAt(0);
   return palette[Math.abs(hash)%palette.length];
 }
-function renderRooms(){ $('screen-title').textContent='Salas';if(!state.room){app.innerHTML=`<div class="list">${rules.map(r=>{const pr=progress(r,today());return`<section class="room-card" data-room="${r.name}"><div class="room-head"><div><div class="room-title">${r.name}</div><div class="stage">${roomStatus(r,today())}</div></div><div class="room-head-actions">${taskCounter(pr.done,pr.total)}${canEditTasks()?`<button class="task-menu room-options-button" type="button" data-room-menu="${r.name}" data-room-date="${ymd(today())}" aria-label="Opciones de ${r.name}" title="Opciones de sala">⋮</button>`:''}</div></div></section>`}).join('')}</div>`;app.querySelectorAll('[data-room]').forEach(x=>x.onclick=()=>{state.room=x.dataset.room;state.roomDay=today();render()});app.querySelectorAll('[data-room-menu]').forEach(button=>button.onclick=event=>{event.stopPropagation();openRoomMenu(button.dataset.roomMenu,button.dataset.roomDate)});return}const r=rr(state.room),cro=r.type==='flora',d=state.roomDay||today(),rt=orderedTasks(tasks(d).filter(t=>t.room===r.name)),pr=progress(r,d);app.innerHTML=`<button id="back-room" class="secondary">← Volver</button><section class="panel room-detail-header"><div class="room-head"><div><h2>${r.name}</h2><p class="muted">${roomStatus(r,d)}</p></div><div class="room-head-actions">${taskCounter(pr.done,pr.total)}${canEditTasks()?`<button class="task-menu room-options-button" type="button" data-room-menu="${r.name}" data-room-date="${ymd(d)}" aria-label="Opciones de ${r.name}" title="Opciones de sala">⋮</button>`:''}</div></div><div class="room-date-controls"><button id="room-today" class="secondary room-back-today" ${same(d,today())?'disabled':''}>${same(d,today())?'Hoy':'Volver a hoy'}</button><div class="day-navigator"><button id="room-prev" class="secondary nav-day" aria-label="Día anterior">◀</button><div class="room-date-label">${shortRoomDate(d)}</div><button id="room-next" class="secondary nav-day" aria-label="Día siguiente">▶</button></div></div></section>${cro?`<div class="room-tabs"><button data-tab="summary" class="${state.tab==='summary'?'active':''}">Resumen</button><button data-tab="croquis" class="${state.tab==='croquis'?'active':''}">Croquis</button></div>`:''}${state.tab==='croquis'&&cro?renderCroquis(r):`<div class="section-title">Tareas del ${nice(d)}</div>${rt.length?rt.map(row).join(''):'<div class="empty-room-tasks">Sin tareas programadas</div>'}`}`;$('back-room').onclick=()=>{state.room=null;state.roomDay=null;state.tab='summary';render()};$('room-prev').onclick=()=>{state.roomDay=add(d,-1);render()};$('room-next').onclick=()=>{state.roomDay=add(d,1);render()};$('room-today').onclick=()=>{state.roomDay=today();render()};app.querySelectorAll('[data-tab]').forEach(x=>x.onclick=()=>{state.tab=x.dataset.tab;render()});app.querySelectorAll('[data-bed]').forEach(x=>x.onclick=()=>openBed(x.dataset.bed));app.querySelectorAll('[data-plant]').forEach(x=>x.onclick=()=>openPlant(x.dataset.plant));bind(d);app.querySelectorAll('[data-room-menu]').forEach(button=>button.onclick=event=>{event.stopPropagation();openRoomMenu(button.dataset.roomMenu,button.dataset.roomDate||ymd(d))})}
+function renderRooms(){ $('screen-title').textContent='Salas';if(!state.room){app.innerHTML=`<button id="back-cultivo-info" class="secondary cultivo-info-back" type="button">← Info cultivo</button><div class="list">${rules.map(r=>{const pr=progress(r,today());return`<section class="room-card" data-room="${r.name}"><div class="room-head"><div><div class="room-title">${r.name}</div><div class="stage">${roomStatus(r,today())}</div></div><div class="room-head-actions">${taskCounter(pr.done,pr.total)}${canEditTasks()?`<button class="task-menu room-options-button" type="button" data-room-menu="${r.name}" data-room-date="${ymd(today())}" aria-label="Opciones de ${r.name}" title="Opciones de sala">⋮</button>`:''}</div></div></section>`}).join('')}</div>`;$('back-cultivo-info').onclick=openCultivoInfo;app.querySelectorAll('[data-room]').forEach(x=>x.onclick=()=>{state.room=x.dataset.room;state.roomDay=today();render()});app.querySelectorAll('[data-room-menu]').forEach(button=>button.onclick=event=>{event.stopPropagation();openRoomMenu(button.dataset.roomMenu,button.dataset.roomDate)});return}const r=rr(state.room),cro=r.type==='flora',d=state.roomDay||today(),rt=orderedTasks(tasks(d).filter(t=>t.room===r.name)),pr=progress(r,d);app.innerHTML=`<button id="back-room" class="secondary">← Volver</button><section class="panel room-detail-header"><div class="room-head"><div><h2>${r.name}</h2><p class="muted">${roomStatus(r,d)}</p></div><div class="room-head-actions">${taskCounter(pr.done,pr.total)}${canEditTasks()?`<button class="task-menu room-options-button" type="button" data-room-menu="${r.name}" data-room-date="${ymd(d)}" aria-label="Opciones de ${r.name}" title="Opciones de sala">⋮</button>`:''}</div></div><div class="room-date-controls"><button id="room-today" class="secondary room-back-today" ${same(d,today())?'disabled':''}>${same(d,today())?'Hoy':'Volver a hoy'}</button><div class="day-navigator"><button id="room-prev" class="secondary nav-day" aria-label="Día anterior">◀</button><div class="room-date-label">${shortRoomDate(d)}</div><button id="room-next" class="secondary nav-day" aria-label="Día siguiente">▶</button></div></div></section>${cro?`<div class="room-tabs"><button data-tab="summary" class="${state.tab==='summary'?'active':''}">Resumen</button><button data-tab="croquis" class="${state.tab==='croquis'?'active':''}">Croquis</button></div>`:''}${state.tab==='croquis'&&cro?renderCroquis(r):`<div class="section-title">Tareas del ${nice(d)}</div>${rt.length?rt.map(row).join(''):'<div class="empty-room-tasks">Sin tareas programadas</div>'}`}`;$('back-room').onclick=()=>{state.room=null;state.roomDay=null;state.tab='summary';render()};$('room-prev').onclick=()=>{state.roomDay=add(d,-1);render()};$('room-next').onclick=()=>{state.roomDay=add(d,1);render()};$('room-today').onclick=()=>{state.roomDay=today();render()};app.querySelectorAll('[data-tab]').forEach(x=>x.onclick=()=>{state.tab=x.dataset.tab;render()});app.querySelectorAll('[data-bed]').forEach(x=>x.onclick=()=>openBed(x.dataset.bed));app.querySelectorAll('[data-plant]').forEach(x=>x.onclick=()=>openPlant(x.dataset.plant));bind(d);app.querySelectorAll('[data-room-menu]').forEach(button=>button.onclick=event=>{event.stopPropagation();openRoomMenu(button.dataset.roomMenu,button.dataset.roomDate||ymd(d))})}
 function renderCroquis(r){
   const bs=beds(r.name),ps=bs.flatMap(plants),occ=ps.filter(p=>p.ocupada),cols=r.name==='Flora 3'?4:3;
   const readOnly=!canModify();
@@ -1542,6 +1571,7 @@ function renderGenetics(){
     return activeDiff||String(a.nombre||'').localeCompare(String(b.nombre||''),'es',{sensitivity:'base'});
   });
   app.innerHTML=`
+    <button id="back-cultivo-info" class="secondary cultivo-info-back" type="button">← Info cultivo</button>
     <section class="panel genetics-page-head">
       <div><h2>Genéticas</h2><p class="muted">Listado central de variedades, nomenclaturas, linajes, cannabinoides y genotipos.</p></div>
       ${canManage?'<button id="add-genetic" class="primary compact-button" type="button">+ Nueva genética</button>':''}
@@ -1549,6 +1579,7 @@ function renderGenetics(){
     <section class="panel genetics-table-panel">
       ${rows.length?`<div class="genetics-table-wrap"><table class="genetics-table"><thead><tr><th>Genética</th><th>Nomenclatura</th><th>Linaje</th><th>Cannabinoides</th><th>Genotipo</th><th>Estado</th>${canManage?'<th></th>':''}</tr></thead><tbody>${rows.map(g=>`<tr class="${g.activa===false?'genetic-archived':''}"><td data-label="Genética"><strong>${escapeHtml(g.nombre||'—')}</strong></td><td data-label="Nomenclatura">${escapeHtml(g.nomenclatura||'—')}</td><td data-label="Linaje">${escapeHtml(g.linaje||'—')}</td><td data-label="Cannabinoides">${escapeHtml(g.cannabinoides||'—')}</td><td data-label="Genotipo">${escapeHtml(formatGenotype(g))}</td><td data-label="Estado"><span class="genetic-status ${g.activa===false?'archived':'active'}">${g.activa===false?'Archivada':'Activa'}</span></td>${canManage?`<td class="genetic-actions"><button class="secondary compact-button" type="button" data-edit-genetic="${g.id}">Editar</button></td>`:''}</tr>`).join('')}</tbody></table></div>`:'<div class="empty-room-tasks">Todavía no hay genéticas cargadas.</div>'}
     </section>`;
+  $('back-cultivo-info').onclick=openCultivoInfo;
   if(canManage){
     $('add-genetic').onclick=()=>openGenetic();
     app.querySelectorAll('[data-edit-genetic]').forEach(button=>button.onclick=()=>openGenetic(button.dataset.editGenetic));
