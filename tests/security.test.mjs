@@ -7,6 +7,7 @@ const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const sql=fs.readFileSync(new URL('../Rainbows_V3.17.0_seguridad_integral.sql',import.meta.url),'utf8');
 const orderDeleteSql=fs.readFileSync(new URL('../Rainbows_V3.18.1_eliminar_comandas.sql',import.meta.url),'utf8');
 const orderAuditSql=fs.readFileSync(new URL('../Rainbows_V3.18.2_auditoria_comandas.sql',import.meta.url),'utf8');
+const orderPendingSql=fs.readFileSync(new URL('../Rainbows_V3.18.3_comandas_pendientes.sql',import.meta.url),'utf8');
 
 function between(source,start,end){
   const from=source.indexOf(start);
@@ -130,4 +131,16 @@ test('los controles de los diálogos de Medrano se enlazan antes de salir del re
   assert.ok(renderCode.indexOf('bindMedranoDialogActions()')<renderCode.indexOf('if(!isPalestina){renderMedrano();return}'));
   assert.match(app,/cancel-medrano-order-delete/);
   assert.match(app,/confirm-medrano-order-delete/);
+});
+
+test('las comandas siguen pendientes hasta confirmar la dispensación',()=>{
+  assert.match(app,/state\.medranoOrders=allMedranoOrders\.filter[\s\S]*?order\.requiere_cierre!==false&&\(!order\.dispensada_at\|\|order\.dispensada_fecha>=todayKey\)/);
+  assert.match(app,/data-dispense-medrano-order/);
+  assert.match(app,/function markMedranoOrderDispensed\(orderId\)/);
+  assert.match(app,/state\.medranoDispensedOrders=allMedranoOrders\.filter[\s\S]*?order\.dispensada_fecha<todayKey/);
+  assert.match(orderPendingSql,/create or replace function public\.marcar_comanda_dispensada[\s\S]*?security definer[\s\S]*?set search_path = ''/i);
+  assert.match(orderPendingSql,/dispensada_fecha = \(now\(\) at time zone 'America\/Argentina\/Buenos_Aires'\)::date/i);
+  assert.match(orderPendingSql,/alter column requiere_cierre set default true/i);
+  assert.match(orderPendingSql,/revoke insert, update on public\.medrano_comandas from authenticated/i);
+  assert.doesNotMatch(orderPendingSql,/using\s*\(true\)/i);
 });

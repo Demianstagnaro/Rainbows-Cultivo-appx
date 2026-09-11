@@ -43,6 +43,17 @@ begin
      or not has_function_privilege('authenticated', 'public.eliminar_comanda_medrano(uuid,text)', 'EXECUTE') then
     raise exception 'Privilegios de eliminar_comanda_medrano incorrectos.';
   end if;
+  if has_column_privilege('authenticated', 'public.medrano_comandas', 'dispensada_at', 'UPDATE')
+     or has_function_privilege('anon', 'public.marcar_comanda_dispensada(uuid)', 'EXECUTE')
+     or not has_function_privilege('authenticated', 'public.marcar_comanda_dispensada(uuid)', 'EXECUTE') then
+    raise exception 'Privilegios de confirmación de comandas incorrectos.';
+  end if;
+  if not exists (
+    select 1 from public.medrano_comandas
+    where id = '30000000-0000-0000-0000-000000000009' and requiere_cierre is false
+  ) then
+    raise exception 'La migración sacó del historial una comanda histórica existente.';
+  end if;
 
   if not exists (
     select 1 from pg_trigger
@@ -93,6 +104,37 @@ begin
     if sqlerrm not like 'No podés quitarte tu propio acceso%' then
       raise;
     end if;
+  end;
+end;
+$$;
+
+insert into public.medrano_comandas(id, producto, cantidad, nombre_paciente, fecha, creado_por)
+values (
+  '30000000-0000-0000-0000-000000000002', 'Comanda pendiente', 5,
+  'Paciente pendiente', current_date - 3, '00000000-0000-0000-0000-000000000005'
+);
+
+do $$
+begin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000005', true);
+  perform public.marcar_comanda_dispensada('30000000-0000-0000-0000-000000000002');
+
+  if not exists (
+    select 1 from public.medrano_comandas
+    where id = '30000000-0000-0000-0000-000000000002'
+      and dispensada_at is not null
+      and dispensada_fecha = (now() at time zone 'America/Argentina/Buenos_Aires')::date
+      and dispensada_por = '00000000-0000-0000-0000-000000000005'
+      and dispensada_por_nombre = 'Medrano'
+  ) then
+    raise exception 'La dispensación no registró fecha y usuario correctamente.';
+  end if;
+
+  begin
+    perform public.marcar_comanda_dispensada('30000000-0000-0000-0000-000000000002');
+    raise exception 'Una comanda ya dispensada pudo confirmarse dos veces.';
+  exception when others then
+    if sqlerrm not like 'No se encontró la comanda%' then raise; end if;
   end;
 end;
 $$;
