@@ -46,4 +46,5 @@ jobs:
       - run: psql -f Rainbows_V3.18.1_eliminar_comandas.sql
       - run: psql -f Rainbows_V3.18.2_auditoria_comandas.sql
       - run: psql -f Rainbows_V3.18.3_comandas_pendientes.sql
+      - run: psql -f Rainbows_V3.18.5_editar_comandas.sql
       - run: psql -f tests/sql/schema_assertions.sql
