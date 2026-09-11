@@ -893,6 +893,7 @@ body{
 
 /* V3.16.42 — Comandas Medrano */
 .medrano-orders-table{min-width:760px}
+.medrano-order-history-table{min-width:1080px}
 .medrano-order-actions{display:flex;align-items:center;gap:7px;white-space:nowrap}
 .medrano-order-actions .danger{min-height:34px}
 .medrano-order-dispensed{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:6px 9px;border:1px solid var(--border);border-radius:9px;background:rgba(34,197,94,.08);font-size:.82rem;font-weight:800;color:#bbf7d0;cursor:pointer}
