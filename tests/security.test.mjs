@@ -6,6 +6,7 @@ import test from 'node:test';
 const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const sql=fs.readFileSync(new URL('../Rainbows_V3.17.0_seguridad_integral.sql',import.meta.url),'utf8');
 const orderDeleteSql=fs.readFileSync(new URL('../Rainbows_V3.18.1_eliminar_comandas.sql',import.meta.url),'utf8');
+const orderAuditSql=fs.readFileSync(new URL('../Rainbows_V3.18.2_auditoria_comandas.sql',import.meta.url),'utf8');
 
 function between(source,start,end){
   const from=source.indexOf(start);
@@ -111,10 +112,22 @@ test('la migración prueba su matriz y recalcula ambos lados de una cosecha movi
   assert.match(sql,/alter function public\.confirmar_transferencia_medrano[\s\S]*?set search_path = ''/i);
 });
 
-test('eliminar comandas queda limitado a usuarios autorizados de Medrano',()=>{
-  assert.match(app,/function deleteMedranoOrder\(orderId\)/);
+test('eliminar comandas conserva una auditoría que no puede falsificarse desde el cliente',()=>{
+  assert.match(app,/function deleteMedranoOrder\(orderId,reason=''\)/);
   assert.match(app,/data-delete-medrano-order/);
-  assert.match(app,/Esta acción no se puede deshacer/);
   assert.match(orderDeleteSql,/create policy medrano_comandas_delete[\s\S]*?for delete to authenticated[\s\S]*?using \(public\.usuario_rainbows_medrano\(\)\)/i);
-  assert.doesNotMatch(orderDeleteSql,/using\s*\(true\)/i);
+  assert.match(orderAuditSql,/drop policy if exists medrano_comandas_delete/i);
+  assert.match(orderAuditSql,/revoke delete on public\.medrano_comandas from authenticated/i);
+  assert.match(orderAuditSql,/create or replace function public\.eliminar_comanda_medrano[\s\S]*?security definer[\s\S]*?set search_path = ''/i);
+  assert.match(orderAuditSql,/v_comanda\.fecha < v_hoy and v_motivo is null/i);
+  assert.match(orderAuditSql,/eliminada_por = auth\.uid\(\)[\s\S]*?motivo_eliminacion = v_motivo/i);
+  assert.match(orderAuditSql,/revoke insert, update on public\.medrano_comandas from authenticated/i);
+  assert.doesNotMatch(orderAuditSql,/using\s*\(true\)/i);
+});
+
+test('los controles de los diálogos de Medrano se enlazan antes de salir del render',()=>{
+  const renderCode=between(app,'function render(){','function renderToday');
+  assert.ok(renderCode.indexOf('bindMedranoDialogActions()')<renderCode.indexOf('if(!isPalestina){renderMedrano();return}'));
+  assert.match(app,/cancel-medrano-order-delete/);
+  assert.match(app,/confirm-medrano-order-delete/);
 });

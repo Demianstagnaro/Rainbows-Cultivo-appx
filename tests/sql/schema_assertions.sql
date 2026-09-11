@@ -18,7 +18,7 @@ begin
   if v_count <> 1 then raise exception 'Sala de trabajo inválida.'; end if;
 
   select count(*) into v_count from pg_policies where schemaname = 'public';
-  if v_count <> 48 then raise exception 'Cantidad de políticas inesperada: %.', v_count; end if;
+  if v_count <> 47 then raise exception 'Cantidad de políticas inesperada: %.', v_count; end if;
   if exists (select 1 from pg_policies where policyname = 'antigua_abierta') then
     raise exception 'La política abierta anterior no fue eliminada.';
   end if;
@@ -34,6 +34,14 @@ begin
   if has_function_privilege('anon', 'public.admin_eliminar_usuario(uuid)', 'EXECUTE')
      or not has_function_privilege('authenticated', 'public.admin_eliminar_usuario(uuid)', 'EXECUTE') then
     raise exception 'Privilegios de la RPC de eliminación incorrectos.';
+  end if;
+  if has_table_privilege('authenticated', 'public.medrano_comandas', 'DELETE')
+     or has_column_privilege('authenticated', 'public.medrano_comandas', 'motivo_eliminacion', 'UPDATE') then
+    raise exception 'La auditoría de comandas puede evadirse mediante acceso directo.';
+  end if;
+  if has_function_privilege('anon', 'public.eliminar_comanda_medrano(uuid,text)', 'EXECUTE')
+     or not has_function_privilege('authenticated', 'public.eliminar_comanda_medrano(uuid,text)', 'EXECUTE') then
+    raise exception 'Privilegios de eliminar_comanda_medrano incorrectos.';
   end if;
 
   if not exists (
@@ -131,6 +139,41 @@ do $$
 begin
   if (select total_gramos from public.cosechas where id = '10000000-0000-0000-0000-000000000002') <> 0 then
     raise exception 'Eliminar el último detalle no dejó el total en cero.';
+  end if;
+end;
+$$;
+
+insert into public.medrano_comandas(id, producto, cantidad, nombre_paciente, fecha, creado_por)
+values (
+  '30000000-0000-0000-0000-000000000001', 'Producto de prueba', 10,
+  'Paciente de prueba', current_date - 1, '00000000-0000-0000-0000-000000000005'
+);
+
+do $$
+begin
+  perform set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000005', true);
+
+  begin
+    perform public.eliminar_comanda_medrano('30000000-0000-0000-0000-000000000001', null);
+    raise exception 'La comanda histórica se eliminó sin motivo.';
+  exception when others then
+    if sqlerrm not like 'Ingresá el motivo%' then raise; end if;
+  end;
+
+  perform public.eliminar_comanda_medrano(
+    '30000000-0000-0000-0000-000000000001',
+    'Carga duplicada'
+  );
+
+  if not exists (
+    select 1 from public.medrano_comandas
+    where id = '30000000-0000-0000-0000-000000000001'
+      and eliminada_at is not null
+      and eliminada_por = '00000000-0000-0000-0000-000000000005'
+      and eliminada_por_nombre = 'Medrano'
+      and motivo_eliminacion = 'Carga duplicada'
+  ) then
+    raise exception 'La eliminación no conservó el registro de auditoría completo.';
   end if;
 end;
 $$;

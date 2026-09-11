@@ -6,15 +6,15 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fplbxirsbwruazvygciu.supabase.co wss://fplbxirsbwruazvygciu.supabase.co; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests">
   <title>rainbows</title>
   <meta name="theme-color" content="#111827">
-  <link rel="manifest" href="manifest.json?v=3.18.1">
-  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3.18.1">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.18.1">
-  <link rel="stylesheet" href="styles.css?v=3.18.1">
+  <link rel="manifest" href="manifest.json?v=3.18.2">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3.18.2">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.18.2">
+  <link rel="stylesheet" href="styles.css?v=3.18.2">
 </head>
 <body>
   <section id="auth-screen" class="auth-screen">
     <div class="auth-card">
-      <div class="auth-logo-wrap"><img src="rainbows-logo.webp?v=3.18.1" class="rainbows-logo auth-logo" alt="rainbows"></div>
+      <div class="auth-logo-wrap"><img src="rainbows-logo.webp?v=3.18.2" class="rainbows-logo auth-logo" alt="rainbows"></div>
       <h1>Acceso compartido</h1>
       <p class="muted">Ingresá con correo y contraseña.</p>
       <label class="field-label" hidden>Nombre<input id="auth-name" class="text-input" autocomplete="name"></label>
@@ -30,7 +30,7 @@
   <dialog id="reset-password-dialog" class="dialog"><form method="dialog"><h3>Crear contraseña nueva</h3><p class="muted">Ingresá una contraseña de al menos 6 caracteres.</p><label class="field-label">Contraseña nueva<input id="reset-password" class="text-input" type="password" minlength="6" autocomplete="new-password"></label><label class="field-label">Repetir contraseña<input id="reset-password-confirm" class="text-input" type="password" minlength="6" autocomplete="new-password"></label><p id="reset-password-message" class="auth-message" aria-live="polite"></p><menu><button type="button" id="save-reset-password" class="primary">Guardar contraseña</button></menu></form></dialog>
 
   <div id="app-shell" hidden>
-    <header class="topbar"><div class="header-copy"><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><div class="app-brand"><img src="rainbows-logo.webp?v=3.18.1" class="rainbows-logo header-logo" alt="rainbows"><span id="brand-section-label" class="cultivo-prefix">Cultivo</span></div><div class="header-actions"><div class="header-main-actions"><button id="header-config" class="secondary compact-button" hidden>Config</button><button id="header-help" class="secondary compact-button">Ayuda</button><button id="sign-out" class="secondary compact-button">Salir</button></div><div class="site-switch" aria-label="Seleccionar sede"><button id="site-palestina" class="site-button active" type="button">Palestina</button><button id="site-medrano" class="site-button" type="button">Medrano</button></div></div></header>
+    <header class="topbar"><div class="header-copy"><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><div class="app-brand"><img src="rainbows-logo.webp?v=3.18.2" class="rainbows-logo header-logo" alt="rainbows"><span id="brand-section-label" class="cultivo-prefix">Cultivo</span></div><div class="header-actions"><div class="header-main-actions"><button id="header-config" class="secondary compact-button" hidden>Config</button><button id="header-help" class="secondary compact-button">Ayuda</button><button id="sign-out" class="secondary compact-button">Salir</button></div><div class="site-switch" aria-label="Seleccionar sede"><button id="site-palestina" class="site-button active" type="button">Palestina</button><button id="site-medrano" class="site-button" type="button">Medrano</button></div></div></header>
     <nav class="top-nav"><button data-view="today" class="active">Hoy</button><button data-view="calendar">Calendario</button><button data-view="cultivo-info">Info cultivo</button><button data-view="harvests">Cosechas</button><button data-view="stock">Stock Palestina</button></nav>
     <main id="app"><div class="panel">Cargando…</div></main>
     <button id="voice-button" class="voice-button" type="button" aria-label="Usar comandos de voz" title="Comandos de voz">🎙️</button>
@@ -95,6 +95,14 @@
     <menu><button type="button" id="cancel-medrano-order" class="secondary">Cancelar</button><button type="button" id="save-medrano-order" class="primary">Guardar comanda</button></menu>
   </form></dialog>
 
+  <dialog id="medrano-order-delete-dialog" class="dialog"><form method="dialog">
+    <h3>Eliminar comanda del historial</h3>
+    <p id="medrano-order-delete-summary" class="muted"></p>
+    <label class="field-label">Motivo de la eliminación<textarea id="medrano-order-delete-reason" class="text-input" maxlength="500" rows="4" placeholder="Explicá por qué se elimina esta comanda"></textarea></label>
+    <p class="muted">El registro conservará la comanda, la fecha, el usuario y este motivo.</p>
+    <menu><button type="button" id="cancel-medrano-order-delete" class="secondary">Cancelar</button><button type="button" id="confirm-medrano-order-delete" class="danger">Eliminar comanda</button></menu>
+  </form></dialog>
+
   <dialog id="medrano-patient-dialog" class="dialog"><form method="dialog"><h3 id="medrano-patient-dialog-title">Nuevo paciente</h3><div class="patient-form-grid">
   <label class="field-label">Número de socio<input id="medrano-patient-member" class="text-input" maxlength="40"></label><label class="field-label">Nombre<input id="medrano-patient-name" class="text-input" maxlength="120"></label><label class="field-label">Apellido<input id="medrano-patient-lastname" class="text-input" maxlength="120"></label><label class="field-label">DNI<input id="medrano-patient-dni" class="text-input" maxlength="30" inputmode="numeric"></label><label class="field-label">Teléfono<input id="medrano-patient-phone" class="text-input" maxlength="60" inputmode="tel"></label><label class="field-label patient-form-wide">Domicilio<input id="medrano-patient-address" class="text-input" maxlength="240"></label><label class="field-label">Código de vinculación<input id="medrano-patient-link-code" class="text-input" maxlength="100"></label><label class="field-label">Fecha de ingreso<input id="medrano-patient-entry-date" class="text-input" type="date"></label><label class="field-label">Sexo<select id="medrano-patient-sex" class="text-input"><option value="">Sin especificar</option><option value="Femenino">Femenino</option><option value="Masculino">Masculino</option><option value="Otro">Otro</option></select></label><label class="field-label">Referido<input id="medrano-patient-referred" class="text-input" maxlength="160"></label><label class="field-label">Vencimiento Reprocann<input id="medrano-patient-reprocann-expiry" class="text-input" type="date"></label></div><menu><button type="button" id="cancel-medrano-patient" class="secondary">Cancelar</button><button type="button" id="save-medrano-patient" class="primary">Guardar paciente</button></menu></form></dialog>
 
@@ -102,7 +110,7 @@
 
   <dialog id="plant-dialog" class="dialog"><form method="dialog"><h3 id="plant-dialog-title">Editar planta</h3><label class="field-label">Estado<select id="plant-status" class="text-input"><option value="occupied">Ocupada</option><option value="empty">Vacía</option></select></label><label class="field-label">Genética<select id="plant-genetics" class="text-input"></select></label><label class="field-label">Observaciones<textarea id="plant-notes" class="text-input"></textarea></label><menu><button type="button" id="cancel-plant" class="secondary">Cancelar</button><button type="button" id="save-plant" class="primary">Guardar</button></menu></form></dialog>
 
-  <script defer src="rainbows-overrides.js?v=3.18.1"></script>
-  <script type="module" src="app.js?v=3.18.1"></script>
+  <script defer src="rainbows-overrides.js?v=3.18.2"></script>
+  <script type="module" src="app.js?v=3.18.2"></script>
 </body>
 </html>

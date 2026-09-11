@@ -9,7 +9,7 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.18.1. El registro público permanece deshabilitado: las altas se administran de forma controlada y toda cuenta nueva queda inactiva hasta que un Administrador la habilite.
+La versión actual es V3.18.2. El registro público permanece deshabilitado: las altas se administran de forma controlada y toda cuenta nueva queda inactiva hasta que un Administrador la habilite.
 
 
 ## V3.0.1
@@ -1106,3 +1106,13 @@ Registro de pacientes con alta/edición, orden por columnas y búsqueda instant�
 - Solicita confirmación antes del borrado definitivo.
 - Habilita la eliminación en Supabase exclusivamente para usuarios activos con rol Administrador o Medrano.
 - Requiere aplicar `Rainbows_V3.18.1_eliminar_comandas.sql` antes de usar la nueva acción.
+
+
+## V3.18.2 — Auditoría y formularios de comandas
+
+- Corrige `Guardar comanda` y `Cancelar` al abrir o recargar la aplicación directamente en Medrano.
+- Las comandas históricas ahora exigen un motivo antes de eliminarlas.
+- Conserva cada comanda eliminada con el usuario, fecha y motivo de la eliminación.
+- Agrega la vista `Comandas eliminadas` dentro del historial.
+- Reemplaza el borrado físico directo por una RPC transaccional y protege los campos de auditoría.
+- Requiere aplicar `Rainbows_V3.18.2_auditoria_comandas.sql`.
