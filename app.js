@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.18.1';
+const APP_VERSION='3.18.2';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Vege 1',type:'vege'},{name:'Vege 2',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],medranoPatients:[],editMedranoPatient:null,medranoOrders:[],editMedranoOrder:null,medranoOrderHistoryYear:null,medranoOrderHistoryMonth:null,stockTransfers:[],stockTransferItems:[],pendingStockTransfer:null,medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
+const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],medranoPatients:[],editMedranoPatient:null,medranoOrders:[],medranoDeletedOrders:[],editMedranoOrder:null,pendingDeleteMedranoOrder:null,medranoOrderHistoryYear:null,medranoOrderHistoryMonth:null,stockTransfers:[],stockTransferItems:[],pendingStockTransfer:null,medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
 state.site=localStorage.getItem('rainbows_site')==='medrano'?'medrano':'palestina';
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
@@ -255,6 +255,8 @@ async function load(){
   ]);
   for(const q of qs)if(q.error)throw q.error;
   [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.medranoDispensarioLots,state.medranoPatients,state.medranoOrders,state.stockTransfers,state.stockTransferItems,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,19).map(q=>q.data||[]);
+  state.medranoDeletedOrders=state.medranoOrders.filter(order=>Boolean(order.eliminada_at));
+  state.medranoOrders=state.medranoOrders.filter(order=>!order.eliminada_at);
   state.profile=state.profile||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;
   state.generalTasks=qs[19].data||[];
   state.generalJoins=qs[20].data||[];
@@ -1202,14 +1204,22 @@ async function saveMedranoOrder(){
   await refresh();
 }
 
-async function deleteMedranoOrder(orderId){
+function openMedranoOrderDeleteDialog(order){
+  state.pendingDeleteMedranoOrder=order;
+  $('medrano-order-delete-summary').textContent=`${order.producto||'Comanda'} · ${order.cantidad??'—'} · ${order.nombre_paciente||'Sin paciente'} · ${order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'Sin fecha'}`;
+  $('medrano-order-delete-reason').value='';
+  $('medrano-order-delete-dialog').showModal();
+  $('medrano-order-delete-reason').focus();
+}
+
+async function deleteMedranoOrder(orderId,reason=''){
   if(!canManageMedrano())throw new Error('No tenés permiso para eliminar comandas.');
   const order=(state.medranoOrders||[]).find(item=>String(item.id)===String(orderId));
   if(!order)throw new Error('No se encontró la comanda.');
-  const patient=order.nombre_paciente?` de ${order.nombre_paciente}`:'';
-  if(!confirm(`¿Eliminar la comanda de ${order.producto}${patient}? Esta acción no se puede deshacer.`))return;
-  const q=await db.from('medrano_comandas').delete().eq('id',order.id);
+  const q=await db.rpc('eliminar_comanda_medrano',{objetivo_id:order.id,motivo:reason.trim()||null});
   if(q.error)throw q.error;
+  state.pendingDeleteMedranoOrder=null;
+  closeDialog('medrano-order-delete-dialog');
   await refresh();
 }
 
@@ -1218,9 +1228,14 @@ function bindMedranoOrderActions(){
     const order=(state.medranoOrders||[]).find(item=>String(item.id)===String(button.dataset.editMedranoOrder));
     if(order)openMedranoOrderDialog(order);
   });
-  app.querySelectorAll('[data-delete-medrano-order]').forEach(button=>button.onclick=async()=>{
+  app.querySelectorAll('[data-delete-medrano-order]').forEach(button=>button.onclick=()=>{
+    const order=(state.medranoOrders||[]).find(item=>String(item.id)===String(button.dataset.deleteMedranoOrder));
+    if(!order)return;
+    if(order.fecha<ymd(today())){openMedranoOrderDeleteDialog(order);return}
+    const patient=order.nombre_paciente?` de ${order.nombre_paciente}`:'';
+    if(!confirm(`¿Eliminar la comanda de ${order.producto}${patient}? El movimiento quedará registrado.`))return;
     button.disabled=true;
-    try{await deleteMedranoOrder(button.dataset.deleteMedranoOrder)}catch(error){console.error(error);alert(error.message||'No se pudo eliminar la comanda.')}finally{button.disabled=false}
+    deleteMedranoOrder(order.id,'Eliminación de comanda del día').catch(error=>{console.error(error);alert(error.message||'No se pudo eliminar la comanda.');button.disabled=false});
   });
 }
 
@@ -1237,12 +1252,13 @@ function renderMedranoOrderHistory(medranoNav,bindModuleNav){
   if(!y){
     const years=[...new Set(rows.map(o=>String(o.fecha||'').slice(0,4)).filter(Boolean))].sort((a,b)=>Number(b)-Number(a));
     app.innerHTML=`${medranoNav}
-    <section class="panel stock-page-head"><div><button id="medrano-orders-history-back" class="secondary compact-button" type="button">← Comandas</button><h2>Historial de comandas</h2></div></section>
+    <section class="panel stock-page-head"><div><button id="medrano-orders-history-back" class="secondary compact-button" type="button">← Comandas</button><h2>Historial de comandas</h2></div><button id="medrano-orders-deleted" class="secondary compact-button" type="button">Comandas eliminadas</button></section>
     <section class="panel medrano-stock-home"><div class="medrano-section-head"><div><h3>Elegí un año</h3></div></div>
       <div class="medrano-stock-grid">${years.length?years.map(year=>`<button class="medrano-stock-card" type="button" data-order-history-year="${year}"><strong>${year}</strong><span>${rows.filter(o=>String(o.fecha||'').startsWith(year+'-')).length} comandas</span></button>`).join(''):'<div class="medrano-empty-stock"><strong>Sin historial</strong><p class="muted">Todavía no hay comandas registradas.</p></div>'}</div>
     </section>`;
     bindModuleNav();
     $('medrano-orders-history-back').onclick=()=>{state.medranoView='administracion-comandas';render()};
+    $('medrano-orders-deleted').onclick=()=>{state.medranoView='administracion-comandas-eliminadas';render()};
     app.querySelectorAll('[data-order-history-year]').forEach(b=>b.onclick=()=>{state.medranoOrderHistoryYear=b.dataset.orderHistoryYear;state.medranoOrderHistoryMonth=null;render()});
     return;
   }
@@ -1271,6 +1287,22 @@ function renderMedranoOrderHistory(medranoNav,bindModuleNav){
   bindModuleNav();
   $('medrano-orders-history-back').onclick=()=>{state.medranoOrderHistoryMonth=null;render()};
   app.querySelectorAll('[data-order-history-day]').forEach(b=>b.onclick=()=>{state.medranoView=`administracion-comandas-historial-dia:${y}-${m}-${b.dataset.orderHistoryDay}`;render()});
+}
+function renderMedranoDeletedOrders(medranoNav,bindModuleNav){
+  $('screen-title').textContent='Comandas eliminadas';
+  const rows=[...(state.medranoDeletedOrders||[])].sort((a,b)=>new Date(b.eliminada_at)-new Date(a.eliminada_at));
+  app.innerHTML=`${medranoNav}
+  <section class="panel stock-page-head"><div><button id="medrano-deleted-orders-back" class="secondary compact-button" type="button">← Historial</button><h2>Comandas eliminadas</h2><p class="muted">Registro permanente de eliminaciones</p></div></section>
+  <section class="panel stock-detail-panel" data-stock-table-tools>
+    <div class="stock-section-head"><div><h3>Auditoría de comandas</h3><p class="muted">${rows.length} registro${rows.length===1?'':'s'}</p></div></div>
+    ${stockTableToolbar('Buscar por producto, paciente, usuario o motivo...')}
+    <div class="stock-table-wrap"><table class="stock-table medrano-deleted-orders-table">
+      <thead><tr><th data-sort-type="text">Producto</th><th data-sort-type="number">Cantidad</th><th data-sort-type="text">Paciente</th><th data-sort-type="date">Fecha original</th><th data-sort-type="text">Eliminada por</th><th data-sort-type="date">Eliminada el</th><th data-sort-type="text">Motivo</th></tr></thead>
+      <tbody>${rows.length?rows.map(order=>`<tr><td><strong>${escapeHtml(order.producto||'')}</strong></td><td data-sort-value="${Number(order.cantidad)||0}">${escapeHtml(String(order.cantidad??''))}</td><td>${escapeHtml(order.nombre_paciente||'—')}</td><td data-sort-value="${escapeHtml(order.fecha||'')}">${order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${escapeHtml(order.eliminada_por_nombre||'—')}</td><td data-sort-value="${escapeHtml(order.eliminada_at||'')}">${order.eliminada_at?new Date(order.eliminada_at).toLocaleString('es-AR'):'—'}</td><td>${escapeHtml(order.motivo_eliminacion||'—')}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="7">No hay comandas eliminadas.</td></tr>'}</tbody>
+    </table></div>
+  </section>`;
+  bindModuleNav();bindStockTableTools(app);
+  $('medrano-deleted-orders-back').onclick=()=>{state.medranoView='administracion-comandas-historial';state.medranoOrderHistoryYear=null;state.medranoOrderHistoryMonth=null;render()};
 }
 function renderMedranoOrderHistoryDay(medranoNav,bindModuleNav,dateKey){
   $('screen-title').textContent='Historial de comandas';
@@ -1346,6 +1378,7 @@ function renderMedrano(){
   if(mv==='administracion-pacientes'){renderMedranoPatients(medranoNav,bindModuleNav);return}
   if(mv==='administracion-comandas'){renderMedranoOrders(medranoNav,bindModuleNav);return}
   if(mv==='administracion-comandas-historial'){renderMedranoOrderHistory(medranoNav,bindModuleNav);return}
+  if(mv==='administracion-comandas-eliminadas'){renderMedranoDeletedOrders(medranoNav,bindModuleNav);return}
   if(mv.startsWith('administracion-comandas-historial-dia:')){renderMedranoOrderHistoryDay(medranoNav,bindModuleNav,mv.split(':')[1]);return}
   if(mv==='dispensario'){
     const label='Dispensario'; $('screen-title').textContent=label;
@@ -1400,15 +1433,26 @@ function renderAmendmentsView(){
   }else window.renderAmendments();
   const back=$('back-cultivo-info');if(back)back.onclick=openCultivoInfo;
 }
-function render(){const isPalestina=renderSiteShell();const cb=$('header-config');if(cb&&isPalestina){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';state.room=null;state.roomDay=null;state.day=null;render()}}const hb=$('header-help');if(hb&&isPalestina){hb.onclick=()=>{state.view='help';state.room=null;state.roomDay=null;state.day=null;render()}}if(!isPalestina){renderMedrano();return} $('today-label').textContent=nice(today());
-$('cancel-medrano-lot').onclick=()=>closeDialog('medrano-lot-dialog');
-$('cancel-medrano-reception').onclick=()=>{state.pendingStockTransfer=null;closeDialog('medrano-reception-dialog')};
-$('confirm-medrano-reception').onclick=async()=>{const b=$('confirm-medrano-reception');b.disabled=true;try{await confirmMedranoReception()}catch(e){console.error(e);alert(e.message||'No se pudo confirmar la recepción.')}finally{b.disabled=false}};
-$('save-medrano-lot').onclick=async()=>{const b=$('save-medrano-lot');b.disabled=true;try{await saveMedranoLot()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el lote.')}finally{b.disabled=false}};
-$('cancel-medrano-patient').onclick=()=>{state.editMedranoPatient=null;const d=$('medrano-patient-dialog');if(d?.open)d.close();};
-$('save-medrano-patient').onclick=async()=>{const b=$('save-medrano-patient');b.disabled=true;try{await saveMedranoPatient()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el paciente.')}finally{b.disabled=false}};
-$('cancel-medrano-order').onclick=()=>{state.editMedranoOrder=null;const d=$('medrano-order-dialog');if(d?.open)d.close();};
-$('save-medrano-order').onclick=async()=>{const b=$('save-medrano-order');b.disabled=true;try{await saveMedranoOrder()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la comanda.')}finally{b.disabled=false}};
+function bindMedranoDialogActions(){
+  $('cancel-medrano-lot').onclick=()=>closeDialog('medrano-lot-dialog');
+  $('cancel-medrano-reception').onclick=()=>{state.pendingStockTransfer=null;closeDialog('medrano-reception-dialog')};
+  $('confirm-medrano-reception').onclick=async()=>{const b=$('confirm-medrano-reception');b.disabled=true;try{await confirmMedranoReception()}catch(e){console.error(e);alert(e.message||'No se pudo confirmar la recepción.')}finally{b.disabled=false}};
+  $('save-medrano-lot').onclick=async()=>{const b=$('save-medrano-lot');b.disabled=true;try{await saveMedranoLot()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el lote.')}finally{b.disabled=false}};
+  $('cancel-medrano-patient').onclick=()=>{state.editMedranoPatient=null;closeDialog('medrano-patient-dialog')};
+  $('save-medrano-patient').onclick=async()=>{const b=$('save-medrano-patient');b.disabled=true;try{await saveMedranoPatient()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el paciente.')}finally{b.disabled=false}};
+  $('cancel-medrano-order').onclick=()=>{state.editMedranoOrder=null;closeDialog('medrano-order-dialog')};
+  $('save-medrano-order').onclick=async()=>{const b=$('save-medrano-order');b.disabled=true;try{await saveMedranoOrder()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la comanda.')}finally{b.disabled=false}};
+  $('cancel-medrano-order-delete').onclick=()=>{state.pendingDeleteMedranoOrder=null;closeDialog('medrano-order-delete-dialog')};
+  $('confirm-medrano-order-delete').onclick=async()=>{
+    const order=state.pendingDeleteMedranoOrder;
+    const reason=$('medrano-order-delete-reason').value.trim();
+    if(!order)return;
+    if(!reason){alert('Ingresá el motivo de la eliminación.');$('medrano-order-delete-reason').focus();return}
+    const b=$('confirm-medrano-order-delete');b.disabled=true;
+    try{await deleteMedranoOrder(order.id,reason)}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la comanda.')}finally{b.disabled=false}
+  };
+}
+function render(){const isPalestina=renderSiteShell();bindMedranoDialogActions();const cb=$('header-config');if(cb&&isPalestina){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';state.room=null;state.roomDay=null;state.day=null;render()}}const hb=$('header-help');if(hb&&isPalestina){hb.onclick=()=>{state.view='help';state.room=null;state.roomDay=null;state.day=null;render()}}if(!isPalestina){renderMedrano();return} $('today-label').textContent=nice(today());
 $('cancel-stock-movement').onclick=()=>closeDialog('stock-movement-dialog');
 $('stock-movement-cycle').onchange=updateStockMovementItems;
 $('stock-movement-type').onchange=updateStockMovementItems;

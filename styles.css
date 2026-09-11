@@ -895,6 +895,8 @@ body{
 .medrano-orders-table{min-width:760px}
 .medrano-order-actions{display:flex;align-items:center;gap:7px;white-space:nowrap}
 .medrano-order-actions .danger{min-height:34px}
+.medrano-deleted-orders-table{min-width:1180px}
+#medrano-order-delete-reason{min-height:100px;resize:vertical}
 
 
 /* V3.16.44 — Stock: movimientos agrupados por día + buscador de genéticas */

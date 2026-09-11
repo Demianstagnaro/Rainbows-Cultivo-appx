@@ -67,7 +67,17 @@ create table public.equipos (id uuid primary key default gen_random_uuid());
 create table public.eventos_planta (id uuid primary key default gen_random_uuid());
 create table public.geneticas (id uuid primary key default gen_random_uuid());
 create table public.mantenimientos (id uuid primary key default gen_random_uuid());
-create table public.medrano_comandas (id uuid primary key default gen_random_uuid());
+create table public.medrano_comandas (
+  id uuid primary key default gen_random_uuid(),
+  producto text not null,
+  cantidad numeric not null,
+  paciente_id uuid,
+  nombre_paciente text,
+  fecha date not null,
+  creado_por uuid,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
 create table public.medrano_dispensario_lotes (id uuid primary key default gen_random_uuid());
 create table public.medrano_pacientes (id uuid primary key default gen_random_uuid());
 create table public.plantas (id uuid primary key default gen_random_uuid());
