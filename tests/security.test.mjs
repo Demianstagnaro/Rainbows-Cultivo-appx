@@ -5,6 +5,7 @@ import test from 'node:test';
 
 const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const sql=fs.readFileSync(new URL('../Rainbows_V3.17.0_seguridad_integral.sql',import.meta.url),'utf8');
+const orderDeleteSql=fs.readFileSync(new URL('../Rainbows_V3.18.1_eliminar_comandas.sql',import.meta.url),'utf8');
 
 function between(source,start,end){
   const from=source.indexOf(start);
@@ -108,4 +109,12 @@ test('la migración prueba su matriz y recalcula ambos lados de una cosecha movi
   assert.match(sql,/has_table_privilege\([\s\S]*?'anon'/i);
   assert.match(sql,/old\.cosecha_id is distinct from new\.cosecha_id/i);
   assert.match(sql,/alter function public\.confirmar_transferencia_medrano[\s\S]*?set search_path = ''/i);
+});
+
+test('eliminar comandas queda limitado a usuarios autorizados de Medrano',()=>{
+  assert.match(app,/function deleteMedranoOrder\(orderId\)/);
+  assert.match(app,/data-delete-medrano-order/);
+  assert.match(app,/Esta acción no se puede deshacer/);
+  assert.match(orderDeleteSql,/create policy medrano_comandas_delete[\s\S]*?for delete to authenticated[\s\S]*?using \(public\.usuario_rainbows_medrano\(\)\)/i);
+  assert.doesNotMatch(orderDeleteSql,/using\s*\(true\)/i);
 });

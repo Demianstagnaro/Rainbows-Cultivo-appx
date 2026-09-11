@@ -43,4 +43,5 @@ jobs:
       - uses: actions/checkout@v4
       - run: psql -f tests/sql/schema_fixture.sql
       - run: psql -f Rainbows_V3.17.0_seguridad_integral.sql
+      - run: psql -f Rainbows_V3.18.1_eliminar_comandas.sql
       - run: psql -f tests/sql/schema_assertions.sql

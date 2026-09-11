@@ -18,7 +18,7 @@ begin
   if v_count <> 1 then raise exception 'Sala de trabajo inválida.'; end if;
 
   select count(*) into v_count from pg_policies where schemaname = 'public';
-  if v_count <> 47 then raise exception 'Cantidad de políticas inesperada: %.', v_count; end if;
+  if v_count <> 48 then raise exception 'Cantidad de políticas inesperada: %.', v_count; end if;
   if exists (select 1 from pg_policies where policyname = 'antigua_abierta') then
     raise exception 'La política abierta anterior no fue eliminada.';
   end if;
