@@ -48,6 +48,10 @@ begin
      or not has_function_privilege('authenticated', 'public.marcar_comanda_dispensada(uuid)', 'EXECUTE') then
     raise exception 'Privilegios de confirmación de comandas incorrectos.';
   end if;
+  if has_function_privilege('anon', 'public.editar_comanda_medrano(uuid,text,numeric,uuid,text,date)', 'EXECUTE')
+     or not has_function_privilege('authenticated', 'public.editar_comanda_medrano(uuid,text,numeric,uuid,text,date)', 'EXECUTE') then
+    raise exception 'Privilegios de edición segura de comandas incorrectos.';
+  end if;
   if not exists (
     select 1 from public.medrano_comandas
     where id = '30000000-0000-0000-0000-000000000009' and requiere_cierre is false
@@ -136,6 +140,29 @@ begin
   exception when others then
     if sqlerrm not like 'No se encontró la comanda%' then raise; end if;
   end;
+
+  perform public.editar_comanda_medrano(
+    '30000000-0000-0000-0000-000000000002',
+    'Comanda corregida',
+    7,
+    '40000000-0000-0000-0000-000000000001',
+    'Paciente corregido',
+    current_date
+  );
+
+  if not exists (
+    select 1 from public.medrano_comandas
+    where id = '30000000-0000-0000-0000-000000000002'
+      and producto = 'Comanda corregida'
+      and cantidad = 7
+      and requiere_cierre is true
+      and dispensada_at is null
+      and dispensada_fecha is null
+      and dispensada_por is null
+      and dispensada_por_nombre is null
+  ) then
+    raise exception 'Editar la comanda no la devolvió correctamente a pendientes.';
+  end if;
 end;
 $$;
 

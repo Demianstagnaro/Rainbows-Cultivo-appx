@@ -899,6 +899,13 @@ body{
 .medrano-order-dispensed{display:inline-flex;align-items:center;gap:7px;min-height:34px;padding:6px 9px;border:1px solid var(--border);border-radius:9px;background:rgba(34,197,94,.08);font-size:.82rem;font-weight:800;color:#bbf7d0;cursor:pointer}
 .medrano-order-dispensed input{width:18px;height:18px;accent-color:#22c55e;cursor:pointer}
 .medrano-order-dispensed:has(input:disabled){cursor:default;opacity:.85}
+.medrano-order-menu{position:relative}
+.medrano-order-menu>summary{display:inline-flex;align-items:center;justify-content:center;width:36px;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--panel);color:var(--text);font-size:1.35rem;font-weight:900;line-height:1;cursor:pointer;list-style:none}
+.medrano-order-menu>summary::-webkit-details-marker{display:none}
+.medrano-order-menu-options{position:absolute;right:0;top:calc(100% + 5px);z-index:20;display:grid;min-width:130px;padding:6px;border:1px solid var(--border);border-radius:11px;background:#111827;box-shadow:0 12px 30px rgba(0,0,0,.38)}
+.medrano-order-menu-options button{border:0;border-radius:8px;background:transparent;color:var(--text);padding:9px 10px;text-align:left;font-weight:800;cursor:pointer}
+.medrano-order-menu-options button:hover{background:rgba(255,255,255,.07)}
+.medrano-order-menu-options .danger-text{color:#fca5a5}
 .medrano-deleted-orders-table{min-width:1180px}
 #medrano-order-delete-reason{min-height:100px;resize:vertical}
 

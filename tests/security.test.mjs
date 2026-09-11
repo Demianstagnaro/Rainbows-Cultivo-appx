@@ -8,6 +8,7 @@ const sql=fs.readFileSync(new URL('../Rainbows_V3.17.0_seguridad_integral.sql',i
 const orderDeleteSql=fs.readFileSync(new URL('../Rainbows_V3.18.1_eliminar_comandas.sql',import.meta.url),'utf8');
 const orderAuditSql=fs.readFileSync(new URL('../Rainbows_V3.18.2_auditoria_comandas.sql',import.meta.url),'utf8');
 const orderPendingSql=fs.readFileSync(new URL('../Rainbows_V3.18.3_comandas_pendientes.sql',import.meta.url),'utf8');
+const orderEditSql=fs.readFileSync(new URL('../Rainbows_V3.18.5_editar_comandas.sql',import.meta.url),'utf8');
 
 function between(source,start,end){
   const from=source.indexOf(start);
@@ -145,13 +146,20 @@ test('las comandas siguen pendientes hasta confirmar la dispensación',()=>{
   assert.doesNotMatch(orderPendingSql,/using\s*\(true\)/i);
 });
 
-test('las comandas dispensadas se pueden editar pero las eliminadas no',()=>{
+test('las comandas usan un menú de opciones y editar las devuelve a pendientes',()=>{
   const finder=between(app,'function findEditableMedranoOrder(orderId){','function bindMedranoOrderActions');
   const historyDay=between(app,'function renderMedranoOrderHistoryDay','function renderMedranoOrders');
   assert.match(finder,/state\.medranoOrders/);
   assert.match(finder,/state\.medranoDispensedOrders/);
   assert.doesNotMatch(finder,/medranoDeletedOrders/);
-  assert.match(historyDay,/data-edit-medrano-order/);
+  assert.match(app,/class="medrano-order-menu"/);
+  assert.match(app,/Opciones de la comanda/);
+  assert.match(app,/data-edit-medrano-order/);
+  assert.match(app,/data-delete-medrano-order/);
+  assert.match(historyDay,/medranoOrderOptionsHtml\(o\)/);
   assert.match(historyDay,/bindMedranoOrderActions\(\)/);
-  assert.match(orderAuditSql,/grant update \(producto, cantidad, paciente_id, nombre_paciente, fecha, updated_at\)/i);
+  assert.match(app,/db\.rpc\('editar_comanda_medrano'/);
+  assert.match(orderEditSql,/create or replace function public\.editar_comanda_medrano[\s\S]*?security definer[\s\S]*?set search_path = ''/i);
+  assert.match(orderEditSql,/requiere_cierre = true[\s\S]*?dispensada_at = null[\s\S]*?dispensada_por_nombre = null/i);
+  assert.doesNotMatch(orderEditSql,/using\s*\(true\)/i);
 });
