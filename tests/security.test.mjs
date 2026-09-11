@@ -144,3 +144,14 @@ test('las comandas siguen pendientes hasta confirmar la dispensación',()=>{
   assert.match(orderPendingSql,/revoke insert, update on public\.medrano_comandas from authenticated/i);
   assert.doesNotMatch(orderPendingSql,/using\s*\(true\)/i);
 });
+
+test('las comandas dispensadas se pueden editar pero las eliminadas no',()=>{
+  const finder=between(app,'function findEditableMedranoOrder(orderId){','function bindMedranoOrderActions');
+  const historyDay=between(app,'function renderMedranoOrderHistoryDay','function renderMedranoOrders');
+  assert.match(finder,/state\.medranoOrders/);
+  assert.match(finder,/state\.medranoDispensedOrders/);
+  assert.doesNotMatch(finder,/medranoDeletedOrders/);
+  assert.match(historyDay,/data-edit-medrano-order/);
+  assert.match(historyDay,/bindMedranoOrderActions\(\)/);
+  assert.match(orderAuditSql,/grant update \(producto, cantidad, paciente_id, nombre_paciente, fecha, updated_at\)/i);
+});
