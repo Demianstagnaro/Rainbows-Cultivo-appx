@@ -1,4 +1,4 @@
-const RAINBOWS_OVERRIDES_VERSION='3.18.2';
+const RAINBOWS_OVERRIDES_VERSION='3.18.3';
 
 const harvestStarts={F1:'2026-05-20',F2:'2026-07-01',F3:'2026-05-20'};
 function utcDay(value){const [y,m,d]=String(value).split('-').map(Number);return Date.UTC(y,m-1,d)/86400000}

@@ -12,7 +12,7 @@ function loadCalendar(){
     document:{getElementById:()=>({})},
     localStorage:{getItem:()=>null,setItem:()=>{}}
   };
-  vm.runInNewContext(`${prefix}\nglobalThis.calendar={rules,parse,ymd,add,cycle,cycleNumber,harvest,harvestCycleNumber,routine,cloneTransfer,vegesOccupied};`,context);
+  vm.runInNewContext(`${prefix}\nglobalThis.calendar={rules,parse,ymd,add,diff,cycle,cycleNumber,harvest,harvestCycleNumber,routine,cloneTransfer,vegesOccupied};`,context);
   return context.calendar;
 }
 
@@ -38,7 +38,7 @@ test('las cosechas mantienen una separación de 77 días',()=>{
   for(const [name,first,second] of cases){
     assert.equal(calendar.harvest(room(name),calendar.parse(first)),true);
     assert.equal(calendar.harvest(room(name),calendar.parse(second)),true);
-    assert.equal((calendar.parse(second)-calendar.parse(first))/86400000,77);
+    assert.equal(calendar.diff(calendar.parse(second),calendar.parse(first)),77);
   }
 });
 

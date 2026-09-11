@@ -137,3 +137,9 @@ insert into public.cosechas(id, total_gramos, origen) values
   ('10000000-0000-0000-0000-000000000002', 500, 'app');
 insert into public.cosecha_geneticas(id, cosecha_id, gramos) values
   ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 50);
+
+insert into public.medrano_comandas(id, producto, cantidad, nombre_paciente, fecha, creado_por)
+values (
+  '30000000-0000-0000-0000-000000000009', 'Comanda histórica existente', 2,
+  'Paciente histórico', current_date - 10, '00000000-0000-0000-0000-000000000005'
+);
