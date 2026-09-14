@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.18.6';
+const APP_VERSION='3.18.7';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Vege 1',type:'vege'},{name:'Vege 2',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],medranoPatients:[],editMedranoPatient:null,medranoOrders:[],medranoDispensedOrders:[],medranoDeletedOrders:[],editMedranoOrder:null,pendingDeleteMedranoOrder:null,medranoOrderHistoryYear:null,medranoOrderHistoryMonth:null,stockTransfers:[],stockTransferItems:[],pendingStockTransfer:null,medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,dayChangeTimer:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
+const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],medranoCounterItems:[],medranoPatients:[],editMedranoPatient:null,medranoOrders:[],medranoDispensedOrders:[],medranoDeletedOrders:[],editMedranoOrder:null,pendingDeleteMedranoOrder:null,medranoOrderHistoryYear:null,medranoOrderHistoryMonth:null,stockTransfers:[],stockTransferItems:[],pendingStockTransfer:null,medranoDispensarioSection:null,medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,dayChangeTimer:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
 state.site=localStorage.getItem('rainbows_site')==='medrano'?'medrano':'palestina';
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
@@ -220,6 +220,12 @@ async function undo(t){
   if(update.error)throw update.error;
   await refresh();
 }
+async function loadMedranoCounterItems(allowed){
+  if(!allowed)return {data:[],error:null};
+  const query=await db.from('medrano_mostrador_productos').select('*').order('nombre');
+  if(['42P01','PGRST205'].includes(query.error?.code))return {data:[],error:null};
+  return query;
+}
 async function load(){
   // V3.16.14: primero resolvemos el rol del usuario. Cosechas y Stock solo se
   // consultan desde Supabase si el usuario actual es administrador.
@@ -241,6 +247,7 @@ async function load(){
     stockAccess?db.from('stock_existencias').select('*').order('orden'):empty(),
     stockAccess?db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
     canAccessMedrano()?db.from('medrano_dispensario_lotes').select('*').order('fecha_ingreso',{ascending:false}).order('created_at',{ascending:false}):empty(),
+    loadMedranoCounterItems(canAccessMedrano()),
     canAccessMedrano()?db.from('medrano_pacientes').select('*').order('apellido').order('nombre'):empty(),
     canAccessMedrano()?db.from('medrano_comandas').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
     (stockAccess||canAccessMedrano())?db.from('stock_transferencias').select('*').order('created_at',{ascending:false}):empty(),
@@ -254,15 +261,15 @@ async function load(){
     db.from('tarea_general_empleados').select('*')
   ]);
   for(const q of qs)if(q.error)throw q.error;
-  [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.medranoDispensarioLots,state.medranoPatients,state.medranoOrders,state.stockTransfers,state.stockTransferItems,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,19).map(q=>q.data||[]);
+  [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.medranoDispensarioLots,state.medranoCounterItems,state.medranoPatients,state.medranoOrders,state.stockTransfers,state.stockTransferItems,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,20).map(q=>q.data||[]);
   const allMedranoOrders=state.medranoOrders;
   const todayKey=ymd(today());
   state.medranoDeletedOrders=allMedranoOrders.filter(order=>Boolean(order.eliminada_at));
   state.medranoDispensedOrders=allMedranoOrders.filter(order=>!order.eliminada_at&&((order.requiere_cierre===false&&order.fecha<todayKey)||(Boolean(order.dispensada_at)&&order.dispensada_fecha<todayKey)));
   state.medranoOrders=allMedranoOrders.filter(order=>!order.eliminada_at&&((order.requiere_cierre===false&&order.fecha>=todayKey)||(order.requiere_cierre!==false&&(!order.dispensada_at||order.dispensada_fecha>=todayKey))));
   state.profile=state.profile||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;
-  state.generalTasks=qs[19].data||[];
-  state.generalJoins=qs[20].data||[];
+  state.generalTasks=qs[20].data||[];
+  state.generalJoins=qs[21].data||[];
   if(!admin){
     state.cosechas=[];state.cosechaDetalles=[];state.selectedHarvest=null;state.editHarvest=null;
   }
@@ -1073,11 +1080,79 @@ async function confirmMedranoReception(){
   await refresh();
 }
 
+function renderMedranoCounterStock(medranoNav,bindModuleNav){
+  const items=(state.medranoCounterItems||[]).filter(item=>item.activo!==false).sort((a,b)=>String(a.nombre||'').localeCompare(String(b.nombre||''),'es',{sensitivity:'base'}));
+  $('screen-title').textContent='Stock Mostrador';
+  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-counter-back" class="secondary compact-button" type="button">← Dispensario</button><h2>Mostrador</h2><p class="muted">Productos y accesorios disponibles para la venta.</p></div>${canManageMedrano()?'<button id="medrano-counter-add" class="primary compact-button" type="button">+ Agregar producto</button>':''}</section>
+  <section class="panel stock-detail-panel" data-stock-table-tools>${stockTableToolbar('Buscar producto...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Producto</th><th data-sort-type="number">Cantidad</th>${canManageMedrano()?'<th>Acciones</th>':''}</tr></thead><tbody>${items.length?items.map(item=>`<tr><td><strong>${escapeHtml(item.nombre)}</strong></td><td data-sort-value="${Number(item.cantidad)||0}">${canManageMedrano()?`<input class="text-input counter-quantity-input" type="number" min="0" step="1" inputmode="numeric" value="${Number(item.cantidad)||0}" data-counter-quantity="${escapeHtml(item.id)}" aria-label="Cantidad de ${escapeHtml(item.nombre)}">`:`<strong>${Number(item.cantidad)||0}</strong>`}</td>${canManageMedrano()?`<td><div class="counter-item-actions"><button class="secondary compact-button" type="button" data-save-counter="${escapeHtml(item.id)}">Guardar</button><button class="danger compact-button" type="button" data-remove-counter="${escapeHtml(item.id)}">Sacar</button></div></td>`:''}</tr>`).join(''):`<tr data-empty-row="1"><td colspan="${canManageMedrano()?3:2}">Todavía no hay productos en Mostrador.</td></tr>`}</tbody></table></div></section>`;
+  bindModuleNav();
+  bindStockTableTools(app);
+  $('medrano-counter-back').onclick=()=>{state.medranoDispensarioSection=null;render()};
+  const add=$('medrano-counter-add');if(add)add.onclick=openMedranoCounterDialog;
+  app.querySelectorAll('[data-save-counter]').forEach(button=>button.onclick=async()=>{
+    const input=app.querySelector(`[data-counter-quantity="${button.dataset.saveCounter}"]`);
+    button.disabled=true;
+    try{await saveMedranoCounterQuantity(button.dataset.saveCounter,input?.value)}catch(e){console.error(e);alert(e.message||'No se pudo actualizar la cantidad.')}finally{button.disabled=false}
+  });
+  app.querySelectorAll('[data-remove-counter]').forEach(button=>button.onclick=async()=>{
+    const item=items.find(row=>String(row.id)===String(button.dataset.removeCounter));
+    if(!item||!confirm(`¿Sacar “${item.nombre}” de la lista de Mostrador?`))return;
+    button.disabled=true;
+    try{await removeMedranoCounterItem(item.id)}catch(e){console.error(e);alert(e.message||'No se pudo sacar el producto.')}finally{button.disabled=false}
+  });
+}
+function openMedranoCounterDialog(){
+  if(!canManageMedrano())return;
+  $('medrano-counter-name').value='';
+  $('medrano-counter-quantity').value='0';
+  $('medrano-counter-dialog').showModal();
+  setTimeout(()=>$('medrano-counter-name').focus(),0);
+}
+async function saveMedranoCounterItem(){
+  if(!canManageMedrano())throw new Error('No tenés permiso para modificar el Mostrador.');
+  const nombre=$('medrano-counter-name').value.trim();
+  const cantidad=Number($('medrano-counter-quantity').value);
+  if(!nombre)throw new Error('Ingresá el nombre del producto.');
+  if(!Number.isInteger(cantidad)||cantidad<0)throw new Error('Ingresá una cantidad válida, sin decimales.');
+  const existing=(state.medranoCounterItems||[]).find(item=>String(item.nombre||'').localeCompare(nombre,'es',{sensitivity:'base'})===0);
+  const q=existing
+    ?await db.from('medrano_mostrador_productos').update({nombre,cantidad,activo:true,updated_at:new Date().toISOString()}).eq('id',existing.id)
+    :await db.from('medrano_mostrador_productos').insert({nombre,cantidad,creado_por:state.session?.user?.id||null});
+  if(q.error)throw q.error;
+  closeDialog('medrano-counter-dialog');
+  await refresh();
+}
+async function saveMedranoCounterQuantity(id,value){
+  if(!canManageMedrano())throw new Error('No tenés permiso para modificar el Mostrador.');
+  const cantidad=Number(value);
+  if(!Number.isInteger(cantidad)||cantidad<0)throw new Error('Ingresá una cantidad válida, sin decimales.');
+  const q=await db.from('medrano_mostrador_productos').update({cantidad,updated_at:new Date().toISOString()}).eq('id',id);
+  if(q.error)throw q.error;
+  await refresh();
+}
+async function removeMedranoCounterItem(id){
+  if(!canManageMedrano())throw new Error('No tenés permiso para modificar el Mostrador.');
+  const q=await db.from('medrano_mostrador_productos').update({activo:false,updated_at:new Date().toISOString()}).eq('id',id);
+  if(q.error)throw q.error;
+  await refresh();
+}
+
 function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
   const rooms=['Flora 1','Flora 2','Flora 3'];
   const lots=state.medranoDispensarioLots||[];
   const total=medranoDispensarioTotal(lots);
   $('screen-title').textContent='Stock Dispensario';
+  if(!state.medranoDispensarioSection){
+    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><button id="medrano-stock-list-back" class="secondary compact-button" type="button">← Stock Medrano</button><div><h2>Dispensario</h2><p class="muted">Elegí el sector de stock que querés consultar.</p></div></div><div class="medrano-stock-grid"><button class="medrano-stock-card" data-dispensario-section="flores" type="button"><strong>Flores</strong><span>Stock actual por lote y sala</span></button><button class="medrano-stock-card" data-dispensario-section="mostrador" type="button"><strong>Mostrador</strong><span>Productos y accesorios para la venta</span></button></div></section>`;
+    bindModuleNav();
+    $('medrano-stock-list-back').onclick=()=>{state.medranoView='stock';render()};
+    app.querySelectorAll('[data-dispensario-section]').forEach(button=>button.onclick=()=>{state.medranoDispensarioSection=button.dataset.dispensarioSection;render()});
+    return;
+  }
+  if(state.medranoDispensarioSection==='mostrador'){
+    renderMedranoCounterStock(medranoNav,bindModuleNav);
+    return;
+  }
   if(!state.medranoDispensarioRoom){
     const detailRows=[...lots].sort((a,b)=>String(b.fecha_ingreso||'').localeCompare(String(a.fecha_ingreso||''))||String(a.codigo_lote||'').localeCompare(String(b.codigo_lote||'')));
     const pendingTransfers=(state.stockTransfers||[]).filter(t=>t.estado==='en_viaje');
@@ -1090,7 +1165,8 @@ function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
     <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Traslados recibidos desde Palestina, agrupados por día.</p></div></div>${renderMedranoMovementDays()}</section>`;
     bindModuleNav();
     bindStockTableTools(app);
-    $('medrano-stock-list-back').onclick=()=>{state.medranoView='stock';render()};
+    $('medrano-stock-list-back').textContent='← Dispensario';
+    $('medrano-stock-list-back').onclick=()=>{state.medranoDispensarioSection=null;render()};
     $('medrano-current-toggle').onclick=()=>{state.medranoDispensarioExpanded=!state.medranoDispensarioExpanded;render()};
     app.querySelectorAll('[data-medrano-dispensario-room]').forEach(b=>b.onclick=()=>{state.medranoDispensarioRoom=b.dataset.medranoDispensarioRoom;render()});
     app.querySelectorAll('[data-confirm-transfer]').forEach(b=>b.onclick=()=>openMedranoReceptionDialog(b.dataset.confirmTransfer));
@@ -1439,7 +1515,7 @@ function renderMedrano(){
   state.medranoView=mv;
   const module=mv.startsWith('stock')?'stock':mv;
   const medranoNav=`<nav class="medrano-top-nav" aria-label="Módulos de Medrano"><button type="button" data-medrano-module="administracion" class="${module==='administracion'?'active':''}">Administración</button><button type="button" data-medrano-module="dispensario" class="${module==='dispensario'?'active':''}">Dispensario</button><button type="button" data-medrano-module="stock" class="${module==='stock'?'active':''}">Stock Medrano</button></nav>`;
-  const bindModuleNav=()=>document.querySelectorAll('[data-medrano-module]').forEach(b=>b.onclick=()=>{state.medranoView=b.dataset.medranoModule;state.medranoDispensarioRoom=null;render()});
+  const bindModuleNav=()=>document.querySelectorAll('[data-medrano-module]').forEach(b=>b.onclick=()=>{state.medranoView=b.dataset.medranoModule;state.medranoDispensarioSection=null;state.medranoDispensarioRoom=null;render()});
 
   if(mv==='administracion'){
     $('screen-title').textContent='Administración';
@@ -1463,7 +1539,7 @@ function renderMedrano(){
     $('screen-title').textContent='Stock Medrano';
     app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Stock Medrano</h2><p class="muted">Elegí el sector de stock que querés consultar.</p></div></div><div class="medrano-stock-grid"><button class="medrano-stock-card" data-medrano-stock="dispensario" type="button"><strong>Dispensario</strong><span>Stock de Dispensario</span></button><button class="medrano-stock-card" data-medrano-stock="laboratorio" type="button"><strong>Laboratorio</strong><span>Stock de Laboratorio</span></button></div></section>`;
     bindModuleNav();
-    document.querySelectorAll('[data-medrano-stock]').forEach(b=>b.onclick=()=>{state.medranoView=`stock-${b.dataset.medranoStock}`;state.medranoDispensarioRoom=null;render()});
+    document.querySelectorAll('[data-medrano-stock]').forEach(b=>b.onclick=()=>{state.medranoView=`stock-${b.dataset.medranoStock}`;state.medranoDispensarioSection=null;state.medranoDispensarioRoom=null;render()});
     return;
   }
   const key=mv.replace('stock-','');
@@ -1507,6 +1583,8 @@ function renderAmendmentsView(){
   const back=$('back-cultivo-info');if(back)back.onclick=openCultivoInfo;
 }
 function bindMedranoDialogActions(){
+  $('cancel-medrano-counter').onclick=()=>closeDialog('medrano-counter-dialog');
+  $('save-medrano-counter').onclick=async()=>{const b=$('save-medrano-counter');b.disabled=true;try{await saveMedranoCounterItem()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el producto.')}finally{b.disabled=false}};
   $('cancel-medrano-lot').onclick=()=>closeDialog('medrano-lot-dialog');
   $('cancel-medrano-reception').onclick=()=>{state.pendingStockTransfer=null;closeDialog('medrano-reception-dialog')};
   $('confirm-medrano-reception').onclick=async()=>{const b=$('confirm-medrano-reception');b.disabled=true;try{await confirmMedranoReception()}catch(e){console.error(e);alert(e.message||'No se pudo confirmar la recepción.')}finally{b.disabled=false}};

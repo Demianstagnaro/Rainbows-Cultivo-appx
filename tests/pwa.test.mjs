@@ -9,18 +9,18 @@ const manifest=JSON.parse(read('manifest.json'));
 const overrides=read('rainbows-overrides.js');
 const sw=read('sw.js');
 
-test('todos los componentes declaran la versión 3.18.6',()=>{
-  assert.match(app,/const APP_VERSION='3\.18\.6'/);
-  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.18\.6'/);
-  assert.match(sw,/const VERSION='3\.18\.6'/);
-  assert.equal(manifest.start_url,'./?v=3.18.6');
+test('todos los componentes declaran la versión 3.18.7',()=>{
+  assert.match(app,/const APP_VERSION='3\.18\.7'/);
+  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.18\.7'/);
+  assert.match(sw,/const VERSION='3\.18\.7'/);
+  assert.equal(manifest.start_url,'./?v=3.18.7');
   for(const asset of ['styles.css','app.js','rainbows-overrides.js','manifest.json']){
-    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.18\\.6`));
+    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.18\\.7`));
   }
 });
 
 test('las mejoras se cargan en la primera visita sin reescribir respuestas',()=>{
-  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.18\.6"><\/script>/);
+  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.18\.7"><\/script>/);
   assert.doesNotMatch(sw,/optimizeAppJs|html\.replace|new Response\(out/);
   assert.match(app,/RAINBOWS_PERF_CACHE_V2/);
 });
@@ -66,4 +66,14 @@ test('Laboratorio agrupa Resina, Aceites, Cremas y Cápsulas',()=>{
   assert.match(app,/data-medrano-laboratory-category/);
   assert.match(app,/function renderMedranoLaboratoryStock\(/);
   assert.match(app,/key\.startsWith\('laboratorio-'\)/);
+});
+
+test('Dispensario separa Flores y Mostrador con inventario editable',()=>{
+  assert.match(app,/data-dispensario-section="flores"/);
+  assert.match(app,/data-dispensario-section="mostrador"/);
+  assert.match(app,/function renderMedranoCounterStock\(/);
+  assert.match(app,/medrano_mostrador_productos/);
+  assert.match(app,/data-save-counter/);
+  assert.match(app,/data-remove-counter/);
+  assert.match(html,/id="medrano-counter-dialog"/);
 });

@@ -866,6 +866,8 @@ body{
 .stock-table th.stock-sortable.sort-asc::after{content:'↑';opacity:1;color:var(--accent)}
 .stock-table th.stock-sortable.sort-desc::after{content:'↓';opacity:1;color:var(--accent)}
 .stock-table tbody tr[hidden]{display:none}
+.counter-quantity-input{width:110px;min-width:90px;padding:8px 10px}
+.counter-item-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 @media(max-width:760px){.stock-table-toolbar{align-items:stretch;flex-direction:column}.stock-table-search{max-width:none;width:100%}.stock-table-hint{white-space:normal}}
 
 /* V3.16.35 · Transferencias Palestina ↔ Medrano */

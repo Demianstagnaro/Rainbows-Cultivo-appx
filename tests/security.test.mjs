@@ -9,6 +9,15 @@ const orderDeleteSql=fs.readFileSync(new URL('../Rainbows_V3.18.1_eliminar_coman
 const orderAuditSql=fs.readFileSync(new URL('../Rainbows_V3.18.2_auditoria_comandas.sql',import.meta.url),'utf8');
 const orderPendingSql=fs.readFileSync(new URL('../Rainbows_V3.18.3_comandas_pendientes.sql',import.meta.url),'utf8');
 const orderEditSql=fs.readFileSync(new URL('../Rainbows_V3.18.5_editar_comandas.sql',import.meta.url),'utf8');
+const counterStockSql=fs.readFileSync(new URL('../Rainbows_V3.18.7_stock_mostrador.sql',import.meta.url),'utf8');
+
+test('el stock de Mostrador queda protegido y no permite borrado directo',()=>{
+  assert.match(counterStockSql,/alter table public\.medrano_mostrador_productos enable row level security/i);
+  assert.match(counterStockSql,/using \(public\.usuario_rainbows_medrano\(\)\)/i);
+  assert.match(counterStockSql,/with check \(public\.usuario_rainbows_medrano\(\) and creado_por = auth\.uid\(\)\)/i);
+  assert.match(counterStockSql,/grant select, insert, update on public\.medrano_mostrador_productos to authenticated/i);
+  assert.doesNotMatch(counterStockSql,/grant[^;]*delete[^;]*medrano_mostrador_productos/i);
+});
 
 function between(source,start,end){
   const from=source.indexOf(start);
