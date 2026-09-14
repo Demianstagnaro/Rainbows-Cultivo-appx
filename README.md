@@ -9,7 +9,7 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.18.5. El registro público permanece deshabilitado: las altas se administran de forma controlada y toda cuenta nueva queda inactiva hasta que un Administrador la habilite.
+La versión actual es V3.18.6. El registro público permanece deshabilitado: las altas se administran de forma controlada y toda cuenta nueva queda inactiva hasta que un Administrador la habilite.
 
 
 ## V3.0.1
@@ -1134,10 +1134,10 @@ Registro de pacientes con alta/edición, orden por columnas y búsqueda instant�
 - Las comandas eliminadas permanecen inalterables.
 
 
-## V3.18.5 — Menú y reapertura de comandas
+## V3.18.6 — Menú y reapertura de comandas
 
 - Reemplaza las acciones visibles por un menú de tres puntos con `Editar` y `Eliminar`.
 - El menú está disponible tanto en comandas pendientes como dispensadas y en el historial.
 - Editar una comanda dispensada la destilda y la devuelve automáticamente a pendientes.
 - Mantiene inalterable el registro de las comandas eliminadas.
-- Requiere aplicar `Rainbows_V3.18.5_editar_comandas.sql` después de V3.18.3.
+- Requiere aplicar `Rainbows_V3.18.6_editar_comandas.sql` después de V3.18.3.

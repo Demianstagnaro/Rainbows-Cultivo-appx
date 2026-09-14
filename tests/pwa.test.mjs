@@ -9,18 +9,18 @@ const manifest=JSON.parse(read('manifest.json'));
 const overrides=read('rainbows-overrides.js');
 const sw=read('sw.js');
 
-test('todos los componentes declaran la versión 3.18.5',()=>{
-  assert.match(app,/const APP_VERSION='3\.18\.5'/);
-  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.18\.5'/);
-  assert.match(sw,/const VERSION='3\.18\.5'/);
-  assert.equal(manifest.start_url,'./?v=3.18.5');
+test('todos los componentes declaran la versión 3.18.6',()=>{
+  assert.match(app,/const APP_VERSION='3\.18\.6'/);
+  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.18\.6'/);
+  assert.match(sw,/const VERSION='3\.18\.6'/);
+  assert.equal(manifest.start_url,'./?v=3.18.6');
   for(const asset of ['styles.css','app.js','rainbows-overrides.js','manifest.json']){
-    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.18\\.5`));
+    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.18\\.6`));
   }
 });
 
 test('las mejoras se cargan en la primera visita sin reescribir respuestas',()=>{
-  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.18\.5"><\/script>/);
+  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.18\.6"><\/script>/);
   assert.doesNotMatch(sw,/optimizeAppJs|html\.replace|new Response\(out/);
   assert.match(app,/RAINBOWS_PERF_CACHE_V2/);
 });
@@ -55,4 +55,15 @@ test('HTML no repite IDs, no usa handlers inline y tiene CSP',()=>{
 test('registro público queda oculto y el buscador tiene nombre accesible',()=>{
   assert.match(html,/id="sign-up"[^>]*hidden/);
   assert.match(html,/id="stock-movement-search"[^>]*aria-label=/);
+});
+
+
+test('Laboratorio agrupa Resina, Aceites, Cremas y Cápsulas',()=>{
+  assert.match(app,/const medranoLaboratoryCategories=/);
+  for(const category of ['Resina','Aceites','Cremas','Cápsulas']){
+    assert.match(app,new RegExp(`label:'${category}'`));
+  }
+  assert.match(app,/data-medrano-laboratory-category/);
+  assert.match(app,/function renderMedranoLaboratoryStock\(/);
+  assert.match(app,/key\.startsWith\('laboratorio-'\)/);
 });
