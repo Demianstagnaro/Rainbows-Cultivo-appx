@@ -15,7 +15,7 @@ test('todos los componentes declaran la versión 3.18.6',()=>{
   assert.match(sw,/const VERSION='3\.18\.6'/);
   assert.equal(manifest.start_url,'./?v=3.18.6');
   for(const asset of ['styles.css','app.js','rainbows-overrides.js','manifest.json']){
-    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.18\\.5`));
+    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.18\\.6`));
   }
 });
 
