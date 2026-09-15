@@ -9,7 +9,13 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.18.7. El registro público permanece deshabilitado: las altas se administran de forma controlada y toda cuenta nueva queda inactiva hasta que un Administrador la habilite.
+La versión actual es V3.18.8. El registro público permanece deshabilitado: las altas se administran de forma controlada y toda cuenta nueva queda inactiva hasta que un Administrador la habilite.
+
+## V3.18.8 — Materias primas e insumos de Laboratorio
+
+- Agrega Flores e Insumos como secciones independientes dentro de Stock de Laboratorio.
+- Flores de Laboratorio permanece separado del stock de Flores del Dispensario.
+- Pantallas preparadas para diseñar posteriormente la carga de existencias; no requiere SQL.
 
 
 ## V3.0.1
