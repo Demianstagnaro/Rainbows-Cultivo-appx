@@ -48,4 +48,6 @@ jobs:
       - run: psql -f Rainbows_V3.18.3_comandas_pendientes.sql
       - run: psql -f Rainbows_V3.18.5_editar_comandas.sql
       - run: psql -f Rainbows_V3.18.7_stock_mostrador.sql
+      - run: psql -v ON_ERROR_STOP=1 -f Rainbows_V3.19.0_stock_medrano.sql
       - run: psql -f tests/sql/schema_assertions.sql
+      - run: psql -v ON_ERROR_STOP=1 -f tests/sql/stock_medrano_assertions.sql
