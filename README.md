@@ -9,7 +9,17 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.18.8. El registro público permanece deshabilitado: las altas se administran de forma controlada y toda cuenta nueva queda inactiva hasta que un Administrador la habilite.
+La versión actual es V3.19.0. El registro público permanece deshabilitado: las altas se administran de forma controlada y toda cuenta nueva queda inactiva hasta que un Administrador la habilite.
+
+## V3.19.0 — Traslados internos e historial de Medrano
+
+- Envíos de Flores del Dispensario a Laboratorio, con descuento inmediato y recepción obligatoria.
+- Conserva lote y genética; impide sobreventa y recepción duplicada.
+- Historial automático agrupado por día en Flores, Mostrador y cada categoría del Laboratorio.
+- Registra ingresos, ajustes, retiro de productos, envíos y recepciones con usuario y cantidades anterior/nueva.
+- El historial nuevo comienza al activar la migración; conserva la vista previa de traslados desde Palestina.
+- Activa los inventarios editables de Laboratorio (excepto Flores, que ingresa por recepción).
+- Requiere ejecutar `Rainbows_V3.19.0_stock_medrano.sql` después de V3.18.7.
 
 ## V3.18.8 — Materias primas e insumos de Laboratorio
 
