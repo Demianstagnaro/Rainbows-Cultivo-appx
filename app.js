@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.18.7';
+const APP_VERSION='3.18.8';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1488,16 +1488,18 @@ function renderMedranoOrders(medranoNav,bindModuleNav){
 }
 
 const medranoLaboratoryCategories=[
+  {key:'flores',label:'Flores',description:'Materia prima para elaboraciones'},
   {key:'resina',label:'Resina'},
   {key:'aceites',label:'Aceites'},
   {key:'cremas',label:'Cremas'},
-  {key:'capsulas',label:'Cápsulas'}
+  {key:'capsulas',label:'Cápsulas'},
+  {key:'insumos',label:'Insumos',description:'Materiales utilizados en el laboratorio'}
 ];
 function renderMedranoLaboratoryStock(medranoNav,bindModuleNav,categoryKey=''){
   const category=medranoLaboratoryCategories.find(item=>item.key===categoryKey);
   if(!category){
     $('screen-title').textContent='Stock Laboratorio';
-    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><button id="medrano-stock-list-back" class="secondary compact-button" type="button">← Stock Medrano</button><div><h2>Laboratorio</h2><p class="muted">Elegí la categoría de productos que querés consultar.</p></div></div><div class="medrano-stock-grid">${medranoLaboratoryCategories.map(item=>`<button class="medrano-stock-card" data-medrano-laboratory-category="${item.key}" type="button"><strong>${item.label}</strong><span>Productos de ${item.label.toLowerCase()}</span></button>`).join('')}</div></section>`;
+    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><button id="medrano-stock-list-back" class="secondary compact-button" type="button">← Stock Medrano</button><div><h2>Laboratorio</h2><p class="muted">Elegí el stock de productos, materias primas o insumos que querés consultar.</p></div></div><div class="medrano-stock-grid">${medranoLaboratoryCategories.map(item=>`<button class="medrano-stock-card" data-medrano-laboratory-category="${item.key}" type="button"><strong>${item.label}</strong><span>${item.description||`Productos de ${item.label.toLowerCase()}`}</span></button>`).join('')}</div></section>`;
     bindModuleNav();
     $('medrano-stock-list-back').onclick=()=>{state.medranoView='stock';render()};
     document.querySelectorAll('[data-medrano-laboratory-category]').forEach(button=>button.onclick=()=>{state.medranoView=`stock-laboratorio-${button.dataset.medranoLaboratoryCategory}`;render()});
