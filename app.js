@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.19.0';
+const APP_VERSION='3.19.1';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2657,6 +2657,7 @@ function renderSettings(){
     <section class="panel"><h3>Empleados compartidos</h3><textarea id="emps" class="text-input" style="min-height:150px">${escapeHtml(state.empleados.map(e=>e.nombre).join('\n'))}</textarea></section>
     <button id="save-conf" class="primary">Guardar configuración</button>
     <section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>{const safeId=escapeHtml(p.id),safeName=escapeHtml(p.nombre||'Sin nombre'),safeEmail=escapeHtml(p.email||''),safeDeleteName=escapeHtml(p.nombre||p.email||'este usuario'),self=p.id===state.session.user.id;return`<div class="user-row"><div><strong>${safeName}</strong><div class="user-email">${safeEmail}</div></div><select class="text-input user-role" data-role="${safeId}" ${self?'disabled aria-label="El rol de tu propia cuenta está protegido"':''}>${['administrador','cultivo','medrano'].map(r=>`<option value="${r}" ${normalizeRole(p.rol)===r?'selected':''}>${r.charAt(0).toUpperCase()+r.slice(1)}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${safeId}" ${p.activo?'checked':''} ${self?'disabled':''}> Activo</label>${self?'<span class="self-account">Tu cuenta protegida</span>':`<button class="danger user-delete" type="button" data-delete-user="${safeId}" data-delete-name="${safeDeleteName}">Eliminar cuenta</button>`}</div>`}).join('')}</div><p class="muted">Tu propia cuenta no puede cambiar de rol ni desactivarse desde la aplicación.</p><p><button id="save-users" class="primary">Guardar usuarios</button></p></section>
+    <section class="panel"><h3>Crear cuenta</h3><form id="create-user-form" class="create-user-form"><label class="field-label">Nombre<input id="new-user-name" class="text-input" autocomplete="off" maxlength="120" required></label><label class="field-label">Correo electrónico<input id="new-user-email" class="text-input" type="email" autocomplete="off" maxlength="254" required></label><label class="field-label">Rol<select id="new-user-role" class="text-input"><option value="cultivo">Cultivo</option><option value="medrano">Medrano</option><option value="administrador">Administrador</option></select></label><button id="create-user" class="primary" type="submit">Crear y enviar invitación</button><p id="create-user-status" class="muted" role="status" aria-live="polite">La persona recibirá un correo para configurar su acceso.</p></form></section>
     <section class="panel"><h3>Permisos por rol</h3><div class="role-permissions">${Object.entries(permissions).map(([role,text])=>`<div class="role-permission"><strong>${role}</strong><p>${text}</p></div>`).join('')}</div></section>
     <section class="panel account-summary"><p><strong>Usuario:</strong> ${escapeHtml(state.session.user.email)}</p><p><strong>Rol:</strong> ${currentRole().charAt(0).toUpperCase()+currentRole().slice(1)}</p><p><strong>Tus permisos:</strong> ${permissions[currentRole()]||''}</p><p><strong>Versión:</strong> ${APP_VERSION}</p></section>`;
   $('save-conf').onclick=saveConfig;
@@ -2664,6 +2665,7 @@ function renderSettings(){
   $('download-backup').onclick=downloadBackup;
   $('restore-backup').onclick=restoreBackup;
   $('refresh-backups').onclick=loadBackups;
+  $('create-user-form').onsubmit=async event=>{event.preventDefault();if(currentRole()!=='administrador')return;const button=$('create-user'),status=$('create-user-status');button.disabled=true;status.textContent='Creando cuenta…';try{const {data,error}=await db.functions.invoke('rainbows-create-user',{body:{nombre:$('new-user-name').value.trim(),email:$('new-user-email').value.trim(),rol:$('new-user-role').value}});if(error){let detail=error.message;try{const response=error.context;if(response?.json){const body=await response.json();detail=body.error||detail}}catch(_){}throw new Error(detail)}if(!data?.ok)throw new Error(data?.error||'No se pudo crear la cuenta.');await refresh();alert('Invitación enviada. La cuenta aparece en Usuarios y ya tiene asignado el rol elegido.')}catch(e){console.error(e);button.disabled=false;status.textContent=e.message||'No se pudo crear la cuenta.'}};
   $('save-users').onclick=async()=>{try{for(const p of state.perfiles){const q=await db.rpc('admin_actualizar_perfil_v2',{objetivo_id:p.id,nuevo_rol:document.querySelector(`[data-role="${p.id}"]`).value,nuevo_activo:document.querySelector(`[data-active="${p.id}"]`).checked});if(q.error)throw q.error}await refresh();alert('Usuarios actualizados.')}catch(e){console.error(e);alert(e.message||'No se pudieron actualizar los usuarios.')}};
   app.querySelectorAll('[data-delete-user]').forEach(btn=>btn.onclick=async()=>{const name=btn.dataset.deleteName;if(!confirm(`¿Eliminar definitivamente la cuenta de ${name}? Esta acción no se puede deshacer.`))return;btn.disabled=true;try{const q=await db.rpc('admin_eliminar_usuario',{objetivo_id:btn.dataset.deleteUser});if(q.error)throw q.error;await refresh();alert('Cuenta eliminada definitivamente.')}catch(e){console.error(e);btn.disabled=false;alert(e.message||'No se pudo eliminar la cuenta. Verificá que esté aplicada la migración V3.17.0.')}});
   loadBackups();
@@ -2731,6 +2733,7 @@ $('save-reset-password').onclick=async()=>{
       closeDialog('reset-password-dialog');
       $('reset-password').value='';
       $('reset-password-confirm').value='';
+      acceptingInvitation=false;
       if(state.session) scheduleStart(state.session);
     },500);
   }catch(error){
@@ -2791,6 +2794,7 @@ $('sign-up').onclick=async()=>{
   }
 };
 let startingSessionId=null;
+let acceptingInvitation=new URLSearchParams(location.hash.slice(1)).get('type')==='invite';
 
 function scheduleStart(session){
   if(!session?.user?.id) return;
@@ -2827,7 +2831,7 @@ async function start(session){
 }
 
 db.auth.onAuthStateChange((event,session)=>{
-  if(event==='PASSWORD_RECOVERY'&&session){
+  if((event==='PASSWORD_RECOVERY'||acceptingInvitation)&&session){
     state.session=session;
     $('auth-screen').hidden=true;$('auth-screen').style.display='none';
     $('app-shell').hidden=true;

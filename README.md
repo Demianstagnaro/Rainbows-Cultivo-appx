@@ -9,7 +9,13 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.19.0. El registro público permanece deshabilitado: las altas se administran de forma controlada y toda cuenta nueva queda inactiva hasta que un Administrador la habilite.
+La versión actual es V3.19.1. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.19.1 — Alta de cuentas desde Config
+
+- Formulario para crear cuentas con nombre, correo y rol; envía una invitación para definir contraseña.
+- La función de servidor valida sesión y rol de administrador activo, sin exponer la clave de servicio en el navegador.
+- Requiere desplegar la Edge Function `rainbows-create-user`; instrucciones en `INSTALACION_ALTAS_USUARIOS.md`.
 
 ## V3.19.0 — Traslados internos e historial de Medrano
 
