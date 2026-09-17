@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.19.1. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.20.0. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.20.0 — Operación diaria de Dispensario
+
+- Dispensario muestra comandas pendientes y, debajo, comandas dispensadas y movimientos de Laboratorio a Dispensario del día.
+- Al cambiar el día, las entregas y movimientos quedan consultables en Historial de Dispensario; las comandas pendientes continúan hasta su cierre.
+- El botón Crear movimiento traslada stock de Flores, Resina, Aceites, Cremas o Cápsulas mediante una operación atómica y registra el usuario. Insumos no se trasladan al Dispensario.
+- Los productos elaborados recibidos se consultan en Stock Medrano → Dispensario → Productos de Laboratorio; Flores retornan a su lote de origen.
+- Para activar el traslado ejecutar `Rainbows_V3.20.0_dispensario.sql` en el SQL Editor de Supabase una vez, después de V3.19.0. Hasta entonces la app muestra una indicación y no habilita Crear movimiento.
 
 ## V3.19.1 — Alta de cuentas desde Config
 
