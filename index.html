@@ -6,15 +6,15 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fplbxirsbwruazvygciu.supabase.co wss://fplbxirsbwruazvygciu.supabase.co; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests">
   <title>rainbows</title>
   <meta name="theme-color" content="#111827">
-  <link rel="manifest" href="manifest.json?v=3.22.0">
-  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3.22.0">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.22.0">
-  <link rel="stylesheet" href="styles.css?v=3.22.0">
+  <link rel="manifest" href="manifest.json?v=3.22.1">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3.22.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.22.1">
+  <link rel="stylesheet" href="styles.css?v=3.22.1">
 </head>
 <body>
   <section id="auth-screen" class="auth-screen">
     <div class="auth-card">
-      <div class="auth-logo-wrap"><img src="rainbows-logo.webp?v=3.22.0" class="rainbows-logo auth-logo" alt="rainbows"></div>
+      <div class="auth-logo-wrap"><img src="rainbows-logo.webp?v=3.22.1" class="rainbows-logo auth-logo" alt="rainbows"></div>
       <h1>Acceso compartido</h1>
       <p class="muted">Ingresá con correo y contraseña.</p>
       <label class="field-label" hidden>Nombre<input id="auth-name" class="text-input" autocomplete="name"></label>
@@ -30,7 +30,7 @@
   <dialog id="reset-password-dialog" class="dialog"><form method="dialog"><h3>Crear contraseña nueva</h3><p class="muted">Ingresá una contraseña de al menos 6 caracteres.</p><label class="field-label">Contraseña nueva<input id="reset-password" class="text-input" type="password" minlength="6" autocomplete="new-password"></label><label class="field-label">Repetir contraseña<input id="reset-password-confirm" class="text-input" type="password" minlength="6" autocomplete="new-password"></label><p id="reset-password-message" class="auth-message" aria-live="polite"></p><menu><button type="button" id="save-reset-password" class="primary">Guardar contraseña</button></menu></form></dialog>
 
   <div id="app-shell" hidden>
-    <header class="topbar"><div class="header-copy"><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><div class="app-brand"><img src="rainbows-logo.webp?v=3.22.0" class="rainbows-logo header-logo" alt="rainbows"><span id="brand-section-label" class="cultivo-prefix">Cultivo</span></div><div class="header-actions"><div class="header-main-actions"><button id="header-config" class="secondary compact-button" hidden>Config</button><button id="header-help" class="secondary compact-button">Ayuda</button><button id="sign-out" class="secondary compact-button">Salir</button></div><div class="site-switch" aria-label="Seleccionar sede"><button id="site-palestina" class="site-button active" type="button">Palestina</button><button id="site-medrano" class="site-button" type="button">Medrano</button></div></div></header>
+    <header class="topbar"><div class="header-copy"><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><div class="app-brand"><img src="rainbows-logo.webp?v=3.22.1" class="rainbows-logo header-logo" alt="rainbows"><span id="brand-section-label" class="cultivo-prefix">Cultivo</span></div><div class="header-actions"><div class="header-main-actions"><button id="header-config" class="secondary compact-button" hidden>Config</button><button id="header-help" class="secondary compact-button">Ayuda</button><button id="sign-out" class="secondary compact-button">Salir</button></div><div class="site-switch" aria-label="Seleccionar sede"><button id="site-palestina" class="site-button active" type="button">Palestina</button><button id="site-medrano" class="site-button" type="button">Medrano</button></div></div></header>
     <nav class="top-nav"><button data-view="today" class="active">Hoy</button><button data-view="calendar">Calendario</button><button data-view="cultivo-info">Info cultivo</button><button data-view="harvests">Cosechas</button><button data-view="stock">Stock Palestina</button></nav>
     <main id="app"><div class="panel">Cargando…</div></main>
     <button id="voice-button" class="voice-button" type="button" aria-label="Usar comandos de voz" title="Comandos de voz">🎙️</button>
@@ -125,7 +125,7 @@
   <dialog id="lab-item-dialog" class="dialog"><form method="dialog"><h3 id="lab-item-title">Agregar producto</h3><label class="field-label">Producto<input id="lab-item-name" class="text-input" maxlength="180"></label><label class="field-label">Cantidad<input id="lab-item-quantity" class="text-input" type="number" min="0" step="0.01"></label><label class="field-label">Unidad<select id="lab-item-unit" class="text-input"><option value="g">g</option><option value="ml">ml</option><option value="unidades">Unidades</option></select></label><menu><button id="cancel-lab-item" type="button" class="secondary">Cancelar</button><button id="save-lab-item" type="button" class="primary">Guardar</button></menu></form></dialog>
   <dialog id="lab-job-dialog" class="dialog"><form method="dialog"><h3 id="lab-job-title">Nuevo trabajo</h3><label class="field-label">Tipo de trabajo<select id="lab-job-type" class="text-input"><option value="comanda_paciente">Comanda para paciente</option><option value="aceite_base">Aceite base</option><option value="crema">Crema</option><option value="resina">Extracción de resina</option><option value="otra_produccion">Otra producción</option></select></label><label class="field-label">Producto o trabajo<input id="lab-job-product" class="text-input" maxlength="180" placeholder="Ej.: Aceite base"></label><label id="lab-job-patient-field" class="field-label">Paciente<input id="lab-job-patient" class="text-input" maxlength="180" list="lab-job-patients" autocomplete="off"><datalist id="lab-job-patients"></datalist></label><label class="field-label">Cantidad (opcional)<input id="lab-job-quantity" class="text-input" type="number" min="0.01" step="0.01" inputmode="decimal"></label><label class="field-label">Unidad<select id="lab-job-unit" class="text-input"><option value="">Sin cantidad</option><option value="g">g</option><option value="ml">ml</option><option value="unidades">Unidades</option></select></label><label class="field-label">Detalle de preparación<textarea id="lab-job-detail" class="text-input" maxlength="2000"></textarea></label><p class="muted">El registro del trabajo no modifica automáticamente los stocks.</p><menu><button id="cancel-lab-job" type="button" class="secondary">Cancelar</button><button id="save-lab-job" type="button" class="primary">Guardar trabajo</button></menu></form></dialog>
 
-  <script defer src="rainbows-overrides.js?v=3.22.0"></script>
-  <script type="module" src="app.js?v=3.22.0"></script>
+  <script defer src="rainbows-overrides.js?v=3.22.1"></script>
+  <script type="module" src="app.js?v=3.22.1"></script>
 </body>
 </html>

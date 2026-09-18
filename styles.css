@@ -805,6 +805,10 @@ body{
 .medrano-top-nav button{border:1px solid var(--line);border-radius:10px;background:#1f2937;color:var(--text);padding:9px 8px;font-weight:800;font-size:12px;cursor:pointer;min-height:38px}
 .medrano-top-nav button.active{background:rgba(249,115,22,.18);border-color:rgba(249,115,22,.48);color:#fed7aa}
 .medrano-multi-line{display:grid;grid-template-columns:minmax(110px,1fr) minmax(180px,2fr) minmax(86px,1fr) auto auto;align-items:end;gap:8px;padding:8px 0;border-bottom:1px solid var(--line)}
+.medrano-order-details summary{cursor:pointer;color:var(--text);font-weight:800;white-space:nowrap}
+.medrano-order-details[open]{min-width:min(70vw,480px)}
+.medrano-order-items-table{min-width:360px;margin-top:8px;font-size:12px}
+.medrano-order-items-table th,.medrano-order-items-table td{padding:6px 8px}
 @media(max-width:700px){.medrano-multi-line{grid-template-columns:1fr 1fr}.medrano-multi-line [data-order-product]{min-width:0}}
 .medrano-module-panel{margin-top:0}
 .medrano-stock-grid{gap:8px}

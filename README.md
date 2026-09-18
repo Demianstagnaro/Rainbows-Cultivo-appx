@@ -9,7 +9,12 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.22.0. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.22.1. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.22.1 — Comandas desplegables
+
+- Las comandas con varios productos muestran una sola fila por pedido. «Ver productos» despliega un renglón por tipo, producto y cantidad en Administración, Dispensario y sus historiales. Las flores se muestran por genética sin concatenar el código del lote.
+- No requiere otra migración SQL.
 
 ## V3.22.0 — Comandas con varios productos
 

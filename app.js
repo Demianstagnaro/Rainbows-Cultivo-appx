@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.22.0';
+const APP_VERSION='3.22.1';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1401,11 +1401,23 @@ function renderMedranoPatients(medranoNav,bindModuleNav){
 const medranoOrderCategories={flores:'Flores',resina:'Resina',aceites:'Aceites',cremas:'Cremas',capsulas:'Cápsulas',mostrador:'Mostrador'};
 function medranoMultiOrderView(order){
   const items=state.medranoMultiItems.filter(item=>item.comanda_id===order.id);
-  return {...order,multiple:true,items,producto:items.map(i=>`${i.nombre} (${Number(i.cantidad).toLocaleString('es-AR')} ${i.unidad})`).join(' · '),cantidad:items.length+' producto'+(items.length===1?'':'s'),nombre_paciente:order.paciente_nombre,
+  return {...order,multiple:true,items,producto:'Comanda',cantidad:null,nombre_paciente:order.paciente_nombre,
     dispensada_at:order.dispensada_at,dispensada_fecha:medranoJobDay(order.dispensada_at),dispensada_por_nombre:state.perfiles.find(p=>p.id===order.dispensada_por)?.nombre||'—',
     eliminada_at:order.eliminada_at,eliminada_por_nombre:state.perfiles.find(p=>p.id===order.eliminada_por)?.nombre||'—',
     motivo_eliminacion:order.motivo_eliminacion,requiere_cierre:true};
 }
+function medranoOrderItemName(item){
+  if(item.tipo!=='flores')return item.nombre||'—';
+  const lot=state.medranoDispensarioLots.find(x=>x.id===item.origen_id);
+  return lot?state.geneticas.find(g=>String(g.id)===String(lot.genetica_id))?.nombre||lot.nombre_historico||item.nombre.split(' · ')[0]:String(item.nombre||'').split(' · ')[0];
+}
+function medranoOrderItemTable(order){
+  return `<div class="stock-table-wrap"><table class="stock-table medrano-order-items-table"><thead><tr><th>Tipo</th><th>Producto</th><th>Cantidad</th></tr></thead><tbody>${order.items.map(item=>`<tr><td>${escapeHtml(medranoOrderCategories[item.tipo]||item.tipo)}</td><td>${escapeHtml(medranoOrderItemName(item))}</td><td>${Number(item.cantidad).toLocaleString('es-AR')} ${escapeHtml(item.unidad)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function medranoOrderProductCell(order){
+  return order.multiple?`<details class="medrano-order-details"><summary>Ver productos</summary>${medranoOrderItemTable(order)}</details>`:`<strong>${escapeHtml(order.producto||'—')}</strong>`;
+}
+function medranoOrderQuantityCell(order){return order.multiple?'':escapeHtml(String(order.cantidad??''))}
 function medranoReserved(tipo,id,excludeId=null){
   const pending=new Set(state.medranoMultiOrders.filter(o=>o.estado==='pendiente'&&o.id!==excludeId).map(o=>o.id));
   return state.medranoMultiItems.filter(i=>pending.has(i.comanda_id)&&i.tipo===tipo&&i.origen_id===id).reduce((sum,i)=>sum+Number(i.cantidad),0);
@@ -1648,7 +1660,7 @@ function renderMedranoDeletedOrders(medranoNav,bindModuleNav){
     ${stockTableToolbar('Buscar por producto, paciente, usuario o motivo...')}
     <div class="stock-table-wrap"><table class="stock-table medrano-deleted-orders-table">
       <thead><tr><th data-sort-type="text">Producto</th><th data-sort-type="number">Cantidad</th><th data-sort-type="text">Paciente</th><th data-sort-type="date">Fecha original</th><th data-sort-type="text">Eliminada por</th><th data-sort-type="date">Eliminada el</th><th data-sort-type="text">Motivo</th></tr></thead>
-      <tbody>${rows.length?rows.map(order=>`<tr><td><strong>${escapeHtml(order.producto||'')}</strong></td><td data-sort-value="${Number(order.cantidad)||0}">${escapeHtml(String(order.cantidad??''))}</td><td>${escapeHtml(order.nombre_paciente||'—')}</td><td data-sort-value="${escapeHtml(order.fecha||'')}">${order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${escapeHtml(order.eliminada_por_nombre||'—')}</td><td data-sort-value="${escapeHtml(order.eliminada_at||'')}">${order.eliminada_at?new Date(order.eliminada_at).toLocaleString('es-AR'):'—'}</td><td>${escapeHtml(order.motivo_eliminacion||'—')}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="7">No hay comandas eliminadas.</td></tr>'}</tbody>
+      <tbody>${rows.length?rows.map(order=>`<tr><td>${medranoOrderProductCell(order)}</td><td data-sort-value="${Number(order.cantidad)||0}">${medranoOrderQuantityCell(order)}</td><td>${escapeHtml(order.nombre_paciente||'—')}</td><td data-sort-value="${escapeHtml(order.fecha||'')}">${order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${escapeHtml(order.eliminada_por_nombre||'—')}</td><td data-sort-value="${escapeHtml(order.eliminada_at||'')}">${order.eliminada_at?new Date(order.eliminada_at).toLocaleString('es-AR'):'—'}</td><td>${escapeHtml(order.motivo_eliminacion||'—')}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="7">No hay comandas eliminadas.</td></tr>'}</tbody>
     </table></div>
   </section>`;
   bindModuleNav();bindStockTableTools(app);
@@ -1664,7 +1676,7 @@ function renderMedranoOrderHistoryDay(medranoNav,bindModuleNav,dateKey){
     ${stockTableToolbar('Buscar por producto, cantidad, paciente o fecha...')}
     <div class="stock-table-wrap"><table class="stock-table medrano-orders-table medrano-order-history-table">
       <thead><tr><th data-sort-type="text">Producto</th><th data-sort-type="number">Cantidad</th><th data-sort-type="text">Nombre de paciente</th><th data-sort-type="date">Fecha de comanda</th><th data-sort-type="date">Dispensada el</th><th data-sort-type="text">Confirmada por</th>${canManageMedrano()?'<th>Acciones</th>':''}</tr></thead>
-      <tbody>${rows.length?rows.map(o=>`<tr><td><strong>${escapeHtml(o.producto||'')}</strong></td><td data-sort-value="${Number(o.cantidad)||0}">${escapeHtml(String(o.cantidad??''))}</td><td>${escapeHtml(o.nombre_paciente||'—')}</td><td data-sort-value="${escapeHtml(o.fecha||'')}">${o.fecha?parse(o.fecha).toLocaleDateString('es-AR'):'—'}</td><td data-sort-value="${escapeHtml(o.dispensada_at||'')}">${o.dispensada_at?new Date(o.dispensada_at).toLocaleString('es-AR'):'—'}</td><td>${escapeHtml(o.dispensada_por_nombre||'—')}</td>${canManageMedrano()?`<td>${medranoOrderOptionsHtml(o)}</td>`:''}</tr>`).join(''):`<tr data-empty-row="1"><td colspan="${canManageMedrano()?7:6}">No hay comandas dispensadas para esta fecha.</td></tr>`}</tbody>
+      <tbody>${rows.length?rows.map(o=>`<tr><td>${medranoOrderProductCell(o)}</td><td data-sort-value="${Number(o.cantidad)||0}">${medranoOrderQuantityCell(o)}</td><td>${escapeHtml(o.nombre_paciente||'—')}</td><td data-sort-value="${escapeHtml(o.fecha||'')}">${o.fecha?parse(o.fecha).toLocaleDateString('es-AR'):'—'}</td><td data-sort-value="${escapeHtml(o.dispensada_at||'')}">${o.dispensada_at?new Date(o.dispensada_at).toLocaleString('es-AR'):'—'}</td><td>${escapeHtml(o.dispensada_por_nombre||'—')}</td>${canManageMedrano()?`<td>${medranoOrderOptionsHtml(o)}</td>`:''}</tr>`).join(''):`<tr data-empty-row="1"><td colspan="${canManageMedrano()?7:6}">No hay comandas dispensadas para esta fecha.</td></tr>`}</tbody>
     </table></div>
   </section>`;
   bindModuleNav();bindStockTableTools(app);
@@ -1693,8 +1705,8 @@ function renderMedranoOrders(medranoNav,bindModuleNav){
         ${canManageMedrano()?'<th>Estado y acciones</th>':''}
       </tr></thead>
       <tbody>${rows.length?rows.map(o=>`<tr>
-        <td><strong>${escapeHtml(o.producto||'')}</strong></td>
-        <td data-sort-value="${Number(o.cantidad)||0}">${escapeHtml(String(o.cantidad??''))}</td>
+        <td>${medranoOrderProductCell(o)}</td>
+        <td data-sort-value="${Number(o.cantidad)||0}">${medranoOrderQuantityCell(o)}</td>
         <td>${escapeHtml(o.nombre_paciente||'—')}</td>
         <td data-sort-value="${escapeHtml(o.fecha||'')}">${o.fecha?parse(o.fecha).toLocaleDateString('es-AR'):'—'}</td>
         ${canManageMedrano()?`<td>${medranoOrderActionsHtml(o)}</td>`:''}
@@ -1721,7 +1733,7 @@ function dispensaryEvents(dateKey){
   return [...orders,...movements,...transfers].sort((a,b)=>String(b.timestamp).localeCompare(String(a.timestamp)));
 }
 function dispensaryEventsTable(events,editable=false){
-  return `<div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Hora</th><th>Tipo</th><th>Producto</th><th>Cantidad</th><th>Paciente / detalle</th><th>Registrado por</th>${editable&&canManageMedrano()?'<th>Opciones</th>':''}</tr></thead><tbody>${events.length?events.map(row=>`<tr><td>${row.timestamp?new Date(row.timestamp).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'}):'—'}</td><td>${escapeHtml(row.kind)}</td><td><strong>${escapeHtml(row.product||'—')}</strong></td><td>${escapeHtml(row.quantity)}</td><td>${escapeHtml(row.detail)}</td><td>${escapeHtml(row.actor)}</td>${editable&&canManageMedrano()?`<td>${row.order?medranoOrderOptionsHtml(row.order):'—'}</td>`:''}</tr>`).join(''):`<tr><td colspan="${editable&&canManageMedrano()?7:6}" class="muted">No hay registros para este día.</td></tr>`}</tbody></table></div>`;
+  return `<div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Hora</th><th>Tipo</th><th>Producto</th><th>Cantidad</th><th>Paciente / detalle</th><th>Registrado por</th>${editable&&canManageMedrano()?'<th>Opciones</th>':''}</tr></thead><tbody>${events.length?events.map(row=>`<tr><td>${row.timestamp?new Date(row.timestamp).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'}):'—'}</td><td>${escapeHtml(row.kind)}</td><td>${row.order?medranoOrderProductCell(row.order):`<strong>${escapeHtml(row.product||'—')}</strong>`}</td><td>${row.order?medranoOrderQuantityCell(row.order):escapeHtml(row.quantity)}</td><td>${escapeHtml(row.detail)}</td><td>${escapeHtml(row.actor)}</td>${editable&&canManageMedrano()?`<td>${row.order?medranoOrderOptionsHtml(row.order):'—'}</td>`:''}</tr>`).join(''):`<tr><td colspan="${editable&&canManageMedrano()?7:6}" class="muted">No hay registros para este día.</td></tr>`}</tbody></table></div>`;
 }
 function renderMedranoDispensary(medranoNav,bindModuleNav){
   $('screen-title').textContent='Dispensario';
@@ -1729,7 +1741,7 @@ function renderMedranoDispensary(medranoNav,bindModuleNav){
   const pending=(state.medranoOrders||[]).filter(order=>order.requiere_cierre!==false&&!order.dispensada_at);
   const events=dispensaryEvents(dateKey);
   app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><h2>Dispensario</h2><p class="muted">${parse(dateKey).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p></div><div class="dispensary-head-actions">${canManageMedrano()&&state.medranoStockReady?'<button id="dispensary-new-movement" class="primary compact-button" type="button">+ Crear movimiento</button>':''}<button id="dispensary-history" class="secondary compact-button" type="button">Historial de Dispensario</button></div></section>
-    <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Comandas pendientes</h3><p class="muted">${pending.length} pendiente${pending.length===1?'':'s'} · Permanecen hasta dispensarlas o eliminarlas.</p></div></div><div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Paciente</th>${canManageMedrano()?'<th>Estado y acciones</th>':''}</tr></thead><tbody>${pending.length?pending.map(o=>`<tr><td>${o.fecha?parse(o.fecha).toLocaleDateString('es-AR'):'—'}</td><td><strong>${escapeHtml(o.producto||'—')}</strong></td><td>${escapeHtml(String(o.cantidad??''))}</td><td>${escapeHtml(o.nombre_paciente||'—')}</td>${canManageMedrano()?`<td>${medranoOrderActionsHtml(o)}</td>`:''}</tr>`).join(''):`<tr><td colspan="${canManageMedrano()?5:4}" class="muted">No hay comandas pendientes.</td></tr>`}</tbody></table></div></section>
+    <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Comandas pendientes</h3><p class="muted">${pending.length} pendiente${pending.length===1?'':'s'} · Permanecen hasta dispensarlas o eliminarlas.</p></div></div><div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Cantidad</th><th>Paciente</th>${canManageMedrano()?'<th>Estado y acciones</th>':''}</tr></thead><tbody>${pending.length?pending.map(o=>`<tr><td>${o.fecha?parse(o.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${medranoOrderProductCell(o)}</td><td>${medranoOrderQuantityCell(o)}</td><td>${escapeHtml(o.nombre_paciente||'—')}</td>${canManageMedrano()?`<td>${medranoOrderActionsHtml(o)}</td>`:''}</tr>`).join(''):`<tr><td colspan="${canManageMedrano()?5:4}" class="muted">No hay comandas pendientes.</td></tr>`}</tbody></table></div></section>
     <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Comandas entregadas y movimientos de hoy</h3><p class="muted">${events.length} registro${events.length===1?'':'s'} · Mañana estarán en el historial.</p></div></div>${dispensaryEventsTable(events,true)}</section>
     ${!state.medranoStockReady?'<section class="panel"><p class="muted">Para crear movimientos falta aplicar la migración V3.19.0.</p></section>':''}`;
   bindModuleNav();bindMedranoOrderActions();
