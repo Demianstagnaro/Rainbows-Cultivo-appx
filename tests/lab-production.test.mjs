@@ -31,3 +31,31 @@ test('la producción exige cierre transaccional y bloquea reapertura tras afecta
   assert.match(sql,/enable row level security/);
   assert.match(sql,/grant select on public\.medrano_laboratorio_trabajos_materiales to authenticated/);
 });
+
+test('si falta solo la migración nueva, Dispensario y comandas existentes siguen habilitados',async()=>{
+  const code=app.slice(app.indexOf('async function load(){'),app.indexOf('}async function refresh(){')+1);
+  const state={session:{user:{id:'admin'}},perfiles:[]};
+  const query={select(){return this},eq(){return this},order(){return this},maybeSingle(){return Promise.resolve({data:{id:'admin',rol:'administrador',activo:true},error:null})},then(resolve){return Promise.resolve({data:[],error:null}).then(resolve)}};
+  const context={state,db:{from(){return Object.create(query)},rpc(){return Promise.resolve({data:[],error:null})}},
+    normalizeRole:x=>x,canAccessMedrano:()=>true,canViewOperations:()=>true,
+    loadMedranoCounterItems:()=>Promise.resolve({data:[],error:null}),
+    loadMedranoStockTable:table=>Promise.resolve({data:[],error:null,missing:table==='medrano_laboratorio_trabajos_materiales'}),
+    ymd:()=> '2026-09-18',today:()=>new Date('2026-09-18T12:00:00Z'),medranoMultiOrderView:x=>x,Promise};
+  vm.runInNewContext(`${code}\nglobalThis.runLoad=load;`,context);
+  await context.runLoad();
+  assert.equal(state.medranoStockReady,true);
+  assert.equal(state.medranoMultiReady,true);
+  assert.equal(state.medranoProductionReady,false);
+});
+
+test('una respuesta momentánea de tabla no encontrada se reintenta y conserva el stock',async()=>{
+  const code=app.slice(app.indexOf('async function loadMedranoStockTable('),app.indexOf('async function load(){'));
+  let reads=0;
+  const context={canAccessMedrano:()=>true,setTimeout:callback=>callback(),Promise,
+    db:{from:()=>({select(){return this},order(){return this},range(){reads++;return Promise.resolve(reads===1?{error:{code:'PGRST205',message:'Schema cache'}}:{data:[{id:'stock'}],error:null})}})}};
+  vm.runInNewContext(`${code}\nglobalThis.loadTable=loadMedranoStockTable;`,context);
+  const result=await context.loadTable('medrano_laboratorio_stock');
+  assert.equal(reads,2);
+  assert.equal(result.missing,undefined);
+  assert.equal(result.data[0].id,'stock');
+});
