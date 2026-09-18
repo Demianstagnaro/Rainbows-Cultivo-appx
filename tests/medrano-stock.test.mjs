@@ -26,7 +26,8 @@ test('envío y recepción de flores se muestran como un único traslado',()=>{
   vm.runInNewContext(`${code}\nglobalThis.history=medranoDailyHistory;`,context);
   const html=context.history('laboratorio','flores','today');
   assert.equal((html.match(/<tr>/g)||[]).length,2); // Encabezado y un solo traslado.
-  assert.match(html,/Dispensario → Laboratorio · Recibido/);
+  assert.match(html,/Dispensario → Laboratorio · 5 g/);
+  assert.doesNotMatch(html,/Confirmado|En viaje/);
   assert.match(html,/10 → 15 g/);
   assert.doesNotMatch(html,/Recepción confirmada · Dispensario/);
   assert.doesNotMatch(html,/Resina/);

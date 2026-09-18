@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.20.2';
+const APP_VERSION='3.20.3';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1117,7 +1117,7 @@ function medranoDailyHistory(sector,categoria,period="past"){
       Math.abs(new Date(row.created_at)-new Date(transfer.recibido_at))<180000):null;
     if(receipt)matchedReceipts.add(receipt.id);
     const sender=state.perfiles.find(p=>p.id===transfer.enviado_por)?.nombre||'—';
-    rows.push({sector:'laboratorio',categoria:'flores',fecha:medranoTransferDate(transfer),created_at:transfer.created_at,producto:transfer.nombre,lote:transfer.codigo_lote,cantidad_anterior:receipt?.cantidad_anterior??0,cantidad_nueva:receipt?.cantidad_nueva??0,unidad:'g',accion:`Dispensario → Laboratorio · ${transfer.estado==='recibido'?'Recibido':'En viaje'} · ${formatGrams(Number(transfer.gramos))}${transfer.recibido_at?` · Confirmado ${new Date(transfer.recibido_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})}`:''}`,usuario_nombre:receipt?`${sender} · Recepción: ${receipt.usuario_nombre}`:sender,transferencia:true,recepcion:!!receipt});
+    rows.push({sector:'laboratorio',categoria:'flores',fecha:medranoTransferDate(transfer),created_at:transfer.created_at,producto:transfer.nombre,lote:transfer.codigo_lote,cantidad_anterior:receipt?.cantidad_anterior??0,cantidad_nueva:receipt?.cantidad_nueva??0,unidad:'g',accion:`Dispensario → Laboratorio · ${formatGrams(Number(transfer.gramos))}`,usuario_nombre:receipt?`${sender} · Recepción: ${receipt.usuario_nombre}`:sender,transferencia:true,recepcion:!!receipt});
   }
   const visibleRows=rows.filter(row=>!matchedReceipts.has(row.id));
   const days=[...new Set(visibleRows.filter(row=>period==="today"?row.fecha===ymd(today()):row.fecha<ymd(today())).map(row=>row.fecha))].sort().reverse();
