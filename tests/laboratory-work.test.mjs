@@ -7,9 +7,10 @@ const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const sql=fs.readFileSync(new URL('../Rainbows_V3.21.0_trabajos_laboratorio.sql',import.meta.url),'utf8');
 
-test('la comanda de Laboratorio se crea desde Administración y se distingue de Dispensario',()=>{
-  assert.match(app,/id="medrano-orders-lab"/);
-  assert.match(app,/medrano-orders-lab'\);if\(lab\)lab\.onclick=\(\)=>openMedranoLabJobDialog\('comanda_paciente'\)/);
+test('Administración ofrece una sola creación de comandas y Laboratorio conserva producción',()=>{
+  assert.match(app,/id="medrano-add-order"/);
+  assert.doesNotMatch(app,/id="medrano-orders-lab"|id="lab-new-order"/);
+  assert.match(app,/function openMedranoMultiDialog\(/);
   assert.match(app,/data-medrano-module="laboratorio"/);
   assert.match(app,/renderMedranoLaboratory\(medranoNav,bindModuleNav/);
   assert.match(html,/id="lab-job-dialog"/);

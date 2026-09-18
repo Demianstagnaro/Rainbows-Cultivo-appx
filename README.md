@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.21.0. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.22.0. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.22.0 — Comandas con varios productos
+
+- Administración tiene una sola creación de comandas. Primero se elige un paciente y luego tantos renglones de producto como hagan falta. Las opciones se cargan desde lotes de flores, productos de Laboratorio y Mostrador.
+- Cada renglón reserva la cantidad indicada. Stock muestra la cantidad física, lo reservado y el saldo libre, que puede ser negativo. Confirmar la dispensa descuenta el inventario físico en una transacción. Editar una comanda dispensada restaura su stock anterior y devuelve la comanda a pendiente; eliminar conserva el motivo y libera reservas pendientes.
+- Ejecutar `Rainbows_V3.22.0_comandas_multiproducto.sql` una vez después de V3.21.0. La regla inicial permite reservas y saldos negativos cuando falta stock cargado. `public.medrano_configuracion_stock.permitir_negativo` permite activar el modo estricto más adelante mediante SQL.
+- Las comandas anteriores mantienen su formato y historial; las nuevas usan el formulario y la reserva multiproducto.
 
 ## V3.21.0 — Módulo Laboratorio
 
