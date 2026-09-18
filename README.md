@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.20.4. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.21.0. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.21.0 — Módulo Laboratorio
+
+- Nuevo módulo Laboratorio en Medrano con comandas para pacientes y trabajos de producción: aceite base, cremas, extracción de resina y otros. Administración → Comandas permite crear una comanda de Laboratorio y verla allí al guardarla.
+- Los trabajos se pueden editar, iniciar, finalizar, cancelar y reabrir. Permanecen pendientes entre días; los cerrados aparecen durante el día y luego pasan al historial. Cada cambio registra usuario y estado en una auditoría protegida.
+- Ejecutar `Rainbows_V3.21.0_trabajos_laboratorio.sql` una vez en Supabase. El módulo muestra una indicación y deshabilita las altas hasta aplicar la migración.
+- Los trabajos son registros operativos: por ahora no consumen insumos ni agregan productos al stock automáticamente. Las recetas y rendimientos se definirán para automatizar ese vínculo.
 
 ## V3.20.4 — Cantidad solo en su columna
 
