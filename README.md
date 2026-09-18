@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.20.0. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.20.1. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.20.1 — Dirección de traslados e historiales
+
+- Crear movimiento en Dispensario envía flores del stock de Dispensario a Laboratorio. El envío descuenta el lote y queda en viaje hasta que Laboratorio confirma la recepción; esa confirmación suma al inventario de Laboratorio.
+- Las comandas y los envíos del día figuran juntos en Dispensario; al día siguiente se consultan en el historial. Los movimientos de stock de cada sección también muestran hoy por separado del historial de fechas anteriores.
+- Cada sección de stock tiene Historial arriba a la derecha. Los envíos pendientes también figuran en Laboratorio como movimientos en viaje.
+- Ejecutar `Rainbows_V3.20.1_direccion_traslados.sql` en Supabase después de V3.20.0 para deshabilitar la dirección inversa en la base de datos. El historial y el stock ya ingresado se conservan.
 
 ## V3.20.0 — Operación diaria de Dispensario
 

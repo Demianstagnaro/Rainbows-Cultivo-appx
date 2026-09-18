@@ -16,13 +16,28 @@ test('el cierre diario mueve entregas y traslados al historial sin perder pendie
   ],medranoLabDispMovements:[
     {fecha:'2026-09-17',producto:'Crema',categoria:'cremas',cantidad:2,unidad:'unidades',created_at:'2026-09-17T18:00:00Z'},
     {fecha:'2026-09-16',producto:'Resina',categoria:'resina',cantidad:3,unidad:'g',created_at:'2026-09-16T18:00:00Z'},
-  ]};
-  const context={state,medranoOrderHistoryDate:o=>o.dispensada_fecha||o.fecha,medranoLabCategoryName:x=>x,escapeHtml:s=>String(s).replaceAll('<','&lt;').replaceAll('>','&gt;'),canManageMedrano:()=>false};
+  ],medranoLabTransfers:[
+    {created_at:'2026-09-17T18:00:00Z',nombre:'Flores',gramos:5,codigo_lote:'F1',estado:'en_viaje'},
+    {created_at:'2026-09-16T18:00:00Z',nombre:'Flores de ayer',gramos:4,codigo_lote:'F2',estado:'recibido'},
+  ],perfiles:[]};
+  const context={state,medranoOrderHistoryDate:o=>o.dispensada_fecha||o.fecha,medranoTransferDate:o=>o.created_at.slice(0,10),medranoLabCategoryName:x=>x,formatGrams:x=>`${x} g`,escapeHtml:s=>String(s).replaceAll('<','&lt;').replaceAll('>','&gt;'),canManageMedrano:()=>false};
   vm.runInNewContext(`${code}\nglobalThis.events=dispensaryEvents;globalThis.table=dispensaryEventsTable;`,context);
-  assert.deepEqual(Array.from(context.events('2026-09-17'),x=>x.product),['Crema','Aceite']);
-  assert.deepEqual(Array.from(context.events('2026-09-16'),x=>x.product),['Resina','Flor']);
+  assert.deepEqual(Array.from(context.events('2026-09-17'),x=>x.product),['Crema','Flores','Aceite']);
+  assert.deepEqual(Array.from(context.events('2026-09-16'),x=>x.product),['Resina','Flores de ayer','Flor']);
+  assert.match(context.events('2026-09-17')[1].kind,/Dispensario → Laboratorio/);
   assert.equal(state.medranoOrders[0].producto,'Pendiente');
   assert.doesNotMatch(context.table([{kind:'Comanda',product:'<img>',quantity:'1',detail:'<script>',actor:'<svg>',timestamp:'2026-09-17T12:00:00Z'}]),/<img|<script|<svg/);
+});
+
+test('la interfaz solo permite iniciar el traslado desde Dispensario hacia Laboratorio',()=>{
+  const html=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
+  assert.ok(app.includes("$('dispensary-new-movement');if(move)move.onclick=openMedranoLabTransfer"));
+  assert.doesNotMatch(app,/id="send-lab-stock"|openLabDispensaryMovement|mover_laboratorio_a_dispensario/);
+  assert.doesNotMatch(html,/id="lab-dispensary-dialog"/);
+  const correction=fs.readFileSync(new URL('../Rainbows_V3.20.1_direccion_traslados.sql',import.meta.url),'utf8');
+  assert.match(correction,/revoke execute on function public\.mover_laboratorio_a_dispensario\(uuid,numeric\) from authenticated/);
+  assert.match(app,/medranoDailyHistory\('laboratorio',category\.key,'today'\)/);
+  assert.match(app,/medranoDailyHistory\('dispensario','flores','today'\)/);
 });
 
 test('el traslado valida permisos, stock y graba ambos lados atómicamente',()=>{

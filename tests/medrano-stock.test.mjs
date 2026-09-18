@@ -8,7 +8,7 @@ test('historial diario separa los inventarios y escapa productos y usuarios',()=
   const code=app.slice(app.indexOf('function medranoDailyHistory('),app.indexOf('function openMedranoLabTransfer('));
   const escape=app.slice(app.indexOf('function escapeHtml(value){'),app.indexOf('function formatGenotype('));
   const row={sector:'laboratorio',categoria:'flores',fecha:'2026-09-15',created_at:'2026-09-15T15:00:00Z',producto:'<img src=x>',usuario_nombre:'<svg>',cantidad_anterior:0,cantidad_nueva:40,unidad:'g',accion:'Recepción',lote:'TEST'};
-  const context={state:{medranoStockReady:true,medranoStockHistory:[row,{...row,sector:'dispensario',producto:'No mostrar'}]},parse:s=>new Date(s+'T12:00:00Z'),Date};
+  const context={state:{medranoStockReady:true,medranoStockHistory:[row,{...row,sector:'dispensario',producto:'No mostrar'}]},parse:s=>new Date(s+'T12:00:00Z'),Date,ymd:()=>'2026-09-18',today:()=>new Date('2026-09-18T12:00:00Z')};
   vm.runInNewContext(`${escape}\n${code}\nglobalThis.history=medranoDailyHistory;`,context);
   const html=context.history('laboratorio','flores');
   assert.match(html,/stock-day-group/);
@@ -27,7 +27,7 @@ test('traslados usan bloqueo, descuento atómico y una sola recepción',()=>{
 test('todos los inventarios tienen historial automático protegido',()=>{
   for(const table of ['medrano_dispensario_lotes','medrano_mostrador_productos','medrano_laboratorio_stock'])assert.match(sql,new RegExp(`after insert or update on public\\.${table}`));
   assert.match(sql,/revoke all on public\.medrano_laboratorio_stock, public\.medrano_traslados_laboratorio, public\.medrano_stock_historial from anon, authenticated/);
-  assert.match(app,/medranoDailyHistory\('dispensario','mostrador'\)/);
-  assert.match(app,/medranoDailyHistory\('dispensario','flores'\)/);
-  assert.match(app,/medranoDailyHistory\('laboratorio',category\.key\)/);
+  assert.match(app,/medranoDailyHistory\('dispensario','mostrador','today'\)/);
+  assert.match(app,/medranoDailyHistory\('dispensario','flores','today'\)/);
+  assert.match(app,/medranoDailyHistory\('laboratorio',category\.key,'today'\)/);
 });
