@@ -9,7 +9,11 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.20.3. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.20.4. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.20.4 — Cantidad solo en su columna
+
+- La columna Movimiento muestra «Dispensario → Laboratorio»; Cambio muestra los gramos tanto antes como después de confirmar la recepción.
 
 ## V3.20.3 — Texto breve para traslados
 
