@@ -16,6 +16,21 @@ test('historial diario separa los inventarios y escapa productos y usuarios',()=
   assert.match(html,/&lt;svg/);
   assert.doesNotMatch(html,/<img|<svg|No mostrar/);
 });
+test('envío y recepción de flores se muestran como un único traslado',()=>{
+  const code=app.slice(app.indexOf('function medranoDailyHistory('),app.indexOf('function medranoStockHistoryButton('));
+  const state={medranoStockReady:true,perfiles:[{id:'sender',nombre:'Ana'}],medranoStockHistory:[
+    {id:'receipt',sector:'laboratorio',categoria:'flores',fecha:'2026-09-18',created_at:'2026-09-18T15:01:00Z',producto:'Flores',lote:'F1',cantidad_anterior:10,cantidad_nueva:15,unidad:'g',accion:'Recepción confirmada · Dispensario → Laboratorio',usuario_nombre:'Luis'},
+    {id:'unrelated',sector:'laboratorio',categoria:'resina',fecha:'2026-09-18',created_at:'2026-09-18T12:00:00Z',producto:'Resina',cantidad_anterior:1,cantidad_nueva:2,unidad:'g',accion:'Ajuste',usuario_nombre:'Luis'},
+  ],medranoLabTransfers:[{created_at:'2026-09-18T14:00:00Z',recibido_at:'2026-09-18T15:01:01Z',nombre:'Flores',codigo_lote:'F1',gramos:5,estado:'recibido',enviado_por:'sender'}]};
+  const context={state,ymd:()=> '2026-09-18',today:()=>new Date('2026-09-18T12:00:00Z'),medranoTransferDate:()=> '2026-09-18',formatGrams:n=>`${n} g`,parse:s=>new Date(s+'T12:00:00Z'),escapeHtml:s=>String(s),Date};
+  vm.runInNewContext(`${code}\nglobalThis.history=medranoDailyHistory;`,context);
+  const html=context.history('laboratorio','flores','today');
+  assert.equal((html.match(/<tr>/g)||[]).length,2); // Encabezado y un solo traslado.
+  assert.match(html,/Dispensario → Laboratorio · Recibido/);
+  assert.match(html,/10 → 15 g/);
+  assert.doesNotMatch(html,/Recepción confirmada · Dispensario/);
+  assert.doesNotMatch(html,/Resina/);
+});
 test('traslados usan bloqueo, descuento atómico y una sola recepción',()=>{
   assert.match(sql,/for update/g);
   assert.match(sql,/gramos_actual = gramos_actual - \$1/);

@@ -9,7 +9,12 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.20.1. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.20.2. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.20.2 — Traslado unificado en el historial
+
+- El envío a Laboratorio y su recepción aparecen como un solo movimiento, cuyo estado cambia de «En viaje» a «Recibido». Se conserva la fecha de confirmación, ambas personas y el cambio de stock en la misma fila.
+- Los registros originales permanecen en la base de datos para auditoría. No requiere migración SQL adicional.
 
 ## V3.20.1 — Dirección de traslados e historiales
 
