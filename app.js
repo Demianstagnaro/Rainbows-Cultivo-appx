@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.22.1';
+const APP_VERSION='3.23.0';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -13,7 +13,7 @@ state.site=localStorage.getItem('rainbows_site')==='medrano'?'medrano':'palestin
 Object.assign(state,{medranoLabItems:[],medranoLabTransfers:[],medranoStockHistory:[],medranoStockReady:false,editLabItem:null});
 Object.assign(state,{medranoDispensaryProducts:[],medranoLabDispMovements:[],medranoDispensaryTransfersReady:false});
 Object.assign(state,{medranoStockHistoryScope:null});
-Object.assign(state,{medranoLabJobs:[],medranoLabJobEvents:[],medranoLabJobsReady:false,editMedranoLabJob:null});
+Object.assign(state,{medranoLabJobs:[],medranoLabJobEvents:[],medranoLabMaterials:[],medranoLabJobsReady:false,medranoProductionReady:false,editMedranoLabJob:null});
 Object.assign(state,{medranoMultiOrders:[],medranoMultiItems:[],medranoMultiReady:false,editMedranoMultiOrder:null});
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
@@ -283,7 +283,8 @@ async function load(){
     loadMedranoStockTable('medrano_laboratorio_trabajos'),
     loadMedranoStockTable('medrano_laboratorio_trabajos_eventos'),
     loadMedranoStockTable('medrano_comandas_multiproducto'),
-    loadMedranoStockTable('medrano_comandas_multiproducto_items')
+    loadMedranoStockTable('medrano_comandas_multiproducto_items'),
+    loadMedranoStockTable('medrano_laboratorio_trabajos_materiales')
   ]);
   for(const q of qs)if(q.error)throw q.error;
   [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.medranoDispensarioLots,state.medranoCounterItems,state.medranoPatients,state.medranoOrders,state.stockTransfers,state.stockTransferItems,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,20).map(q=>q.data||[]);
@@ -305,6 +306,8 @@ async function load(){
   state.medranoLabJobs=qs[27].data||[];
   state.medranoLabJobEvents=qs[28].data||[];
   state.medranoLabJobsReady=![qs[27],qs[28]].some(q=>q.missing);
+  state.medranoLabMaterials=qs[31].data||[];
+  state.medranoProductionReady=state.medranoLabJobsReady&&!qs[31].missing;
   state.medranoMultiOrders=qs[29].data||[];
   state.medranoMultiItems=qs[30].data||[];
   state.medranoMultiReady=![qs[29],qs[30]].some(q=>q.missing);
@@ -1779,7 +1782,70 @@ function renderMedranoLaboratoryStock(medranoNav,bindModuleNav,categoryKey=''){
   }
   renderLabInventory(medranoNav,bindModuleNav,category);
 }
-const medranoJobTypes={comanda_paciente:'Comanda para paciente',aceite_base:'Aceite base',crema:'Crema',resina:'Extracción de resina',otra_produccion:'Otra producción'};
+const medranoJobTypes={comanda_paciente:'Comanda para paciente',aceite_base:'Aceite base',crema:'Crema',capsulas:'Cápsulas',resina:'Extracción de resina',otra_produccion:'Otra producción'};
+const medranoProductionCategory={resina:'resina',aceite_base:'aceites',crema:'cremas',capsulas:'capsulas'};
+function labProductionMaterialRow(category,id='',quantity=''){
+  const options=(state.medranoLabItems||[]).filter(i=>i.categoria===category&&(i.activo||i.id===id));
+  return `<div class="lab-production-material" data-category="${category}"><label class="field-label">${escapeHtml(medranoLabCategoryName(category))}<select class="text-input lab-material-id"><option value="">Elegí un producto</option>${options.map(i=>`<option value="${escapeHtml(i.id)}" ${i.id===id?'selected':''}>${escapeHtml(i.nombre)}${i.lote?` · ${escapeHtml(i.lote)}`:''} (${Number(i.cantidad).toLocaleString('es-AR')} ${escapeHtml(i.unidad)})</option>`).join('')}</select></label><label class="field-label">Cantidad que se va a usar<input class="text-input lab-material-quantity" type="number" min="0.01" step="0.01" inputmode="decimal" value="${escapeHtml(quantity)}"></label>${category==='insumos'?'<button class="secondary compact-button lab-material-remove" type="button">Quitar insumo</button>':''}</div>`;
+}
+function labProductionOutputOptions(selected=''){
+  const category=medranoProductionCategory[$('lab-production-type').value];
+  $('lab-production-output').innerHTML=`<option value="">Nuevo producto</option>${(state.medranoLabItems||[]).filter(i=>i.categoria===category&&(i.activo||i.id===selected)).map(i=>`<option value="${escapeHtml(i.id)}" ${i.id===selected?'selected':''}>${escapeHtml(i.nombre)} (${escapeHtml(i.unidad)})</option>`).join('')}`;
+  $('lab-production-output').onchange=()=>{
+    const item=(state.medranoLabItems||[]).find(i=>i.id===$('lab-production-output').value);
+    $('lab-production-name-field').hidden=Boolean(item);
+    $('lab-production-unit').disabled=Boolean(item);
+    if(item)$('lab-production-unit').value=item.unidad;
+  };
+  $('lab-production-output').onchange();
+}
+function labProductionMaterialDefaults(job=null){
+  const type=$('lab-production-type').value;
+  const rows=job?(state.medranoLabMaterials||[]).filter(x=>x.trabajo_id===job.id):[];
+  const required=type==='resina'?['flores']:['resina','insumos'];
+  $('lab-production-materials').innerHTML=rows.length?rows.map(x=>labProductionMaterialRow(x.categoria,x.stock_id,x.cantidad)).join(''):required.map(x=>labProductionMaterialRow(x)).join('');
+  $('lab-production-add-material').hidden=type==='resina';
+  $('lab-production-materials').querySelectorAll('.lab-material-remove').forEach(b=>b.onclick=()=>b.closest('.lab-production-material').remove());
+  $('lab-production-materials').querySelectorAll('.lab-material-id').forEach(input=>input.onchange=()=>{
+    if(type==='resina'&&!job&&!$('lab-production-output').value){const item=(state.medranoLabItems||[]).find(i=>i.id===input.value);if(item)$('lab-production-name').value=`Resina ${item.nombre.split(' · ')[0]}`.slice(0,180)}
+  });
+}
+function openLabProduction(job=null){
+  if(!canManageMedrano()||!state.medranoProductionReady)return;
+  state.editMedranoLabJob=job;
+  $('lab-production-title').textContent=job?'Editar producción':'Nueva producción';
+  $('lab-production-type').value=job?.tipo||'resina';
+  labProductionMaterialDefaults(job);
+  $('lab-production-name').value=job?.resultado_stock_id?'':job?.producto||'';
+  $('lab-production-unit').value=job?.resultado_unidad||({resina:'g',aceite_base:'ml',crema:'g',capsulas:'unidades'}[$('lab-production-type').value]);
+  $('lab-production-detail').value=job?.detalle||'';
+  labProductionOutputOptions(job?.resultado_stock_id||'');
+  $('lab-production-dialog').showModal();
+}
+async function saveLabProduction(){
+  const type=$('lab-production-type').value,output=$('lab-production-output').value;
+  const item=(state.medranoLabItems||[]).find(i=>i.id===output);
+  const name=item?.nombre||$('lab-production-name').value.trim(),unit=item?.unidad||$('lab-production-unit').value;
+  const materials=[...$('lab-production-materials').querySelectorAll('.lab-production-material')].map(row=>({id:row.querySelector('.lab-material-id').value,cantidad:Number(row.querySelector('.lab-material-quantity').value),raw:row.querySelector('.lab-material-quantity').value,category:row.dataset.category}));
+  if(!medranoProductionCategory[type]||!name||name.length>180||!materials.length||new Set(materials.map(m=>m.id)).size!==materials.length||materials.some(m=>!m.id||!m.raw||!Number.isFinite(m.cantidad)||m.cantidad<=0)||$('lab-production-detail').value.length>2000)throw new Error('Revisá el producto obtenido y las cantidades de materias primas.');
+  if(type==='resina'&&(materials.length!==1||materials[0].category!=='flores')||type!=='resina'&&(!materials.some(m=>m.category==='resina')||type==='aceite_base'&&!materials.some(m=>m.category==='insumos')))throw new Error('Elegí las materias primas necesarias para este trabajo.');
+  const q=await db.rpc('guardar_produccion_laboratorio',{p_id:state.editMedranoLabJob?.id||null,p_tipo:type,p_insumos:materials.map(({id,cantidad})=>({id,cantidad})),p_producto:name,p_producto_id:output||null,p_unidad:unit,p_detalle:$('lab-production-detail').value.trim()});
+  if(q.error)throw q.error;
+  closeDialog('lab-production-dialog');state.editMedranoLabJob=null;await refresh();
+}
+function openLabProductionFinish(job){
+  state.finishMedranoLabJob=job;
+  $('lab-production-finish-summary').textContent=`${job.producto} · resultado en ${job.resultado_unidad}`;
+  $('lab-production-return').value='';$('lab-production-return').step=job.resultado_unidad==='unidades'?'1':'0.01';
+  $('lab-production-finish-dialog').showModal();
+}
+async function finishLabProduction(){
+  const job=state.finishMedranoLabJob,raw=$('lab-production-return').value,value=Number(raw);
+  if(!job||!raw||!Number.isFinite(value)||value<=0||job.resultado_unidad==='unidades'&&!Number.isInteger(value))throw new Error('Ingresá el rendimiento real.');
+  const q=await db.rpc('finalizar_produccion_laboratorio',{p_id:job.id,p_retorno:value});
+  if(q.error)throw q.error;
+  closeDialog('lab-production-finish-dialog');state.finishMedranoLabJob=null;await refresh();
+}
 function medranoJobDay(value){return value?new Date(value).toLocaleDateString('en-CA',{timeZone:'America/Argentina/Buenos_Aires'}):''}
 function openMedranoLabJobDialog(type='aceite_base',job=null){
   if(!canManageMedrano()||!state.medranoLabJobsReady)return;
@@ -1817,10 +1883,17 @@ async function changeMedranoLabJobStatus(job,status){
   await refresh();
 }
 function medranoLabJobRows(jobs){
-  return `<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Tipo</th><th>Producto / paciente</th><th>Cantidad</th><th>Estado</th><th>Fecha</th><th>Registrado por</th>${canManageMedrano()?'<th>Acciones</th>':''}</tr></thead><tbody>${jobs.length?jobs.map(job=>{const actor=state.perfiles.find(p=>p.id===job.creado_por)?.nombre||'—';const actions=job.estado==='pendiente'?`<button type="button" class="secondary compact-button" data-lab-job-state="${job.id}" data-job-status="en_proceso">Iniciar</button>`:job.estado==='en_proceso'?`<button type="button" class="primary compact-button" data-lab-job-state="${job.id}" data-job-status="finalizado">Finalizar</button>`:`<button type="button" class="secondary compact-button" data-lab-job-state="${job.id}" data-job-status="pendiente">Reabrir</button>`;return `<tr><td>${escapeHtml(medranoJobTypes[job.tipo]||job.tipo)}</td><td><strong>${escapeHtml(job.producto)}</strong>${job.paciente?`<br>${escapeHtml(job.paciente)}`:''}${job.detalle?`<br><span class="muted">${escapeHtml(job.detalle)}</span>`:''}</td><td>${job.cantidad==null?'—':`${Number(job.cantidad).toLocaleString('es-AR')} ${escapeHtml(job.unidad||'')}`}</td><td>${escapeHtml({pendiente:'Pendiente',en_proceso:'En proceso',finalizado:'Finalizado',cancelado:'Cancelado'}[job.estado]||job.estado)}</td><td>${medranoJobDay(job.finalizado_at||job.updated_at||job.created_at)?parse(medranoJobDay(job.finalizado_at||job.updated_at||job.created_at)).toLocaleDateString('es-AR'):'—'}</td><td>${escapeHtml(actor)}</td>${canManageMedrano()?`<td><div class="counter-item-actions">${['pendiente','en_proceso'].includes(job.estado)?`<button type="button" class="secondary compact-button" data-lab-job-edit="${job.id}">Editar</button>`:''}${actions}${['pendiente','en_proceso'].includes(job.estado)?`<button type="button" class="danger compact-button" data-lab-job-state="${job.id}" data-job-status="cancelado">Cancelar</button>`:''}</div></td>`:''}</tr>`}).join(''):`<tr><td colspan="${canManageMedrano()?7:6}" class="muted">Sin registros.</td></tr>`}</tbody></table></div>`;
+  return `<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Tipo</th><th>Producto / paciente</th><th>Materias primas / resultado</th><th>Estado</th><th>Fecha</th><th>Registrado por</th>${canManageMedrano()?'<th>Acciones</th>':''}</tr></thead><tbody>${jobs.length?jobs.map(job=>{
+    const actor=state.perfiles.find(p=>p.id===job.creado_por)?.nombre||'—';
+    const materials=(state.medranoLabMaterials||[]).filter(x=>x.trabajo_id===job.id);
+    const detail=job.produccion_controlada?`<details><summary>${materials.length} materia${materials.length===1?'':'s'} prima${materials.length===1?'':'s'}</summary>${materials.map(x=>`<div>${escapeHtml(x.nombre)} · ${Number(x.cantidad).toLocaleString('es-AR')} ${escapeHtml(x.unidad)}</div>`).join('')}</details>${job.resultado_cantidad!=null?`<strong>Obtenido: ${Number(job.resultado_cantidad).toLocaleString('es-AR')} ${escapeHtml(job.resultado_unidad)}</strong>`:''}`:job.cantidad==null?'—':`${Number(job.cantidad).toLocaleString('es-AR')} ${escapeHtml(job.unidad||'')}`;
+    const actions=job.estado==='pendiente'?`<button type="button" class="secondary compact-button" data-lab-job-state="${job.id}" data-job-status="en_proceso">Iniciar</button>`:job.estado==='en_proceso'?job.produccion_controlada?`<button type="button" class="primary compact-button" data-lab-job-finish="${job.id}">Finalizar</button>`:`<button type="button" class="primary compact-button" data-lab-job-state="${job.id}" data-job-status="finalizado">Finalizar</button>`:job.produccion_controlada&&job.estado==='finalizado'?'':`<button type="button" class="secondary compact-button" data-lab-job-state="${job.id}" data-job-status="pendiente">Reabrir</button>`;
+    return `<tr><td>${escapeHtml(medranoJobTypes[job.tipo]||job.tipo)}</td><td><strong>${escapeHtml(job.producto)}</strong>${job.paciente?`<br>${escapeHtml(job.paciente)}`:''}${job.detalle?`<br><span class="muted">${escapeHtml(job.detalle)}</span>`:''}</td><td>${detail}</td><td>${escapeHtml({pendiente:'Pendiente',en_proceso:'En proceso',finalizado:'Finalizado',cancelado:'Cancelado'}[job.estado]||job.estado)}</td><td>${medranoJobDay(job.finalizado_at||job.updated_at||job.created_at)?parse(medranoJobDay(job.finalizado_at||job.updated_at||job.created_at)).toLocaleDateString('es-AR'):'—'}</td><td>${escapeHtml(actor)}</td>${canManageMedrano()?`<td><div class="counter-item-actions">${['pendiente','en_proceso'].includes(job.estado)?`<button type="button" class="secondary compact-button" data-lab-job-edit="${job.id}">Editar</button>`:''}${actions}${['pendiente','en_proceso'].includes(job.estado)?`<button type="button" class="danger compact-button" data-lab-job-state="${job.id}" data-job-status="cancelado">Cancelar</button>`:''}</div></td>`:''}</tr>`;
+  }).join(''):`<tr><td colspan="${canManageMedrano()?7:6}" class="muted">Sin registros.</td></tr>`}</tbody></table></div>`;
 }
 function bindMedranoLabJobActions(){
-  app.querySelectorAll('[data-lab-job-edit]').forEach(button=>button.onclick=()=>openMedranoLabJobDialog('aceite_base',state.medranoLabJobs.find(j=>j.id===button.dataset.labJobEdit)));
+  app.querySelectorAll('[data-lab-job-edit]').forEach(button=>button.onclick=()=>{const job=state.medranoLabJobs.find(j=>j.id===button.dataset.labJobEdit);if(job?.produccion_controlada)openLabProduction(job);else openMedranoLabJobDialog('aceite_base',job)});
+  app.querySelectorAll('[data-lab-job-finish]').forEach(button=>button.onclick=()=>{const job=state.medranoLabJobs.find(j=>j.id===button.dataset.labJobFinish);if(job)openLabProductionFinish(job)});
   app.querySelectorAll('[data-lab-job-state]').forEach(button=>button.onclick=async()=>{const job=state.medranoLabJobs.find(j=>j.id===button.dataset.labJobState);if(!job)return;button.disabled=true;try{await changeMedranoLabJobStatus(job,button.dataset.jobStatus)}catch(e){console.error(e);alert(e.message||'No se pudo actualizar el trabajo.')}finally{button.disabled=false}});
 }
 function renderMedranoLaboratory(medranoNav,bindModuleNav,history=false){
@@ -1835,14 +1908,14 @@ function renderMedranoLaboratory(medranoNav,bindModuleNav,history=false){
     app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="lab-history-back" class="secondary compact-button" type="button">← Laboratorio</button><h2>Historial de Laboratorio</h2></div></section>${days.length?days.map(day=>`<section class="panel stock-detail-panel"><h3>${parse(day).toLocaleDateString('es-AR')}</h3>${medranoLabJobRows(older.filter(j=>medranoJobDay(j.finalizado_at||j.updated_at)===day))}</section>`).join(''):'<section class="panel"><p class="muted">Todavía no hay trabajos cerrados de días anteriores.</p></section>'}`;
     bindModuleNav();bindMedranoLabJobActions();$('lab-history-back').onclick=()=>{state.medranoView='laboratorio';render()};return;
   }
-  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><h2>Laboratorio</h2><p class="muted">Comandas para pacientes y trabajos de producción.</p></div><div class="dispensary-head-actions">${state.medranoLabJobsReady&&canManageMedrano()?'<button id="lab-new-production" class="primary compact-button" type="button">+ Producción</button>':''}<button id="lab-history" class="secondary compact-button" type="button">Historial</button></div></section>${!state.medranoLabJobsReady?'<section class="panel"><p class="muted">Para registrar trabajos falta aplicar la migración V3.21.0 en Supabase.</p></section>':''}
+  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><h2>Laboratorio</h2><p class="muted">Comandas para pacientes y trabajos de producción.</p></div><div class="dispensary-head-actions">${state.medranoProductionReady&&canManageMedrano()?'<button id="lab-new-production" class="primary compact-button" type="button">+ Producción</button>':''}<button id="lab-history" class="secondary compact-button" type="button">Historial</button></div></section>${!state.medranoLabJobsReady?'<section class="panel"><p class="muted">Para registrar trabajos falta aplicar la migración V3.21.0 en Supabase.</p></section>':!state.medranoProductionReady?'<section class="panel"><p class="muted">Para producir con stock falta aplicar la migración V3.23.0 en Supabase.</p></section>':''}
     <section class="panel stock-detail-panel"><div class="stock-section-head"><h3>Comandas con productos de Laboratorio</h3><button id="lab-go-orders" type="button" class="secondary compact-button">Ver comandas</button></div>${labOrders.length?`<div class="transfer-list">${labOrders.map(o=>`<div class="transfer-card"><strong>${escapeHtml(o.paciente_nombre)}</strong><p>${escapeHtml(state.medranoMultiItems.filter(i=>i.comanda_id===o.id&&['resina','aceites','cremas','capsulas'].includes(i.tipo)).map(i=>`${i.nombre} · ${Number(i.cantidad).toLocaleString('es-AR')} ${i.unidad}`).join(' · '))}</p></div>`).join('')}</div>`:'<p class="muted">No hay comandas con productos de Laboratorio pendientes.</p>'}</section>
     <section class="panel stock-detail-panel"><h3>Trabajos pendientes</h3>${medranoLabJobRows(active)}</section>
     <section class="panel stock-detail-panel"><h3>Finalizados y cancelados hoy</h3>${medranoLabJobRows(doneToday)}</section>`;
   bindModuleNav();bindMedranoLabJobActions();
   $('lab-history').onclick=()=>{state.medranoView='laboratorio-historial';render()};
   $('lab-go-orders').onclick=()=>{state.medranoView='administracion-comandas';render()};
-  const production=$('lab-new-production');if(production)production.onclick=()=>openMedranoLabJobDialog();
+  const production=$('lab-new-production');if(production)production.onclick=()=>openLabProduction();
 }
 function renderMedrano(){
   $('today-label').textContent=nice(today());
@@ -1921,6 +1994,12 @@ function renderAmendmentsView(){
   const back=$('back-cultivo-info');if(back)back.onclick=openCultivoInfo;
 }
 function bindMedranoDialogActions(){
+  $('lab-production-type').onchange=()=>{labProductionMaterialDefaults();$('lab-production-unit').value=({resina:'g',aceite_base:'ml',crema:'g',capsulas:'unidades'}[$('lab-production-type').value]);$('lab-production-name').value='';labProductionOutputOptions()};
+  $('lab-production-add-material').onclick=()=>{const div=document.createElement('div');div.innerHTML=labProductionMaterialRow('insumos');const row=div.firstElementChild;$('lab-production-materials').append(row);row.querySelector('.lab-material-remove').onclick=()=>row.remove()};
+  $('lab-production-cancel').onclick=()=>{state.editMedranoLabJob=null;closeDialog('lab-production-dialog')};
+  $('lab-production-save').onclick=async()=>{const b=$('lab-production-save');b.disabled=true;try{await saveLabProduction()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la producción.')}finally{b.disabled=false}};
+  $('lab-production-finish-cancel').onclick=()=>{state.finishMedranoLabJob=null;closeDialog('lab-production-finish-dialog')};
+  $('lab-production-finish-confirm').onclick=async()=>{const b=$('lab-production-finish-confirm');b.disabled=true;try{await finishLabProduction()}catch(e){console.error(e);alert(e.message||'No se pudo finalizar la producción.')}finally{b.disabled=false}};
   $('medrano-multi-add').onclick=()=>addMedranoMultiLine();
   $('medrano-multi-cancel').onclick=()=>{state.editMedranoMultiOrder=null;closeDialog('medrano-multi-dialog')};
   $('medrano-multi-save').onclick=async()=>{const button=$('medrano-multi-save');button.disabled=true;try{await saveMedranoMultiOrder()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la comanda.')}finally{button.disabled=false}};
