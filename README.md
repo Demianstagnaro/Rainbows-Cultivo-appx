@@ -9,7 +9,13 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.23.4. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.23.5. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.23.5 — Comandas visibles en Laboratorio
+
+- Laboratorio muestra en su pantalla las comandas pendientes con solo resina, aceites, cremas y cápsulas, con productos y cantidades visibles. Dispensario y Administración mantienen las comandas completas.
+- Las comandas dispensadas hoy aparecen en la lista de Laboratorio, filtradas del mismo modo; la confirmación de entrega sigue a cargo de Dispensario.
+- Los títulos de listas pendientes figuran en rojo y los de comandas o tareas realizadas en verde. No requiere SQL.
 
 ## V3.23.4 — Limitar continuidad de Schwazzing a Flora S4
 
