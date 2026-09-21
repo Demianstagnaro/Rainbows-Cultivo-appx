@@ -48,6 +48,26 @@ test('el detalle muestra tipo, genética y cantidad en filas separadas sin expon
   assert.equal(context.qty({multiple:true,items:[]}), '');
 });
 
+test('Laboratorio recibe solo sus renglones de una comanda mixta y Dispensario conserva todos',()=>{
+  const code=app.slice(app.indexOf('const medranoOrderCategories='),app.indexOf('function medranoMultiOrderView('));
+  const items=[
+    {comanda_id:'mix',tipo:'flores',nombre:'Flores',cantidad:10,unidad:'g'},
+    {comanda_id:'mix',tipo:'aceites',nombre:'Aceite',cantidad:1,unidad:'unidades'},
+    {comanda_id:'mix',tipo:'resina',nombre:'Resina',cantidad:2,unidad:'g'},
+    {comanda_id:'mix',tipo:'mostrador',nombre:'Picador',cantidad:1,unidad:'unidades'},
+  ];
+  const context={escapeHtml:s=>String(s),medranoOrderItemName:item=>item.nombre,parse:s=>new Date(`${s}T12:00:00Z`)};
+  vm.runInNewContext(`${code}\nglobalThis.labOrders=medranoLabOrders;globalThis.labRows=medranoLabOrderRows;`,context);
+  const orders=context.labOrders([{id:'mix',estado:'pendiente',fecha:'2026-09-21',paciente_nombre:'Ana'},{id:'other',estado:'pendiente'}],items);
+  assert.equal(orders.length,1);
+  assert.equal(orders[0].items.length,2);
+  assert.equal(items.length,4);
+  const output=context.labRows(orders);
+  assert.match(output,/Aceite.*Resina/s);
+  assert.doesNotMatch(output,/Flores|Picador|Ver comandas/);
+  assert.doesNotMatch(app.slice(app.indexOf('function renderMedranoLaboratory('),app.indexOf('function renderMedrano(){')),/lab-go-orders/);
+});
+
 test('la operación SQL admite saldos negativos y hace la dispensa atómica',()=>{
   assert.match(sql,/permitir_negativo boolean not null default true/);
   assert.match(sql,/drop constraint %I/);
