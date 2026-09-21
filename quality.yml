@@ -1,0 +1,53 @@
+name: Calidad
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+
+  sql-migration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - run: psql -f tests/sql/schema_fixture.sql
+      - run: psql -f Rainbows_V3.17.0_seguridad_integral.sql
+      - run: psql -f Rainbows_V3.18.1_eliminar_comandas.sql
+      - run: psql -f Rainbows_V3.18.2_auditoria_comandas.sql
+      - run: psql -f Rainbows_V3.18.3_comandas_pendientes.sql
+      - run: psql -f Rainbows_V3.18.5_editar_comandas.sql
+      - run: psql -f Rainbows_V3.18.7_stock_mostrador.sql
+      - run: psql -v ON_ERROR_STOP=1 -f Rainbows_V3.19.0_stock_medrano.sql
+      - run: psql -f tests/sql/schema_assertions.sql
+      - run: psql -v ON_ERROR_STOP=1 -f tests/sql/stock_medrano_assertions.sql

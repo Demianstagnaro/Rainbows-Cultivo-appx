@@ -9,7 +9,12 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.23.3. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.23.4. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.23.4 — Limitar continuidad de Schwazzing a Flora S4
+
+- Si Schwazzing queda pendiente, se muestra durante los días restantes de Flora S4 y deja de arrastrarse al iniciar Flora S5. Los registros de días anteriores y las tareas reprogramadas manualmente permanecen disponibles.
+- Evita que tareas automáticas de ciclos anteriores aparezcan en Hoy para las tres salas. No requiere SQL.
 
 ## V3.23.3 — Schwazzing en semana 4
 

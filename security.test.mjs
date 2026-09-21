@@ -1,0 +1,174 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import test from 'node:test';
+
+const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+const sql=fs.readFileSync(new URL('../Rainbows_V3.17.0_seguridad_integral.sql',import.meta.url),'utf8');
+const orderDeleteSql=fs.readFileSync(new URL('../Rainbows_V3.18.1_eliminar_comandas.sql',import.meta.url),'utf8');
+const orderAuditSql=fs.readFileSync(new URL('../Rainbows_V3.18.2_auditoria_comandas.sql',import.meta.url),'utf8');
+const orderPendingSql=fs.readFileSync(new URL('../Rainbows_V3.18.3_comandas_pendientes.sql',import.meta.url),'utf8');
+const orderEditSql=fs.readFileSync(new URL('../Rainbows_V3.18.5_editar_comandas.sql',import.meta.url),'utf8');
+const counterStockSql=fs.readFileSync(new URL('../Rainbows_V3.18.7_stock_mostrador.sql',import.meta.url),'utf8');
+
+test('el stock de Mostrador queda protegido y no permite borrado directo',()=>{
+  assert.match(counterStockSql,/alter table public\.medrano_mostrador_productos enable row level security/i);
+  assert.match(counterStockSql,/using \(public\.usuario_rainbows_medrano\(\)\)/i);
+  assert.match(counterStockSql,/with check \(public\.usuario_rainbows_medrano\(\) and creado_por = auth\.uid\(\)\)/i);
+  assert.match(counterStockSql,/grant select, insert, update on public\.medrano_mostrador_productos to authenticated/i);
+  assert.doesNotMatch(counterStockSql,/grant[^;]*delete[^;]*medrano_mostrador_productos/i);
+});
+
+function between(source,start,end){
+  const from=source.indexOf(start);
+  const to=source.indexOf(end,from);
+  assert.ok(from>=0&&to>from,`No se encontró ${start}`);
+  return source.slice(from,to);
+}
+
+function escapeFunction(){
+  const code=between(app,'function escapeHtml(value){','function formatGenotype');
+  const context={};
+  vm.runInNewContext(`${code}\nglobalThis.escapeHtmlForTest=escapeHtml;`,context);
+  return context.escapeHtmlForTest;
+}
+
+test('escapeHtml neutraliza etiquetas y atributos',()=>{
+  const escapeHtml=escapeFunction();
+  const value='<img src=x onerror="alert(1)">\'&';
+  const escaped=escapeHtml(value);
+  assert.equal(escaped,'&lt;img src=x onerror=&quot;alert(1)&quot;&gt;&#39;&amp;');
+});
+
+test('las filas de tareas no renderizan HTML aportado por usuarios',()=>{
+  const escapeCode=between(app,'function escapeHtml(value){','function formatGenotype');
+  const rowCode=between(app,'function row(t){','function findTask');
+  const context={Date};
+  vm.runInNewContext(`${escapeCode}
+    const real=()=>null;
+    const historicalDone=()=>false;
+    const taskPriority=()=>({cls:'priority-routine',label:'Rutina'});
+    const done=()=>false;
+    const names=()=>[];
+    const actor=()=>'';
+    ${rowCode}
+    globalThis.renderRow=row;`,context);
+  const html=context.renderRow({id:'id-1',task:'<img src=x onerror=alert(1)>',detail:'<svg onload=alert(2)>',type:'extraordinaria'});
+  assert.doesNotMatch(html,/<img|<svg/);
+  assert.match(html,/&lt;img/);
+  assert.match(html,/&lt;svg/);
+});
+
+test('las filas de tareas generales escapan nombres, detalle y responsables',()=>{
+  const escapeCode=between(app,'function escapeHtml(value){','function formatGenotype');
+  const rowCode=between(app,'function generalTaskRow(t){','function bindGeneralTasks');
+  const context={Date};
+  vm.runInNewContext(`${escapeCode}
+    const state={perfiles:[{id:'actor',nombre:'<img src=x onerror=alert(3)>'}]};
+    const generalTaskNames=()=>['<svg onload=alert(4)>'];
+    const generalDone=()=>true;
+    const canComplete=()=>true;
+    const canEditTasks=()=>true;
+    ${rowCode}
+    globalThis.renderGeneralTask=generalTaskRow;`,context);
+  const html=context.renderGeneralTask({id:'id-2',nombre:'<b>Tarea</b>',detalle:'<iframe src=x>',registrada_por:'actor',realizada_at:'2026-09-02T12:00:00Z'});
+  assert.doesNotMatch(html,/<img|<svg|<iframe|<b>/);
+  assert.match(html,/&lt;b&gt;Tarea/);
+  assert.match(html,/&lt;iframe/);
+});
+
+test('la configuración escapa empleados, nombres, correos y usuario actual',()=>{
+  assert.match(app,/escapeHtml\(state\.empleados\.map\(e=>e\.nombre\)\.join\('\\n'\)\)/);
+  assert.match(app,/safeName=escapeHtml\(p\.nombre\|\|'Sin nombre'\)/);
+  assert.match(app,/safeEmail=escapeHtml\(p\.email\|\|''\)/);
+  assert.match(app,/escapeHtml\(state\.session\.user\.email\)/);
+});
+
+test('la interfaz impide cambiar el rol o desactivar la cuenta propia',()=>{
+  const settings=between(app,'function renderSettings(){','async function saveConfig');
+  assert.match(settings,/self=p\.id===state\.session\.user\.id/);
+  assert.match(settings,/self\?'disabled aria-label="El rol de tu propia cuenta está protegido"'/);
+  assert.match(settings,/data-active="\$\{safeId\}"[^>]*\$\{self\?'disabled'/);
+  assert.match(settings,/Tu propia cuenta no puede cambiar de rol ni desactivarse/);
+});
+
+test('el frontend no concede permisos por roles históricos ni metadatos de Auth',()=>{
+  const roleCode=between(app,'function normalizeRole(value){','function currentProfile');
+  assert.doesNotMatch(roleCode,/encargado|empleado|lectura/);
+  assert.doesNotMatch(app,/user_metadata.*rol|app_metadata.*rol/);
+  assert.match(app,/profile\?\.activo===true\?normalizeRole\(profile\.rol\):''/);
+});
+
+test('la migración elimina políticas abiertas y bloquea escalamiento de rol',()=>{
+  assert.match(sql,/drop policy if exists %I on public\.%I/i);
+  assert.doesNotMatch(sql,/create policy[\s\S]*?using\s*\(true\)/i);
+  assert.match(sql,/revoke all on public\.perfiles from authenticated/i);
+  assert.match(sql,/create policy perfiles_select[\s\S]*?id = auth\.uid\(\) or public\.usuario_rainbows_admin\(\)/i);
+  assert.doesNotMatch(sql,/create policy perfiles_(insert|update)/i);
+});
+
+test('roles, altas y bajas respetan el modelo definitivo',()=>{
+  assert.match(sql,/in \('administrador', 'cultivo', 'medrano'\)/);
+  assert.match(sql,/values\(new\.id, new\.email, v_nombre, 'cultivo', false\)/);
+  assert.match(sql,/create trigger rainbows_auth_user_created[\s\S]*?after insert on auth\.users/i);
+  assert.match(sql,/delete from auth\.users where id = objetivo_id/i);
+  assert.match(sql,/Rainbows debe conservar al menos un administrador activo/);
+  assert.equal((sql.match(/pg_advisory_xact_lock\(871640217\)/g)||[]).length,2);
+});
+
+test('la migración prueba su matriz y recalcula ambos lados de una cosecha movida',()=>{
+  assert.match(sql,/v_policy_count <> 47/);
+  assert.match(sql,/has_table_privilege\([\s\S]*?'anon'/i);
+  assert.match(sql,/old\.cosecha_id is distinct from new\.cosecha_id/i);
+  assert.match(sql,/alter function public\.confirmar_transferencia_medrano[\s\S]*?set search_path = ''/i);
+});
+
+test('eliminar comandas conserva una auditoría que no puede falsificarse desde el cliente',()=>{
+  assert.match(app,/function deleteMedranoOrder\(orderId,reason=''\)/);
+  assert.match(app,/data-delete-medrano-order/);
+  assert.match(orderDeleteSql,/create policy medrano_comandas_delete[\s\S]*?for delete to authenticated[\s\S]*?using \(public\.usuario_rainbows_medrano\(\)\)/i);
+  assert.match(orderAuditSql,/drop policy if exists medrano_comandas_delete/i);
+  assert.match(orderAuditSql,/revoke delete on public\.medrano_comandas from authenticated/i);
+  assert.match(orderAuditSql,/create or replace function public\.eliminar_comanda_medrano[\s\S]*?security definer[\s\S]*?set search_path = ''/i);
+  assert.match(orderAuditSql,/v_comanda\.fecha < v_hoy and v_motivo is null/i);
+  assert.match(orderAuditSql,/eliminada_por = auth\.uid\(\)[\s\S]*?motivo_eliminacion = v_motivo/i);
+  assert.match(orderAuditSql,/revoke insert, update on public\.medrano_comandas from authenticated/i);
+  assert.doesNotMatch(orderAuditSql,/using\s*\(true\)/i);
+});
+
+test('los controles de los diálogos de Medrano se enlazan antes de salir del render',()=>{
+  const renderCode=between(app,'function render(){','function renderToday');
+  assert.ok(renderCode.indexOf('bindMedranoDialogActions()')<renderCode.indexOf('if(!isPalestina){renderMedrano();return}'));
+  assert.match(app,/cancel-medrano-order-delete/);
+  assert.match(app,/confirm-medrano-order-delete/);
+});
+
+test('las comandas siguen pendientes hasta confirmar la dispensación',()=>{
+  assert.match(app,/state\.medranoOrders=allMedranoOrders\.filter[\s\S]*?order\.requiere_cierre!==false&&\(!order\.dispensada_at\|\|order\.dispensada_fecha>=todayKey\)/);
+  assert.match(app,/data-dispense-medrano-order/);
+  assert.match(app,/function markMedranoOrderDispensed\(orderId\)/);
+  assert.match(app,/state\.medranoDispensedOrders=allMedranoOrders\.filter[\s\S]*?order\.dispensada_fecha<todayKey/);
+  assert.match(orderPendingSql,/create or replace function public\.marcar_comanda_dispensada[\s\S]*?security definer[\s\S]*?set search_path = ''/i);
+  assert.match(orderPendingSql,/dispensada_fecha = \(now\(\) at time zone 'America\/Argentina\/Buenos_Aires'\)::date/i);
+  assert.match(orderPendingSql,/alter column requiere_cierre set default true/i);
+  assert.match(orderPendingSql,/revoke insert, update on public\.medrano_comandas from authenticated/i);
+  assert.doesNotMatch(orderPendingSql,/using\s*\(true\)/i);
+});
+
+test('las comandas usan un menú de opciones y editar las devuelve a pendientes',()=>{
+  const finder=between(app,'function findEditableMedranoOrder(orderId){','function bindMedranoOrderActions');
+  const historyDay=between(app,'function renderMedranoOrderHistoryDay','function renderMedranoOrders');
+  assert.match(finder,/state\.medranoOrders/);
+  assert.match(finder,/state\.medranoDispensedOrders/);
+  assert.doesNotMatch(finder,/medranoDeletedOrders/);
+  assert.match(app,/class="medrano-order-menu"/);
+  assert.match(app,/Opciones de la comanda/);
+  assert.match(app,/data-edit-medrano-order/);
+  assert.match(app,/data-delete-medrano-order/);
+  assert.match(historyDay,/medranoOrderOptionsHtml\(o\)/);
+  assert.match(historyDay,/bindMedranoOrderActions\(\)/);
+  assert.match(app,/db\.rpc\('editar_comanda_medrano'/);
+  assert.match(orderEditSql,/create or replace function public\.editar_comanda_medrano[\s\S]*?security definer[\s\S]*?set search_path = ''/i);
+  assert.match(orderEditSql,/requiere_cierre = true[\s\S]*?dispensada_at = null[\s\S]*?dispensada_por_nombre = null/i);
+  assert.doesNotMatch(orderEditSql,/using\s*\(true\)/i);
+});

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.23.3';
+const APP_VERSION='3.23.4';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -177,6 +177,8 @@ function tasks(date){
     if(finished&&day>finished)continue;
     const dayNumber=diff(date,parse(origin.originDate))+1;
     if(dayNumber<2)continue;
+    // La poda automática solo se arrastra durante Flora S4; después conserva su historial sin aparecer en Hoy.
+    if(origin.task==='Schwazzing'&&!origin.custom&&dayNumber>7)continue;
     const key=`${continuationPrefix(chain)}${day}`;
     const stored=state.tareas.find(x=>x.clave_externa===key);
     if(stored?.estado==='cancelada')continue;
