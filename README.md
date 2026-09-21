@@ -9,7 +9,11 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.23.1. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.23.2. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.23.2 — Reparar carga inicial de datos
+
+- La consulta de materiales de producción usa su clave compuesta en vez de una columna `id` inexistente. Esto permite completar la carga inicial de Palestina, Pacientes y Comandas cuando la tabla de materiales está instalada. No requiere SQL.
 
 ## V3.23.1 — Diagnóstico de cargas de Medrano
 
@@ -21,7 +25,7 @@ La versión actual es V3.23.1. El registro público permanece deshabilitado. Los
 - Producción permite crear extracción de resina con un lote de flores; aceite con resina e insumos; cremas y cápsulas con resina y los insumos elegidos. Las materias primas y sus cantidades quedan registradas en la comanda.
 - Al finalizar se informa el rendimiento real. En una misma transacción se descuentan las materias primas y se incorpora el producto obtenido al stock de Resina, Aceites, Cremas o Cápsulas. Se puede elegir un producto de stock existente o crear uno nuevo.
 - El stock debe alcanzar para las materias primas al cerrar el trabajo. Una producción finalizada no se puede reabrir porque ya movió el inventario; el historial de stock conserva los movimientos. Los trabajos anteriores mantienen su funcionamiento.
-- Ejecutar `Rainbows_V3.23.1_produccion_laboratorio.sql` una vez en Supabase después de V3.22.0. Hasta entonces el botón de producción nueva no se habilita.
+- Ejecutar `Rainbows_V3.23.0_produccion_laboratorio.sql` una vez en Supabase después de V3.22.0. Hasta entonces el botón de producción nueva no se habilita.
 
 ## V3.22.1 — Comandas desplegables
 
