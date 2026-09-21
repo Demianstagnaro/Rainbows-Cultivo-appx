@@ -9,18 +9,18 @@ const manifest=JSON.parse(read('manifest.json'));
 const overrides=read('rainbows-overrides.js');
 const sw=read('sw.js');
 
-test('todos los componentes declaran la versión 3.23.5',()=>{
-  assert.match(app,/const APP_VERSION='3\.23\.5'/);
-  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.23\.5'/);
-  assert.match(sw,/const VERSION='3\.23\.5'/);
-  assert.equal(manifest.start_url,'./?v=3.23.5');
+test('todos los componentes declaran la versión 3.23.6',()=>{
+  assert.match(app,/const APP_VERSION='3\.23\.6'/);
+  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.23\.6'/);
+  assert.match(sw,/const VERSION='3\.23\.6'/);
+  assert.equal(manifest.start_url,'./?v=3.23.6');
   for(const asset of ['styles.css','app.js','rainbows-overrides.js','manifest.json']){
-    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.23\\.5`));
+    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.23\\.6`));
   }
 });
 
 test('las mejoras se cargan en la primera visita sin reescribir respuestas',()=>{
-  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.23\.5"><\/script>/);
+  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.23\.6"><\/script>/);
   assert.doesNotMatch(sw,/optimizeAppJs|html\.replace|new Response\(out/);
   assert.match(app,/RAINBOWS_PERF_CACHE_V2/);
 });
@@ -71,6 +71,8 @@ test('Laboratorio agrupa Resina, Aceites, Cremas y Cápsulas',()=>{
 test('Dispensario separa Flores y Mostrador con inventario editable',()=>{
   assert.match(app,/data-dispensario-section="flores"/);
   assert.match(app,/data-dispensario-section="mostrador"/);
+  assert.doesNotMatch(app,/data-dispensario-section="productos-laboratorio"|function renderMedranoDispensaryProducts\(/);
+  assert.match(app,/data-medrano-stock="laboratorio"/);
   assert.match(app,/function renderMedranoCounterStock\(/);
   assert.match(app,/medrano_mostrador_productos/);
   assert.match(app,/data-save-counter/);
