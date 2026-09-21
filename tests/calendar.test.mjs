@@ -59,3 +59,18 @@ test('la transferencia de esquejes ocupa Vege dos días después de cosecha',()=
   assert.ok(tasks.includes('Vege 1|Trasplante'));
   assert.ok(tasks.includes('Vege 2|Trasplante'));
 });
+
+test('Schwazzing comienza en Flora S4 y deja de programarse en Flora S3',()=>{
+  const cases=[
+    ['Flora 1','2026-11-04','2026-11-11'],
+    ['Flora 2','2026-09-30','2026-10-07'],
+    ['Flora 3','2026-11-04','2026-11-11']
+  ];
+  for(const [name,thirdWeek,fourthWeek] of cases){
+    assert.equal(calendar.cycle(room(name),calendar.parse(thirdWeek)).week,3);
+    assert.equal(calendar.cycle(room(name),calendar.parse(fourthWeek)).week,4);
+    assert.ok(!taskNames(thirdWeek).includes(`${name}|Schwazzing`));
+    assert.ok(taskNames(fourthWeek).includes(`${name}|Schwazzing`));
+    assert.ok(taskNames(fourthWeek).includes(`${name}|Enmienda`));
+  }
+});
