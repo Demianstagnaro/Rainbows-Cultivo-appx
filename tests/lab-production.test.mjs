@@ -59,3 +59,17 @@ test('una respuesta momentánea de tabla no encontrada se reintenta y conserva e
   assert.equal(result.missing,undefined);
   assert.equal(result.data[0].id,'stock');
 });
+
+test('la carga de materiales usa su clave compuesta y no una columna id inexistente',async()=>{
+  const code=app.slice(app.indexOf('async function loadMedranoStockTable('),app.indexOf('async function load(){'));
+  const orders=[];
+  const context={canAccessMedrano:()=>true,Promise,
+    db:{from:()=>({select(){return this},order(column){orders.push(column);return this},range(){
+      return Promise.resolve(orders.includes('id')?{error:{code:'42703',message:'column medrano_laboratorio_trabajos_materiales.id does not exist'}}:{data:[{trabajo_id:'t',stock_id:'s'}],error:null});
+    }})}};
+  vm.runInNewContext(`${code}\nglobalThis.loadTable=loadMedranoStockTable;`,context);
+  const result=await context.loadTable('medrano_laboratorio_trabajos_materiales');
+  assert.equal(result.error,null);
+  assert.equal(result.data.length,1);
+  assert.deepEqual(orders,['created_at','trabajo_id','stock_id']);
+});

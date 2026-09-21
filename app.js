@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.23.1';
+const APP_VERSION='3.23.2';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -234,11 +234,18 @@ async function loadMedranoCounterItems(allowed){
 async function loadMedranoStockTable(table){
   if(!canAccessMedrano())return {data:[],error:null,missing:true,issue:{table,code:'SIN_ACCESO'}};
   const rows=[];
+  // Los materiales de producción tienen clave compuesta (trabajo_id, stock_id), sin id.
+  const sortColumns=table==='medrano_laboratorio_trabajos_materiales'?['trabajo_id','stock_id']:['id'];
+  const queryPage=(offset)=>{
+    let query=db.from(table).select('*').order('created_at',{ascending:false});
+    for(const column of sortColumns)query=query.order(column);
+    return query.range(offset,offset+999);
+  };
   for(let offset=0;;offset+=1000){
-    let q=await db.from(table).select('*').order('created_at',{ascending:false}).order('id').range(offset,offset+999);
+    let q=await queryPage(offset);
     if(['42P01','PGRST205'].includes(q.error?.code)){
       await new Promise(resolve=>setTimeout(resolve,350));
-      q=await db.from(table).select('*').order('created_at',{ascending:false}).order('id').range(offset,offset+999);
+      q=await queryPage(offset);
     }
     if(['42P01','PGRST205'].includes(q.error?.code))return {data:[],error:null,missing:true,issue:{table,code:q.error.code,message:q.error.message||''}};
     if(q.error)return q;
@@ -1921,7 +1928,7 @@ function renderMedranoLaboratory(medranoNav,bindModuleNav,history=false){
     app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="lab-history-back" class="secondary compact-button" type="button">← Laboratorio</button><h2>Historial de Laboratorio</h2></div></section>${days.length?days.map(day=>`<section class="panel stock-detail-panel"><h3>${parse(day).toLocaleDateString('es-AR')}</h3>${medranoLabJobRows(older.filter(j=>medranoJobDay(j.finalizado_at||j.updated_at)===day))}</section>`).join(''):'<section class="panel"><p class="muted">Todavía no hay trabajos cerrados de días anteriores.</p></section>'}`;
     bindModuleNav();bindMedranoLabJobActions();$('lab-history-back').onclick=()=>{state.medranoView='laboratorio';render()};return;
   }
-  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><h2>Laboratorio</h2><p class="muted">Comandas para pacientes y trabajos de producción.</p></div><div class="dispensary-head-actions">${state.medranoProductionReady&&canManageMedrano()?'<button id="lab-new-production" class="primary compact-button" type="button">+ Producción</button>':''}<button id="lab-history" class="secondary compact-button" type="button">Historial</button></div></section>${!state.medranoLabJobsReady?'<section class="panel"><p class="muted">Para registrar trabajos falta aplicar la migración V3.21.0 en Supabase.</p></section>':!state.medranoProductionReady?'<section class="panel"><p class="muted">Para producir con stock falta aplicar la migración V3.23.1 en Supabase.</p></section>':''}
+  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><h2>Laboratorio</h2><p class="muted">Comandas para pacientes y trabajos de producción.</p></div><div class="dispensary-head-actions">${state.medranoProductionReady&&canManageMedrano()?'<button id="lab-new-production" class="primary compact-button" type="button">+ Producción</button>':''}<button id="lab-history" class="secondary compact-button" type="button">Historial</button></div></section>${!state.medranoLabJobsReady?'<section class="panel"><p class="muted">Para registrar trabajos falta aplicar la migración V3.21.0 en Supabase.</p></section>':!state.medranoProductionReady?'<section class="panel"><p class="muted">Para producir con stock falta aplicar la migración V3.23.2 en Supabase.</p></section>':''}
     <section class="panel stock-detail-panel"><div class="stock-section-head"><h3>Comandas con productos de Laboratorio</h3><button id="lab-go-orders" type="button" class="secondary compact-button">Ver comandas</button></div>${labOrders.length?`<div class="transfer-list">${labOrders.map(o=>`<div class="transfer-card"><strong>${escapeHtml(o.paciente_nombre)}</strong><p>${escapeHtml(state.medranoMultiItems.filter(i=>i.comanda_id===o.id&&['resina','aceites','cremas','capsulas'].includes(i.tipo)).map(i=>`${i.nombre} · ${Number(i.cantidad).toLocaleString('es-AR')} ${i.unidad}`).join(' · '))}</p></div>`).join('')}</div>`:'<p class="muted">No hay comandas con productos de Laboratorio pendientes.</p>'}</section>
     <section class="panel stock-detail-panel"><h3>Trabajos pendientes</h3>${medranoLabJobRows(active)}</section>
     <section class="panel stock-detail-panel"><h3>Finalizados y cancelados hoy</h3>${medranoLabJobRows(doneToday)}</section>`;
