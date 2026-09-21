@@ -9,7 +9,12 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.23.5. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.23.6. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.23.6 — Simplificar el stock de Dispensario
+
+- Stock Medrano → Dispensario ofrece solo Flores y Mostrador. Se retira la vista de Productos de Laboratorio.
+- El inventario de Laboratorio, las comandas y los movimientos ya registrados conservan sus datos. No requiere SQL.
 
 ## V3.23.5 — Comandas visibles en Laboratorio
 

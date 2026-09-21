@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.23.5';
+const APP_VERSION='3.23.6';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1262,15 +1262,6 @@ function renderMedranoCounterStock(medranoNav,bindModuleNav){
   });
 }
 
-function renderMedranoDispensaryProducts(medranoNav,bindModuleNav){
-  $('screen-title').textContent='Productos de Laboratorio · Dispensario';
-  const rows=state.medranoDispensaryProducts||[];
-  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-dispensary-products-back" class="secondary compact-button" type="button">← Dispensario</button><h2>Productos de Laboratorio</h2><p class="muted">Stock recibido anteriormente desde Laboratorio.</p></div>${medranoStockHistoryButton('dispensario','productos-laboratorio')}</section>
-    <section class="panel stock-detail-panel" data-stock-table-tools>${stockTableToolbar('Buscar producto o categoría...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Categoría</th><th data-sort-type="text">Producto</th><th data-sort-type="number">Disponible</th><th>Unidad</th></tr></thead><tbody>${rows.length?rows.map(item=>`<tr><td>${escapeHtml(medranoLabCategoryName(item.categoria))}</td><td><strong>${escapeHtml(item.nombre)}</strong></td><td data-sort-value="${Number(item.cantidad)||0}">${Number(item.cantidad||0).toLocaleString('es-AR')}</td><td>${escapeHtml(item.unidad)}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="4">Todavía no hay productos recibidos de Laboratorio.</td></tr>'}</tbody></table></div></section>${medranoDailyHistory('dispensario','productos-laboratorio','today')}
-    `;
-  bindModuleNav();bindStockTableTools(app);bindMedranoStockHistoryButtons();
-  $('medrano-dispensary-products-back').onclick=()=>{state.medranoDispensarioSection=null;render()};
-}
 function openMedranoCounterDialog(){
   if(!canManageMedrano())return;
   $('medrano-counter-name').value='';
@@ -1314,7 +1305,7 @@ function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
   const freeTotal=total-lots.reduce((sum,lot)=>sum+medranoReserved('flores',lot.id),0);
   $('screen-title').textContent='Stock Dispensario';
   if(!state.medranoDispensarioSection){
-    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><button id="medrano-stock-list-back" class="secondary compact-button" type="button">← Stock Medrano</button><div><h2>Dispensario</h2><p class="muted">Elegí el sector de stock que querés consultar.</p></div>${medranoStockHistoryButton('dispensario')}</div><div class="medrano-stock-grid"><button class="medrano-stock-card" data-dispensario-section="flores" type="button"><strong>Flores</strong><span>Stock actual por lote y sala</span></button><button class="medrano-stock-card" data-dispensario-section="productos-laboratorio" type="button"><strong>Productos de Laboratorio</strong><span>Resina, aceites, cremas y cápsulas recibidos</span></button><button class="medrano-stock-card" data-dispensario-section="mostrador" type="button"><strong>Mostrador</strong><span>Productos y accesorios para la venta</span></button></div></section>`;
+    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><button id="medrano-stock-list-back" class="secondary compact-button" type="button">← Stock Medrano</button><div><h2>Dispensario</h2><p class="muted">Elegí el sector de stock que querés consultar.</p></div>${medranoStockHistoryButton('dispensario')}</div><div class="medrano-stock-grid"><button class="medrano-stock-card" data-dispensario-section="flores" type="button"><strong>Flores</strong><span>Stock actual por lote y sala</span></button><button class="medrano-stock-card" data-dispensario-section="mostrador" type="button"><strong>Mostrador</strong><span>Productos y accesorios para la venta</span></button></div></section>`;
     bindModuleNav();bindMedranoStockHistoryButtons();
     $('medrano-stock-list-back').onclick=()=>{state.medranoView='stock';render()};
     app.querySelectorAll('[data-dispensario-section]').forEach(button=>button.onclick=()=>{state.medranoDispensarioSection=button.dataset.dispensarioSection;render()});
@@ -1322,10 +1313,6 @@ function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
   }
   if(state.medranoDispensarioSection==='mostrador'){
     renderMedranoCounterStock(medranoNav,bindModuleNav);
-    return;
-  }
-  if(state.medranoDispensarioSection==='productos-laboratorio'){
-    renderMedranoDispensaryProducts(medranoNav,bindModuleNav);
     return;
   }
   if(!state.medranoDispensarioRoom){
