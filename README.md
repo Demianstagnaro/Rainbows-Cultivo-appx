@@ -9,7 +9,12 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.23.6. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.23.7. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.23.7 — Tareas generales y agilidad de la app
+
+- En Hoy, cuando no quedan tareas generales pendientes, el título y el mensaje de lista vacía se muestran en verde. Cuando hay pendientes, el título continúa en rojo.
+- Los cambios recibidos en tiempo real se agrupan antes de recargar los datos, para evitar recargas simultáneas o repetidas por una misma operación. El cálculo de tareas por fecha se reutiliza hasta que cambian los datos. No requiere SQL.
 
 ## V3.23.6 — Simplificar el stock de Dispensario
 

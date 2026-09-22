@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.23.6';
+const APP_VERSION='3.23.7';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -137,11 +137,12 @@ function withContinuationDay(t,dayNumber){
   return{...t,detail:parts.join(' · '),continuationDay:dayNumber};
 }
 const __baseTasksPerfCache=new Map();
+const __tasksPerfCache=new Map();
 const __continuationOriginsPerfCache=new Map();
 const __chainFinishedPerfCache=new Map();
 let __taskRowsByDatePerf=null;
 let __realByTaskPerf=null;
-function __resetDataPerfCaches(){__baseTasksPerfCache.clear();__continuationOriginsPerfCache.clear();__chainFinishedPerfCache.clear();__taskRowsByDatePerf=null;__realByTaskPerf=null}
+function __resetDataPerfCaches(){__baseTasksPerfCache.clear();__tasksPerfCache.clear();__continuationOriginsPerfCache.clear();__chainFinishedPerfCache.clear();__taskRowsByDatePerf=null;__realByTaskPerf=null}
 function __rowsForDatePerf(day){if(!__taskRowsByDatePerf){__taskRowsByDatePerf=new Map();for(const row of state.tareas){const k=row.fecha||'';if(!__taskRowsByDatePerf.has(k))__taskRowsByDatePerf.set(k,[]);__taskRowsByDatePerf.get(k).push(row)}}return __taskRowsByDatePerf.get(day)||[]}
 function __realForTaskPerf(id){if(!__realByTaskPerf){__realByTaskPerf=new Map();for(const row of state.realizaciones)__realByTaskPerf.set(String(row.tarea_id),row)}return __realByTaskPerf.get(String(id))}
 function baseTasks(date){
@@ -168,9 +169,10 @@ function continuationOrigins(untilDate){
   return origins;
 }
 function tasks(date){
-  let result=baseTasks(date).map(t=>isContinuable(t)?withContinuationDay({...t,chain:taskChain(t),originDate:t.date},1):t);
   const day=ymd(date);
-  if(day<CONTINUABLE_FROM||diff(date,today())>0)return result;
+  if(__tasksPerfCache.has(day))return __tasksPerfCache.get(day);
+  let result=baseTasks(date).map(t=>isContinuable(t)?withContinuationDay({...t,chain:taskChain(t),originDate:t.date},1):t);
+  if(day<CONTINUABLE_FROM||diff(date,today())>0){__tasksPerfCache.set(day,result);return result}
   for(const origin of continuationOrigins(add(date,-1))){
     const chain=origin.chain;
     const finished=chainFinishedDate(chain);
@@ -189,6 +191,7 @@ function tasks(date){
     },dayNumber);
     if(!result.some(x=>x.key===key||String(x.id)===String(task.id)))result.push(task);
   }
+  __tasksPerfCache.set(day,result);
   return result;
 }
 function historicalDone(t){return!!t.date&&t.date<=HISTORICAL_COMPLETION_CUTOFF}
@@ -337,8 +340,27 @@ async function load(){
   if(!stockAccess){
     state.stockCycles=[];state.stockItems=[];state.stockMovements=[];state.stockRoom=null;state.stockCycle=null;
   }
-}async function refresh(){try{__resetDataPerfCaches();await load();__resetDataPerfCaches();render()}catch(e){console.error(e);app.innerHTML=`<section class="panel error-panel"><strong>Error</strong><p>${escapeHtml(e.message||'Error desconocido')}</p></section>`}}
-function subscribe(){if(state.channel)db.removeChannel(state.channel);state.channel=db.channel('rainbows-shared').on('postgres_changes',{event:'*',schema:'public'},refresh).subscribe()}
+}
+let refreshInFlight=null,realtimeRefreshTimer=null,refreshAgain=false;
+async function refresh(){
+  if(refreshInFlight){refreshAgain=true;return refreshInFlight}
+  if(realtimeRefreshTimer){clearTimeout(realtimeRefreshTimer);realtimeRefreshTimer=null}
+  refreshInFlight=(async()=>{
+    try{__resetDataPerfCaches();await load();__resetDataPerfCaches();render()}
+    catch(e){console.error(e);app.innerHTML=`<section class="panel error-panel"><strong>Error</strong><p>${escapeHtml(e.message||'Error desconocido')}</p></section>`}
+  })();
+  try{await refreshInFlight}
+  finally{
+    refreshInFlight=null;
+    if(refreshAgain){refreshAgain=false;scheduleRealtimeRefresh()}
+  }
+}
+function scheduleRealtimeRefresh(){
+  if(!state.session)return;
+  if(realtimeRefreshTimer)clearTimeout(realtimeRefreshTimer);
+  realtimeRefreshTimer=setTimeout(()=>{realtimeRefreshTimer=null;refresh()},300);
+}
+function subscribe(){if(state.channel)db.removeChannel(state.channel);state.channel=db.channel('rainbows-shared').on('postgres_changes',{event:'*',schema:'public'},scheduleRealtimeRefresh).subscribe()}
 function progress(r,d){const x=tasks(d).filter(t=>t.room===r.name),n=x.filter(done).length;return{total:x.length,done:n,pct:x.length?Math.round(n/x.length*100):100}}
 function taskCounter(doneCount,totalCount){const complete=totalCount>0&&doneCount===totalCount;return `<span class="task-counter ${complete?'is-complete':''}">Tareas ${doneCount}/${totalCount}</span>`}
 function taskPriority(t){const critical=['Cosecha','Trasplante','Esquejes','Inicio flora'];const important=['Enmienda','Schwazzing','Calibrar riego','Poda bajos','Redes'];if(critical.includes(t.task))return{rank:0,cls:'priority-critical',label:'Crítica'};if(important.includes(t.task)||t.task.startsWith('Trimming - '))return{rank:1,cls:'priority-important',label:'Importante'};return{rank:2,cls:'priority-routine',label:'Rutina'}}
@@ -2177,8 +2199,8 @@ function renderToday(){
         return`<section class="room-card"><div class="room-head"><div><div class="room-title">${r.name}</div><div class="stage">${roomStatus(r,d)}</div></div><div class="room-head-actions">${taskCounter(pr.done,pr.total)}${canEditTasks()?`<button class="task-menu room-options-button" type="button" data-room-menu="${r.name}" data-room-date="${ymd(d)}" aria-label="Opciones de ${r.name}" title="Opciones de sala">⋮</button>`:''}</div></div><div class="progress"><span style="width:${pr.pct}%"></span></div><div class="room-tasks">${renderRoomTaskGroups(rt)}</div></section>`}).join('')}</div>
     </div>
     <aside class="general-tasks-panel panel">
-      <div class="general-tasks-head"><h2 class="status-heading-pending">Tareas generales pendientes</h2>${canEditTasks()?'<button id="add-general-task" class="primary compact-button" type="button">+ Agregar tarea</button>':''}</div>
-      <div class="general-task-section">${pendingGeneral.length?pendingGeneral.map(generalTaskRow).join(''):'<div class="empty-room-tasks">No hay tareas generales pendientes</div>'}</div>
+      <div class="general-tasks-head"><h2 class="${pendingGeneral.length?'status-heading-pending':'status-heading-completed'}">Tareas generales pendientes</h2>${canEditTasks()?'<button id="add-general-task" class="primary compact-button" type="button">+ Agregar tarea</button>':''}</div>
+      <div class="general-task-section">${pendingGeneral.length?pendingGeneral.map(generalTaskRow).join(''):'<div class="empty-room-tasks status-heading-completed">No hay tareas generales pendientes</div>'}</div>
       ${completedGeneral.length?`<div class="general-completed-today"><h3 class="status-heading-completed">Tareas generales realizadas</h3><div class="general-task-section">${completedGeneral.map(generalTaskRow).join('')}</div></div>`:''}
     </aside>
   </div>`;
