@@ -33,7 +33,7 @@ test('la producción exige cierre transaccional y bloquea reapertura tras afecta
 });
 
 test('si falta solo la migración nueva, Dispensario y comandas existentes siguen habilitados',async()=>{
-  const code=app.slice(app.indexOf('async function load(){'),app.indexOf('}async function refresh(){')+1);
+  const code=app.slice(app.indexOf('async function load(){'),app.indexOf('\nlet refreshInFlight='));
   const state={session:{user:{id:'admin'}},perfiles:[]};
   const query={select(){return this},eq(){return this},order(){return this},maybeSingle(){return Promise.resolve({data:{id:'admin',rol:'administrador',activo:true},error:null})},then(resolve){return Promise.resolve({data:[],error:null}).then(resolve)}};
   const context={state,db:{from(){return Object.create(query)},rpc(){return Promise.resolve({data:[],error:null})}},
