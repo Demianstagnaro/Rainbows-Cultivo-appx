@@ -810,6 +810,7 @@ body{
 .medrano-order-items-table{min-width:360px;margin-top:8px;font-size:12px}
 .medrano-order-items-table th,.medrano-order-items-table td{padding:6px 8px}
 @media(max-width:700px){.medrano-multi-line{grid-template-columns:1fr 1fr}.medrano-multi-line [data-order-product]{min-width:0}}
+.token-order-total{margin:12px 0 2px;color:#fef3c7;font-size:16px;font-weight:900}.payment-summary{padding:13px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.035);line-height:1.7}.payment-badge{display:inline-flex;align-items:center;border-radius:999px;padding:4px 8px;font-size:11px;font-weight:900;white-space:nowrap}.payment-badge.paid{background:rgba(34,197,94,.15);color:#86efac}.payment-badge.pending{background:rgba(239,68,68,.14);color:#fca5a5}.token-price-input{min-width:90px;max-width:140px}.cash-positive{color:#86efac;font-weight:850}.cash-negative{color:#fca5a5;font-weight:850}.caja-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}@media(max-width:700px){.caja-kpis{grid-template-columns:1fr}.payment-badge{width:max-content}}
 .medrano-module-panel{margin-top:0}
 .medrano-stock-grid{gap:8px}
 .medrano-stock-card{border-radius:12px;padding:12px 13px}

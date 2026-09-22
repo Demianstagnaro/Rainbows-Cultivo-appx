@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.23.7. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.24.0. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.24.0 — Caja y Tokens en Medrano
+
+- Administración incorpora Caja con saldos esperados en efectivo y digital, movimientos manuales e historial.
+- Cada producto tiene un valor fijo en Tokens por gramo, ml o unidad; las comandas calculan el total automáticamente.
+- Al pagar se consumen los Tokens y se registra sólo el dinero efectivamente cobrado. Al dispensar se descuenta el stock.
+- Se permite acreditar Tokens anticipadamente a un paciente. Valor fijo: 1 Token = $1.000.
+- Requiere ejecutar `Rainbows_V3.24.0_caja_tokens.sql` en Supabase.
 
 ## V3.23.7 — Tareas generales y agilidad de la app
 
