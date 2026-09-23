@@ -952,3 +952,8 @@ body{
 
 /* V3.24.1 — Tamaño de lote editable en los stocks */
 .stock-size-select{min-width:118px;padding:7px 9px}
+
+/* V3.24.3 — Tamaño desde el ingreso de la cosecha */
+.harvest-line{grid-template-columns:minmax(0,1fr) 140px 150px auto}
+.harvest-detail-row{grid-template-columns:minmax(0,1fr) 110px 120px 70px}
+@media(max-width:760px){.harvest-line{grid-template-columns:1fr}.harvest-detail-row{grid-template-columns:minmax(0,1fr) 75px 90px 50px}}

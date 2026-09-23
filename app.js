@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.24.2';
+const APP_VERSION='3.24.3';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2257,7 +2257,7 @@ function renderHelp(){
       <article class="panel help-card help-card-quick"><h3>Acciones disponibles</h3><ul>
         <li>Desde Hoy o Calendario: “Agregar fumigación mañana en Flora 2”.</li><li>También podés completar: “Completar fumigación de Flora 2”. Reprogramar: “Reprogramar fumigación de Flora 2 para mañana”. Cancelar: “Cancelar fumigación de Flora 2”.</li>
         <li>Podés agregar responsables: “La hicieron Cone y Pata”.</li>
-        <li>En Cosechas: “Nueva cosecha de Flora 3 ciclo 10”; con el formulario abierto: “Gomu Gomu 850 gramos”.</li><li>En Stock: “Mover todo el stock de Flora 3 ciclo 9 a Medrano”; con la ventana abierta: “Gomu Gomu 850 gramos” o “Usar todo disponible”.</li><li>Nada se guarda hasta que confirmás.</li>
+        <li>En Cosechas: “Nueva cosecha de Flora 3 ciclo 10”; con el formulario abierto: “Gomu Gomu 850 gramos”. Después seleccioná el tamaño del lote.</li><li>En Stock: “Mover todo el stock de Flora 3 ciclo 9 a Medrano”; con la ventana abierta: “Gomu Gomu 850 gramos” o “Usar todo disponible”.</li><li>Nada se guarda hasta que confirmás.</li>
       </ul></article>
       <article class="panel help-card help-card-quick"><h3>Consejos</h3><ul>
         <li>Podés decir “Flora tres”, “Flora 3” o incluso si el teléfono escribe “Flora III”.</li>
@@ -2305,7 +2305,7 @@ function renderHelp(){
           <li>“¿Cuánto stock total hay?”</li><li>“¿Cuánto stock hay de GomuGomu?”</li><li>“¿Cuánto queda del ciclo 9 de Flora 2?”</li><li>“¿Qué salidas hubo a Medrano?”</li><li>“¿Cuánto consumo interno hubo?”</li><li>“¿Qué movimientos hubo hoy?”</li><li>Preparar movimiento: “Mover todo el stock de Flora 3 ciclo 9 a Medrano”.</li><li>Con la ventana abierta: “Gomu Gomu 850 gramos” · “Todo de Mandarin” · “Quitar Sugar Cane” · “Usar todo disponible” · “Seleccionar todas”.</li><li>Los movimientos nunca se guardan por voz: revisá y tocá Guardar movimientos.</li>
         </ul></article>
         <article class="help-card"><h3>Cosechas</h3><ul>
-          <li>Consulta: “¿Cuánto produjo Flora 1 ciclo 8?”</li><li>Consulta: “¿Cuál fue la última cosecha de Flora 3?”</li><li>Cargar: “Nueva cosecha de Flora 3 ciclo 10”.</li><li>Con el formulario abierto, una pesada por frase: “Gomu Gomu 850 gramos” · “Mandarin 1 kilo 150”.</li><li>Podés repetir la misma genética: cada frase agrega otra pesada y el total se suma solo.</li><li>Correcciones: “Quitar última pesada/pasada” · “Corregir última pesada/pasada a 920 gramos”.</li><li>Opcional: “Meta 9 kilos” · “108 plantas”.</li><li>La cosecha nunca se guarda por voz: revisá y tocá Guardar.</li>
+          <li>Consulta: “¿Cuánto produjo Flora 1 ciclo 8?”</li><li>Consulta: “¿Cuál fue la última cosecha de Flora 3?”</li><li>Cargar: “Nueva cosecha de Flora 3 ciclo 10”.</li><li>Con el formulario abierto, una pesada por frase: “Gomu Gomu 850 gramos” · “Mandarin 1 kilo 150”.</li><li>Seleccioná Grande, Mediano o Chico en cada genética antes de guardar.</li><li>Podés repetir la misma genética: cada frase agrega otra pesada y el total se suma solo si el tamaño coincide.</li><li>Correcciones: “Quitar última pesada/pasada” · “Corregir última pesada/pasada a 920 gramos”.</li><li>Opcional: “Meta 9 kilos” · “108 plantas”.</li><li>La cosecha nunca se guarda por voz: revisá y tocá Guardar.</li>
         </ul></article>
         <article class="help-card"><h3>Genéticas</h3><ul>
           <li>“¿Cuál es la nomenclatura de Mandarin Cookies?”</li><li>“¿Cuál es el linaje de GomuGomu?”</li><li>“¿Qué cannabinoides tiene GomuGomu?”</li><li>“¿Qué genéticas están activas?”</li><li>“¿Qué genéticas tienen CBD?”</li>
@@ -2485,7 +2485,7 @@ function groupedHarvestDetails(id){
   const byGenetic=new Map();
   harvestDetails(id).forEach((row,index)=>{
     if(row.genetica_id){
-      const key=String(row.genetica_id);
+      const key=`${String(row.genetica_id)}|${row.tamano||''}`;
       const existing=byGenetic.get(key);
       if(existing)existing.gramos=Number(existing.gramos||0)+Number(row.gramos||0);
       else{
@@ -2541,12 +2541,13 @@ function renderHarvests(){
 function renderSelectedHarvestDetail(h,canManage){
   const rows=groupedHarvestDetails(h.id);
   const gpp=Number(h.cantidad_plantas)>0?Number(h.total_gramos)/Number(h.cantidad_plantas):null;
-  return `<section class="panel selected-harvest-detail"><div class="selected-harvest-head"><div><h3>${escapeHtml(h.sala)} · Ciclo ${h.ciclo}</h3><p class="muted">${parse(h.fecha).toLocaleDateString('es-AR')} · Total ${formatGrams(h.total_gramos)}${gpp?` · ${gpp.toFixed(2)} g/planta`:''}</p></div>${canManage?`<button class="secondary compact-button" data-edit-selected-harvest="${h.id}">Editar cosecha</button>`:''}</div>${rows.length?`<div class="harvest-detail-table"><div class="harvest-detail-row header"><span>Genética</span><span>Gramos</span><span>%</span></div>${rows.map(r=>`<div class="harvest-detail-row"><span>${escapeHtml(harvestGeneticName(r))}</span><strong>${formatGrams(r.gramos)}</strong><span>${Number(h.total_gramos)?(Number(r.gramos)/Number(h.total_gramos)*100).toFixed(1):'0'}%</span></div>`).join('')}<div class="harvest-detail-row total-row"><strong>Total</strong><strong>${formatGrams(h.total_gramos)}</strong><strong>100%</strong></div></div>`:'<p class="muted">Esta cosecha no tiene desglose por genética cargado.</p>'}${h.observaciones?`<p class="harvest-notes"><strong>Observaciones:</strong> ${escapeHtml(h.observaciones)}</p>`:''}</section>`;
+  return `<section class="panel selected-harvest-detail"><div class="selected-harvest-head"><div><h3>${escapeHtml(h.sala)} · Ciclo ${h.ciclo}</h3><p class="muted">${parse(h.fecha).toLocaleDateString('es-AR')} · Total ${formatGrams(h.total_gramos)}${gpp?` · ${gpp.toFixed(2)} g/planta`:''}</p></div>${canManage?`<button class="secondary compact-button" data-edit-selected-harvest="${h.id}">Editar cosecha</button>`:''}</div>${rows.length?`<div class="harvest-detail-table"><div class="harvest-detail-row header"><span>Genética</span><span>Tamaño</span><span>Gramos</span><span>%</span></div>${rows.map(r=>`<div class="harvest-detail-row"><span>${escapeHtml(harvestGeneticName(r))}</span><span>${escapeHtml(stockLotSizes[r.tamano]||'Sin definir')}</span><strong>${formatGrams(r.gramos)}</strong><span>${Number(h.total_gramos)?(Number(r.gramos)/Number(h.total_gramos)*100).toFixed(1):'0'}%</span></div>`).join('')}<div class="harvest-detail-row total-row"><strong>Total</strong><span></span><strong>${formatGrams(h.total_gramos)}</strong><strong>100%</strong></div></div>`:'<p class="muted">Esta cosecha no tiene desglose por genética cargado.</p>'}${h.observaciones?`<p class="harvest-notes"><strong>Observaciones:</strong> ${escapeHtml(h.observaciones)}</p>`:''}</section>`;
 }
 function harvestLineTemplate(detail=null){
   const selected=detail?.genetica_id||'';
   const historical=detail&&!detail.genetica_id;
-  return `<div class="harvest-line" data-existing-id="${detail?.id||''}" data-historical="${historical?'true':'false'}">${historical?`<label class="field-label">Nombre histórico<input class="text-input harvest-line-name" value="${escapeHtml(detail.nombre_historico||'')}" readonly></label>`:`<label class="field-label">Genética<select class="text-input harvest-line-genetic"><option value="">Seleccionar…</option>${state.geneticas.filter(g=>g.activa!==false||String(g.id)===String(selected)).map(g=>`<option value="${g.id}" ${String(g.id)===String(selected)?'selected':''}>${escapeHtml(g.nombre)}</option>`).join('')}</select></label>`}<label class="field-label">Gramos<input class="text-input harvest-line-grams" type="number" min="0" step="0.01" value="${detail?.gramos??''}"></label><button type="button" class="danger compact-button remove-harvest-line">Quitar</button></div>`;
+  const size=detail?.tamano||'';
+  return `<div class="harvest-line" data-existing-id="${detail?.id||''}" data-historical="${historical?'true':'false'}">${historical?`<label class="field-label">Nombre histórico<input class="text-input harvest-line-name" value="${escapeHtml(detail.nombre_historico||'')}" readonly></label>`:`<label class="field-label">Genética<select class="text-input harvest-line-genetic"><option value="">Seleccionar…</option>${state.geneticas.filter(g=>g.activa!==false||String(g.id)===String(selected)).map(g=>`<option value="${g.id}" ${String(g.id)===String(selected)?'selected':''}>${escapeHtml(g.nombre)}</option>`).join('')}</select></label>`}<label class="field-label">Tamaño<select class="text-input harvest-line-size"><option value="">Seleccionar…</option>${Object.entries(stockLotSizes).map(([key,label])=>`<option value="${key}" ${size===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="field-label">Gramos<input class="text-input harvest-line-grams" type="number" min="0" step="0.01" value="${detail?.gramos??''}"></label><button type="button" class="danger compact-button remove-harvest-line">Quitar</button></div>`;
 }
 function refreshHarvestGeneticOptions(){
   // Las mismas genéticas pueden cargarse en varias filas para registrar bolsas separadas.
@@ -2587,8 +2588,9 @@ async function saveHarvestDialog(){
   const useCalculatedTotal=!state.editHarvest||detailRows.length>0;
   const payload={fecha:$('harvest-date').value,sala:$('harvest-room').value,ciclo:Number($('harvest-cycle').value),meta_gramos:$('harvest-goal').value===''?null:Number($('harvest-goal').value),total_gramos:useCalculatedTotal?Number(calculatedTotal.toFixed(2)):Number($('harvest-total').value),cantidad_plantas:$('harvest-plants').value===''?null:Number($('harvest-plants').value),observaciones:$('harvest-notes').value.trim()||null,origen:state.editHarvest?.origen||'app'};
   if(!payload.fecha||!payload.ciclo||payload.total_gramos<0)throw new Error('Completá fecha, sala, ciclo y total cosechado.');
-  const rawLines=[...$('harvest-lines').querySelectorAll('.harvest-line')].map((row,index)=>{const historical=row.dataset.historical==='true';const geneticId=historical?null:row.querySelector('.harvest-line-genetic')?.value||null;const genetic=state.geneticas.find(g=>String(g.id)===String(geneticId));return{id:row.dataset.existingId||null,genetica_id:geneticId,nombre_historico:historical?row.querySelector('.harvest-line-name').value:(genetic?.nombre||null),gramos:Number(row.querySelector('.harvest-line-grams').value),_index:index}}).filter(x=>x.gramos>0);
+  const rawLines=[...$('harvest-lines').querySelectorAll('.harvest-line')].map((row,index)=>{const historical=row.dataset.historical==='true';const geneticId=historical?null:row.querySelector('.harvest-line-genetic')?.value||null;const genetic=state.geneticas.find(g=>String(g.id)===String(geneticId));return{id:row.dataset.existingId||null,genetica_id:geneticId,nombre_historico:historical?row.querySelector('.harvest-line-name').value:(genetic?.nombre||null),tamano:row.querySelector('.harvest-line-size')?.value||null,gramos:Number(row.querySelector('.harvest-line-grams').value),_index:index}}).filter(x=>x.gramos>0);
   if(rawLines.some(x=>!x.nombre_historico))throw new Error('Seleccioná una genética en cada fila cargada.');
+  if(rawLines.some(x=>!stockLotSizes[x.tamano]))throw new Error('Seleccioná el tamaño de cada genética cargada.');
   const lines=[];
   const groupedByGenetic=new Map();
   rawLines.forEach(line=>{
@@ -2599,6 +2601,7 @@ async function saveHarvestDialog(){
     const key=String(line.genetica_id);
     const existing=groupedByGenetic.get(key);
     if(existing){
+      if(existing.tamano!==line.tamano)throw new Error(`Las pesadas de ${line.nombre_historico} deben tener el mismo tamaño para formar un único lote.`);
       existing.gramos=Number((Number(existing.gramos)+Number(line.gramos)).toFixed(2));
       if(!existing.id&&line.id)existing.id=line.id;
     }else{
@@ -2615,7 +2618,7 @@ async function saveHarvestDialog(){
     const removedIds=previous.filter(x=>!keptIds.includes(String(x.id))).map(x=>x.id);
     if(removedIds.length){const del=await db.from('cosecha_geneticas').delete().in('id',removedIds);if(del.error)throw del.error}
     for(const line of lines){
-      const detailPayload={genetica_id:line.genetica_id,nombre_historico:line.nombre_historico,gramos:line.gramos};
+      const detailPayload={genetica_id:line.genetica_id,nombre_historico:line.nombre_historico,tamano:line.tamano,gramos:line.gramos};
       if(line.id){const u=await db.from('cosecha_geneticas').update(detailPayload).eq('id',line.id).eq('cosecha_id',harvestId);if(u.error)throw u.error}
       else{const i=await db.from('cosecha_geneticas').insert({...detailPayload,cosecha_id:harvestId});if(i.error)throw i.error}
     }
@@ -2626,6 +2629,7 @@ async function saveHarvestDialog(){
         cosecha_id:harvestId,
         genetica_id:line.genetica_id,
         nombre_historico:line.nombre_historico,
+        tamano:line.tamano,
         gramos:line.gramos
       }));
       const q2=await db.from('cosecha_geneticas').insert(detailPayloads);
@@ -4030,7 +4034,7 @@ function executeVoiceHarvestAction(rawText){
     if(!cycleValue)return {ok:true,message:'No pude determinar el ciclo de la cosecha. Decime por ejemplo: “Nueva cosecha de Flora 3 ciclo 10”.'};
     openHarvest();
     $('harvest-date').value=ymd(d);$('harvest-room').value=room;$('harvest-cycle').value=String(cycleValue);
-    return {ok:true,message:`Preparé una nueva cosecha de ${room}, ciclo ${cycleValue}, con fecha ${nice(d)}. Ahora podés decir cada pesada, por ejemplo: “Gomu Gomu 850 gramos”. Nada se guarda hasta que toques Guardar.`};
+    return {ok:true,message:`Preparé una nueva cosecha de ${room}, ciclo ${cycleValue}, con fecha ${nice(d)}. Ahora podés decir cada pesada, por ejemplo: “Gomu Gomu 850 gramos”, y después seleccionar su tamaño. Nada se guarda hasta que toques Guardar.`};
   }
 
   if(!dialogOpen)return null;

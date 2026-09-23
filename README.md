@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.24.2. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.24.3. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.24.3 — Tamaño trazable desde la cosecha
+
+- Cada genética ingresada en una cosecha exige seleccionar Grande, Mediano o Chico.
+- El tamaño queda visible en el detalle de la cosecha y se copia automáticamente al lote creado en Stock Palestina.
+- Cuando el lote llega al Dispensario de Medrano conserva el mismo tamaño; una corrección posterior también se propaga.
+- Las pesadas repetidas de una misma genética se suman únicamente cuando tienen el mismo tamaño, evitando mezclar categorías en un lote.
+- Requiere ejecutar `Rainbows_V3.24.3_tamano_desde_cosecha.sql` en Supabase.
 
 ## V3.24.2 — Códigos de lote sin fecha
 
