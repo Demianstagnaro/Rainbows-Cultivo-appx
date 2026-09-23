@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.24.1. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.24.2. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.24.2 — Códigos de lote sin fecha
+
+- Los códigos dejan de incluir la fecha DDMMYY al final: por ejemplo, `F3C9MC110826` pasa a `F3C9MC`.
+- La fecha se conserva en su columna independiente y no se pierde.
+- Se corrigen los lotes existentes y sus copias en movimientos, traslados, Medrano, Laboratorio e historiales.
+- Los lotes nuevos también se guardan automáticamente sin la fecha en el código.
+- Requiere ejecutar `Rainbows_V3.24.2_codigos_lote_sin_fecha.sql` en Supabase.
 
 ## V3.24.1 — Lotes estandarizados en Palestina y Medrano
 
@@ -1104,7 +1112,7 @@ Nueva solapa Cosechas con historial 2025–2026, detalle por genética, filtros 
 ## V3.16.32 — Número de lote en Stock Palestina
 
 - Agrega la columna **Número de lote** al detalle de stock por genética de cada ciclo en Flora 1, Flora 2 y Flora 3.
-- El número de lote se guarda en `stock_existencias.numero_lote` y sigue la regla Sala + Ciclo + Nomenclatura + fecha DDMMYY (por ejemplo `F3C9MC110826`).
+- En esa versión, el número de lote seguía la regla Sala + Ciclo + Nomenclatura + fecha DDMMYY (por ejemplo `F3C9MC110826`). Desde V3.24.2 la fecha ya no forma parte del código.
 - Incluye SQL para agregar/backfillear el campo y mantenerlo automáticamente en nuevos registros.
 - Actualiza APP_VERSION, referencias y caché a 3.16.32.
 
