@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.24.3';
+const APP_VERSION='3.24.4';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1110,7 +1110,7 @@ function stockLotDateValue(item){return item?.fecha_ingreso||String(item?.create
 function stockLotDateHtml(item){const value=stockLotDateValue(item);return value?parse(value).toLocaleDateString('es-AR'):'—'}
 function stockLotSizeHtml(scope,id,value,editable){
   const normalized=stockLotSizes[value]?value:'';
-  if(!editable)return escapeHtml(stockLotSizes[normalized]||'Sin definir');
+  if(normalized||!editable)return escapeHtml(stockLotSizes[normalized]||'Sin definir');
   return `<select class="text-input stock-size-select" data-stock-size data-stock-size-scope="${scope}" data-stock-size-id="${escapeHtml(id)}" data-previous-size="${normalized}" aria-label="Tamaño del lote"><option value="" ${normalized?'':'selected'} disabled>Seleccionar</option>${Object.entries(stockLotSizes).map(([key,label])=>`<option value="${key}" ${normalized===key?'selected':''}>${label}</option>`).join('')}</select>`;
 }
 function bindStockLotSizes(root=app){
@@ -2547,7 +2547,8 @@ function harvestLineTemplate(detail=null){
   const selected=detail?.genetica_id||'';
   const historical=detail&&!detail.genetica_id;
   const size=detail?.tamano||'';
-  return `<div class="harvest-line" data-existing-id="${detail?.id||''}" data-historical="${historical?'true':'false'}">${historical?`<label class="field-label">Nombre histórico<input class="text-input harvest-line-name" value="${escapeHtml(detail.nombre_historico||'')}" readonly></label>`:`<label class="field-label">Genética<select class="text-input harvest-line-genetic"><option value="">Seleccionar…</option>${state.geneticas.filter(g=>g.activa!==false||String(g.id)===String(selected)).map(g=>`<option value="${g.id}" ${String(g.id)===String(selected)?'selected':''}>${escapeHtml(g.nombre)}</option>`).join('')}</select></label>`}<label class="field-label">Tamaño<select class="text-input harvest-line-size"><option value="">Seleccionar…</option>${Object.entries(stockLotSizes).map(([key,label])=>`<option value="${key}" ${size===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="field-label">Gramos<input class="text-input harvest-line-grams" type="number" min="0" step="0.01" value="${detail?.gramos??''}"></label><button type="button" class="danger compact-button remove-harvest-line">Quitar</button></div>`;
+  const sizeLocked=Boolean(detail?.id&&size);
+  return `<div class="harvest-line" data-existing-id="${detail?.id||''}" data-historical="${historical?'true':'false'}">${historical?`<label class="field-label">Nombre histórico<input class="text-input harvest-line-name" value="${escapeHtml(detail.nombre_historico||'')}" readonly></label>`:`<label class="field-label">Genética<select class="text-input harvest-line-genetic"><option value="">Seleccionar…</option>${state.geneticas.filter(g=>g.activa!==false||String(g.id)===String(selected)).map(g=>`<option value="${g.id}" ${String(g.id)===String(selected)?'selected':''}>${escapeHtml(g.nombre)}</option>`).join('')}</select></label>`}<label class="field-label">Tamaño<select class="text-input harvest-line-size" ${sizeLocked?'disabled title="El tamaño queda fijo al ingresar la cosecha"':''}><option value="">Seleccionar…</option>${Object.entries(stockLotSizes).map(([key,label])=>`<option value="${key}" ${size===key?'selected':''}>${label}</option>`).join('')}</select></label><label class="field-label">Gramos<input class="text-input harvest-line-grams" type="number" min="0" step="0.01" value="${detail?.gramos??''}"></label><button type="button" class="danger compact-button remove-harvest-line">Quitar</button></div>`;
 }
 function refreshHarvestGeneticOptions(){
   // Las mismas genéticas pueden cargarse en varias filas para registrar bolsas separadas.

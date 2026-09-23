@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.24.3. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.24.4. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.24.4 — Tamaño fijo del lote
+
+- Una vez definido al ingresar la cosecha, el tamaño queda bloqueado en Cosechas, Stock Palestina y Dispensario Medrano.
+- Los stocks muestran Grande, Mediano o Chico como información de solo lectura.
+- Los lotes históricos que aún figuren Sin definir permiten seleccionar el tamaño una sola vez y luego también quedan bloqueados.
+- La base de datos aplica la misma regla, evitando cambios accidentales aunque se intente modificar el dato fuera de la interfaz.
+- Requiere ejecutar `Rainbows_V3.24.4_tamano_lote_inmutable.sql` en Supabase.
 
 ## V3.24.3 — Tamaño trazable desde la cosecha
 
