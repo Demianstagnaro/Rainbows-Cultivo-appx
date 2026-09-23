@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.24.4. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.24.5. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.24.5 — Lista de precios de Medrano
+
+- Administración incorpora una ventana independiente de Lista de precios con todos los productos dispensables de Laboratorio y Mostrador.
+- Las flores se agrupan en solo tres precios: Grande, Mediano y Chico. Todas las genéticas del mismo tamaño valen lo mismo.
+- Al crear una comanda, el valor de las flores se toma automáticamente del tamaño fijo del lote seleccionado.
+- La lista permite editar Tokens por gramo, ml o unidad y muestra su equivalente en pesos, considerando 1 Token = $1.000.
+- Los cambios recalculan las comandas pendientes que todavía no estén pagadas; las comandas pagadas conservan su valor histórico.
+- Requiere ejecutar `Rainbows_V3.24.5_lista_precios.sql` en Supabase.
 
 ## V3.24.4 — Tamaño fijo del lote
 
