@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.24.0';
+const APP_VERSION='3.24.1';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1105,6 +1105,28 @@ function renderSiteShell(){
 function medranoLotGeneticName(lot){
   return lot.nombre_historico||state.geneticas.find(g=>String(g.id)===String(lot.genetica_id))?.nombre||'Sin identificar';
 }
+const stockLotSizes={grande:'Grande',mediano:'Mediano',chico:'Chico'};
+function stockLotDateValue(item){return item?.fecha_ingreso||String(item?.created_at||'').slice(0,10)}
+function stockLotDateHtml(item){const value=stockLotDateValue(item);return value?parse(value).toLocaleDateString('es-AR'):'—'}
+function stockLotSizeHtml(scope,id,value,editable){
+  const normalized=stockLotSizes[value]?value:'';
+  if(!editable)return escapeHtml(stockLotSizes[normalized]||'Sin definir');
+  return `<select class="text-input stock-size-select" data-stock-size data-stock-size-scope="${scope}" data-stock-size-id="${escapeHtml(id)}" data-previous-size="${normalized}" aria-label="Tamaño del lote"><option value="" ${normalized?'':'selected'} disabled>Seleccionar</option>${Object.entries(stockLotSizes).map(([key,label])=>`<option value="${key}" ${normalized===key?'selected':''}>${label}</option>`).join('')}</select>`;
+}
+function bindStockLotSizes(root=app){
+  root.querySelectorAll('[data-stock-size]').forEach(select=>select.onchange=async()=>{
+    const previous=select.dataset.previousSize||'',value=select.value;
+    const table=select.dataset.stockSizeScope==='medrano'?'medrano_dispensario_lotes':'stock_existencias';
+    select.disabled=true;
+    const q=await db.from(table).update({tamano:value}).eq('id',select.dataset.stockSizeId);
+    if(q.error){select.value=previous;alert(q.error.message||'No se pudo guardar el tamaño del lote.')}else{
+      select.dataset.previousSize=value;
+      const rows=table==='medrano_dispensario_lotes'?state.medranoDispensarioLots:state.stockItems;
+      const row=rows.find(item=>String(item.id)===String(select.dataset.stockSizeId));if(row)row.tamano=value;
+    }
+    select.disabled=false;
+  });
+}
 function medranoDispensarioTotal(lots=state.medranoDispensarioLots){
   return lots.reduce((sum,lot)=>sum+(Number(lot.gramos_actual)||0),0);
 }
@@ -1116,6 +1138,7 @@ function openMedranoLotDialog(room){
   $('medrano-lot-genetic').innerHTML='<option value="">Seleccionar genética</option>'+state.geneticas.filter(g=>g.activa!==false).map(g=>`<option value="${g.id}">${escapeHtml(g.nombre)}${g.nomenclatura?` · ${escapeHtml(g.nomenclatura)}`:''}</option>`).join('');
   $('medrano-lot-grams').value='';
   $('medrano-lot-date').value=ymd(today());
+  $('medrano-lot-size').value='';
   $('medrano-lot-dialog').showModal();
 }
 async function saveMedranoLot(){
@@ -1126,12 +1149,14 @@ async function saveMedranoLot(){
   const genetica=state.geneticas.find(g=>String(g.id)===String(geneticaId));
   const gramos=Number($('medrano-lot-grams').value);
   const fecha=$('medrano-lot-date').value;
+  const tamano=$('medrano-lot-size').value;
   if(!['Flora 1','Flora 2','Flora 3'].includes(sala))throw new Error('Sala inválida.');
   if(!codigo)throw new Error('Ingresá el código de lote.');
   if(!geneticaId||!genetica)throw new Error('Seleccioná una genética.');
   if(!Number.isFinite(gramos)||gramos<=0)throw new Error('Ingresá una cantidad válida en gramos.');
   if(!fecha)throw new Error('Ingresá la fecha de ingreso.');
-  const payload={sala,codigo_lote:codigo,genetica_id:geneticaId,nombre_historico:genetica.nombre,gramos_inicial:gramos,gramos_actual:gramos,fecha_ingreso:fecha,creado_por:state.session?.user?.id||null};
+  if(!stockLotSizes[tamano])throw new Error('Seleccioná el tamaño del lote.');
+  const payload={sala,codigo_lote:codigo,genetica_id:geneticaId,nombre_historico:genetica.nombre,gramos_inicial:gramos,gramos_actual:gramos,fecha_ingreso:fecha,tamano,creado_por:state.session?.user?.id||null};
   const q=await db.from('medrano_dispensario_lotes').insert(payload);
   if(q.error)throw q.error;
   closeDialog('medrano-lot-dialog');
@@ -1351,10 +1376,11 @@ function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
     ${pendingHtml}
     <section class="stock-room-selector">${rooms.map(room=>{const roomLots=lots.filter(l=>l.sala===room);const roomTotal=medranoDispensarioTotal(roomLots);return `<button class="panel stock-room-button" data-medrano-dispensario-room="${room}"><span>${room}</span><strong>${formatGrams(roomTotal)}</strong><small>${roomLots.length} lote${roomLots.length===1?'':'s'} · Libre: ${formatGrams(roomTotal-roomLots.reduce((sum,lot)=>sum+medranoReserved('flores',lot.id),0))}</small></button>`}).join('')}</section>
     <button id="medrano-current-toggle" class="panel stock-current-summary stock-current-toggle" type="button" aria-expanded="${state.medranoDispensarioExpanded?'true':'false'}" aria-controls="medrano-current-detail"><span>Stock general Medrano</span><strong>${formatGrams(total)}</strong><small>${lots.length} lote${lots.length===1?'':'s'} cargado${lots.length===1?'':'s'} · Libre: ${formatGrams(freeTotal)} · ${state.medranoDispensarioExpanded?'Ocultar detalle':'Ver detalle'}</small><span class="stock-toggle-icon" aria-hidden="true">${state.medranoDispensarioExpanded?'▲':'▼'}</span></button>
-    <section id="medrano-current-detail" class="panel stock-overview-panel ${state.medranoDispensarioExpanded?'':'stock-overview-collapsed'}" data-stock-table-tools>${stockTableToolbar('Buscar por sala, lote, genética, fecha o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Sala</th><th data-sort-type="text">Lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha</th><th data-sort-type="number">Disponible</th></tr></thead><tbody>${detailRows.length?detailRows.map(l=>`<tr><td>${escapeHtml(l.sala)}</td><td><strong>${escapeHtml(l.codigo_lote)}</strong></td><td>${escapeHtml(medranoLotGeneticName(l))}</td><td data-sort-value="${escapeHtml(l.fecha_ingreso||'')}">${l.fecha_ingreso?parse(l.fecha_ingreso).toLocaleDateString('es-AR'):'—'}</td><td data-sort-value="${Number(l.gramos_actual)||0}"><strong>${formatGrams(Number(l.gramos_actual)||0)}</strong>${medranoAvailabilityHtml('flores',l.id,l.gramos_actual,'g')}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="5">No hay lotes cargados todavía.</td></tr>'}</tbody></table></div></section>
+    <section id="medrano-current-detail" class="panel stock-overview-panel ${state.medranoDispensarioExpanded?'':'stock-overview-collapsed'}" data-stock-table-tools>${stockTableToolbar('Buscar por lote, genética, fecha, tamaño o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha</th><th data-sort-type="number">Stock inicial</th><th data-sort-type="number">Stock actual</th><th data-sort-type="text">Tamaño</th></tr></thead><tbody>${detailRows.length?detailRows.map(l=>`<tr><td><strong>${escapeHtml(l.codigo_lote)}</strong></td><td>${escapeHtml(medranoLotGeneticName(l))}</td><td data-sort-value="${escapeHtml(stockLotDateValue(l))}">${stockLotDateHtml(l)}</td><td data-sort-value="${Number(l.gramos_inicial)||0}">${formatGrams(Number(l.gramos_inicial)||0)}</td><td data-sort-value="${Number(l.gramos_actual)||0}"><strong>${formatGrams(Number(l.gramos_actual)||0)}</strong>${medranoAvailabilityHtml('flores',l.id,l.gramos_actual,'g')}</td><td>${stockLotSizeHtml('medrano',l.id,l.tamano,canManageMedrano())}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="6">No hay lotes cargados todavía.</td></tr>'}</tbody></table></div></section>
     <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Traslados recibidos desde Palestina, agrupados por día.</p></div></div>${renderMedranoMovementDays()}</section>`;
     bindModuleNav();
     bindStockTableTools(app);
+    bindStockLotSizes(app);
     $('medrano-stock-list-back').textContent='← Dispensario';
     const labPending=state.medranoLabTransfers.filter(t=>t.estado==='en_viaje');
     app.insertAdjacentHTML('beforeend',`${labPending.length?`<section class="panel stock-detail-panel"><h3>En viaje a Laboratorio</h3>${labPending.map(t=>`<p><strong>${escapeHtml(t.codigo_lote)}</strong> · ${escapeHtml(t.nombre)} · ${formatGrams(t.gramos)}</p>`).join('')}</section>`:''}${medranoDailyHistory('dispensario','flores','today')}`);
@@ -1370,9 +1396,10 @@ function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
   const roomTotal=medranoDispensarioTotal(roomLots);
   app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-dispensario-back" class="secondary compact-button" type="button">← Stock general</button><h2>${escapeHtml(room)}</h2><p class="muted">Lotes ingresados al Dispensario de Medrano.</p></div><div class="dispensary-head-actions">${medranoStockHistoryButton('dispensario','flores')}${canManageMedrano()?'<button id="medrano-add-lot" class="primary compact-button" type="button">+ Ingresar lote</button>':''}</div></section>
   <section class="stock-kpis"><div class="panel"><span>Stock actual</span><strong>${formatGrams(roomTotal)}</strong></div><div class="panel"><span>Lotes</span><strong>${roomLots.length}</strong></div></section>
-  <section class="panel stock-detail-panel" data-stock-table-tools><h3>Lotes de cosecha</h3>${stockTableToolbar('Buscar por lote, genética, fecha o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Código de lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha ingreso</th><th data-sort-type="number">Stock inicial</th><th data-sort-type="number">Stock actual</th></tr></thead><tbody>${roomLots.length?roomLots.map(l=>`<tr><td><strong>${escapeHtml(l.codigo_lote)}</strong></td><td>${escapeHtml(medranoLotGeneticName(l))}</td><td data-sort-value="${escapeHtml(l.fecha_ingreso||'')}">${l.fecha_ingreso?parse(l.fecha_ingreso).toLocaleDateString('es-AR'):'—'}</td><td data-sort-value="${Number(l.gramos_inicial)||0}">${formatGrams(Number(l.gramos_inicial)||0)}</td><td data-sort-value="${Number(l.gramos_actual)||0}"><strong>${formatGrams(Number(l.gramos_actual)||0)}</strong>${medranoAvailabilityHtml('flores',l.id,l.gramos_actual,'g')}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="5">Todavía no hay lotes cargados para esta sala.</td></tr>'}</tbody></table></div></section>`;
+  <section class="panel stock-detail-panel" data-stock-table-tools><h3>Lotes de cosecha</h3>${stockTableToolbar('Buscar por lote, genética, fecha, tamaño o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha</th><th data-sort-type="number">Stock inicial</th><th data-sort-type="number">Stock actual</th><th data-sort-type="text">Tamaño</th></tr></thead><tbody>${roomLots.length?roomLots.map(l=>`<tr><td><strong>${escapeHtml(l.codigo_lote)}</strong></td><td>${escapeHtml(medranoLotGeneticName(l))}</td><td data-sort-value="${escapeHtml(stockLotDateValue(l))}">${stockLotDateHtml(l)}</td><td data-sort-value="${Number(l.gramos_inicial)||0}">${formatGrams(Number(l.gramos_inicial)||0)}</td><td data-sort-value="${Number(l.gramos_actual)||0}"><strong>${formatGrams(Number(l.gramos_actual)||0)}</strong>${medranoAvailabilityHtml('flores',l.id,l.gramos_actual,'g')}</td><td>${stockLotSizeHtml('medrano',l.id,l.tamano,canManageMedrano())}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="6">Todavía no hay lotes cargados para esta sala.</td></tr>'}</tbody></table></div></section>`;
   bindModuleNav();
   bindStockTableTools(app);
+  bindStockLotSizes(app);
   $('medrano-dispensario-back').onclick=()=>{state.medranoDispensarioRoom=null;render()};
   const addLot=$('medrano-add-lot');if(addLot)addLot.onclick=()=>openMedranoLotDialog(room);
   app.insertAdjacentHTML('beforeend',medranoDailyHistory('dispensario','flores','today'));bindMedranoStockHistoryButtons();
@@ -2811,8 +2838,9 @@ function renderStock(){
     ${renderPalestinaTransfers()}
     <section class="stock-room-selector">${rooms.map(room=>{const cycles=state.stockCycles.filter(c=>c.sala===room);const roomTotal=cycles.reduce((s,c)=>s+stockCycleCurrent(c),0);return `<button class="panel stock-room-button" data-stock-room="${room}"><span>${room}</span><strong>${formatGrams(roomTotal)}</strong><small>${cycles.length} ciclos</small></button>`}).join('')}</section>
     <button id="stock-current-toggle" class="panel stock-current-summary stock-current-toggle" type="button" aria-expanded="${state.stockOverviewExpanded?'true':'false'}" aria-controls="stock-current-detail"><span>Stock actual disponible</span><strong>${formatGrams(total)}</strong><small>${available.length} partida${available.length===1?'':'s'} con saldo · ${state.stockOverviewExpanded?'Ocultar detalle':'Ver detalle'}</small><span class="stock-toggle-icon" aria-hidden="true">${state.stockOverviewExpanded?'▲':'▼'}</span></button>
-    <section id="stock-current-detail" class="panel stock-overview-panel ${state.stockOverviewExpanded?'':'stock-overview-collapsed'}" data-stock-table-tools>${stockTableToolbar('Buscar por sala, ciclo, genética o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Sala</th><th data-sort-type="number">Ciclo</th><th data-sort-type="text">Genética</th><th data-sort-type="number">Disponible</th></tr></thead><tbody>${available.length?available.map(x=>`<tr><td>${escapeHtml(x.cycle.sala)}</td><td data-sort-value="${Number(x.cycle.ciclo)||0}">Ciclo ${x.cycle.ciclo}</td><td>${escapeHtml(x.item.nombre_historico)}</td><td data-sort-value="${Number(x.current)||0}"><strong>${formatGrams(x.current)}</strong></td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="4">No hay stock disponible cargado.</td></tr>'}</tbody></table></div></section>`;
+    <section id="stock-current-detail" class="panel stock-overview-panel ${state.stockOverviewExpanded?'':'stock-overview-collapsed'}" data-stock-table-tools>${stockTableToolbar('Buscar por lote, genética, fecha, tamaño o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha</th><th data-sort-type="number">Stock inicial</th><th data-sort-type="number">Stock actual</th><th data-sort-type="text">Tamaño</th></tr></thead><tbody>${available.length?available.map(x=>`<tr><td><strong>${escapeHtml(x.item.numero_lote||'—')}</strong></td><td>${escapeHtml(x.item.nombre_historico)}</td><td data-sort-value="${escapeHtml(stockLotDateValue(x.item))}">${stockLotDateHtml(x.item)}</td><td data-sort-value="${Number(x.item.stock_inicial)||0}">${formatGrams(Number(x.item.stock_inicial)||0)}</td><td data-sort-value="${Number(x.current)||0}"><strong>${formatGrams(x.current)}</strong></td><td>${stockLotSizeHtml('palestina',x.item.id,x.item.tamano,canManage)}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="6">No hay stock disponible cargado.</td></tr>'}</tbody></table></div></section>`;
     bindStockTableTools(app);
+    bindStockLotSizes(app);
     app.querySelectorAll('[data-resolve-transfer-item]').forEach(b=>b.onclick=()=>resolveTransferDifference(b.dataset.resolveTransferItem,b.dataset.resolution));
     $('stock-current-toggle').onclick=()=>{state.stockOverviewExpanded=!state.stockOverviewExpanded;renderStock()};
     app.querySelectorAll('[data-stock-room]').forEach(b=>b.onclick=()=>{state.stockRoom=b.dataset.stockRoom;state.stockCycle=null;renderStock()});
@@ -2838,6 +2866,7 @@ function renderStock(){
   app.innerHTML=`<section class="panel stock-page-head"><div><button id="stock-back-room" class="secondary compact-button">← ${escapeHtml(state.stockRoom)}</button><h2>${escapeHtml(state.stockRoom)} · Ciclo ${selected.ciclo}</h2><p class="muted">Detalle de stock y movimientos del ciclo.</p></div>${canManage?'<button id="stock-add-movement" class="primary compact-button">+ Registrar movimiento</button>':''}</section>
   ${renderStockCycleDetail(selected,canManage)}`;
   bindStockTableTools(app);
+  bindStockLotSizes(app);
   $('stock-back-room').onclick=()=>{state.stockCycle=null;renderStock()};
   if(canManage){
     $('stock-add-movement').onclick=()=>openStockMovement(selected.id);
@@ -2849,7 +2878,7 @@ function renderStockCycleDetail(cycle,canManage){
   const items=stockCycleItems(cycle.id);
   const movements=stockCycleMovements(cycle.id);
   return `<section class="stock-kpis"><div class="panel"><span>Stock inicial</span><strong>${formatGrams(cycle.stock_inicial)}</strong></div><div class="panel"><span>Stock actual</span><strong>${formatGrams(stockCycleCurrent(cycle))}</strong></div><div class="panel"><span>Genéticas</span><strong>${items.length}</strong></div><div class="panel"><span>Movimientos</span><strong>${movements.length}</strong></div></section>
-  <section class="panel stock-detail-panel" data-stock-table-tools><h3>Stock por genética</h3>${stockTableToolbar('Buscar por lote, genética o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Número de lote</th><th data-sort-type="text">Genética</th><th data-sort-type="number">Stock inicial</th><th data-sort-type="number">Stock actual</th></tr></thead><tbody>${items.length?items.map(item=>`<tr><td><strong>${escapeHtml(item.numero_lote||'—')}</strong></td><td>${escapeHtml(item.nombre_historico)}</td><td data-sort-value="${Number(item.stock_inicial)||0}">${formatGrams(Number(item.stock_inicial)||0)}</td><td data-sort-value="${stockItemCurrent(item)}"><strong>${formatGrams(stockItemCurrent(item))}</strong></td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="4">Sin detalle cargado.</td></tr>'}</tbody></table></div></section>
+  <section class="panel stock-detail-panel" data-stock-table-tools><h3>Stock por genética</h3>${stockTableToolbar('Buscar por lote, genética, fecha, tamaño o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha</th><th data-sort-type="number">Stock inicial</th><th data-sort-type="number">Stock actual</th><th data-sort-type="text">Tamaño</th></tr></thead><tbody>${items.length?items.map(item=>`<tr><td><strong>${escapeHtml(item.numero_lote||'—')}</strong></td><td>${escapeHtml(item.nombre_historico)}</td><td data-sort-value="${escapeHtml(stockLotDateValue(item))}">${stockLotDateHtml(item)}</td><td data-sort-value="${Number(item.stock_inicial)||0}">${formatGrams(Number(item.stock_inicial)||0)}</td><td data-sort-value="${stockItemCurrent(item)}"><strong>${formatGrams(stockItemCurrent(item))}</strong></td><td>${stockLotSizeHtml('palestina',item.id,item.tamano,canManage)}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="6">Sin detalle cargado.</td></tr>'}</tbody></table></div></section>
   <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Agrupado por día. Abrí una fecha para ver el detalle completo.</p></div>${canManage?`<button class="primary compact-button" data-stock-add-cycle="${cycle.id}">+ Movimiento</button>`:''}</div>${renderPalestinaMovementDays(movements)}</section>`;
 }
 

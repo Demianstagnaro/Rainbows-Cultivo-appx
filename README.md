@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.24.0. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.24.1. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.24.1 — Lotes estandarizados en Palestina y Medrano
+
+- Los stocks de flores de Palestina y Medrano muestran Lote, Genética, Fecha, Stock inicial, Stock actual y Tamaño.
+- El tamaño se selecciona como Grande, Mediano o Chico y queda guardado en el lote.
+- Los lotes trasladados desde Palestina heredan su fecha y tamaño al ingresar a Medrano.
+- Requiere ejecutar `Rainbows_V3.24.1_stock_lotes_tamano.sql` en Supabase.
 
 ## V3.24.0 — Caja y Tokens en Medrano
 
