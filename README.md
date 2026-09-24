@@ -9,11 +9,20 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.0. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.1. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.1 — Catálogo central de productos
+
+- La Lista de precios es el catálogo maestro de Medrano: define categoría, producto, unidad y Tokens.
+- Rosin y Resina BHO aparecen siempre y comparten un único precio por gramo.
+- Laboratorio y Mostrador eligen productos del catálogo; el stock físico conserva cantidades, lotes y trazabilidad.
+- Los aceites base a granel siguen siendo productos intermedios y no aparecen en la lista comercial.
+- La interfaz usa “Perfil de cannabinoides” y deja de agregar “Full spectrum” al dato visible.
+- Requiere ejecutar `Rainbows_V3.25.1_catalogo_central_productos.sql` en Supabase después de V3.25.0.
 
 ## V3.25.0 — Perfiles full spectrum y aceites base
 
-- Las resinas incorporan perfil cannabinoide predominante, proporción estimada y la identificación Full spectrum, además de producto, genética y lote.
+- Las resinas incorporan perfil de cannabinoides y proporción estimada, además de producto, genética y lote.
 - La extracción exige registrar ese perfil y lo conserva en el stock resultante.
 - Preparar aceite base utiliza exactamente una resina en gramos y un aceite del stock de Insumos expresado en mililitros.
 - La concentración se calcula automáticamente: por ejemplo, 1 g de resina y 9 ml de aceite producen teóricamente 10 ml a 1:10.
