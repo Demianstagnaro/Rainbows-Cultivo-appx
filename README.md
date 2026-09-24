@@ -9,7 +9,17 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.24.8. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.0. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.0 — Perfiles full spectrum y aceites base
+
+- Las resinas incorporan perfil cannabinoide predominante, proporción estimada y la identificación Full spectrum, además de producto, genética y lote.
+- La extracción exige registrar ese perfil y lo conserva en el stock resultante.
+- Preparar aceite base utiliza exactamente una resina en gramos y un aceite del stock de Insumos expresado en mililitros.
+- La concentración se calcula automáticamente: por ejemplo, 1 g de resina y 9 ml de aceite producen teóricamente 10 ml a 1:10.
+- Al finalizar se descuentan ambos insumos y se crea un lote `AB-…` de aceite base a granel con base, perfil, concentración y trazabilidad hasta la resina original.
+- Los aceites base quedan fuera de Administración y de la Lista de precios porque son productos intermedios, no dispensables.
+- Requiere ejecutar `Rainbows_V3.25.0_perfiles_y_aceites_base.sql` en Supabase después de la migración V3.24.8.
 
 ## V3.24.8 — Producción de resina estandarizada
 
