@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.24.6. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.24.7. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.24.7 — Detalle del stock de resina
+
+- Resina muestra las columnas Producto, Genética, Lote y Disponible; la cantidad queda expresada siempre en gramos.
+- Producto se elige entre Rosin y Resina BHO.
+- Al agregar o editar una resina se pueden completar y modificar producto, genética, lote y disponible.
+- Requiere ejecutar `Rainbows_V3.24.7_detalle_stock_resina.sql` en Supabase después de la migración V3.24.6.
 
 ## V3.24.6 — Precio general de resina
 
