@@ -8,7 +8,7 @@ const sql=read('Rainbows_V3.24.6_precio_resina_general.sql');
 
 test('la lista muestra una sola Resina con precio general por gramo',()=>{
   assert.match(app,/const resin=\{type:'resina',[\s\S]*?name:'Resina',unit:'g'/);
-  assert.match(app,/i\.categoria!=='resina'&&medranoLabOrderTypes\.has\(i\.categoria\)/);
+  assert.match(app,/i\.categoria!=='resina'&&!i\.es_aceite_base&&medranoLabOrderTypes\.has\(i\.categoria\)/);
   assert.match(app,/return \[\.\.\.flowers,resin,\.\.\.lab,\.\.\.counter\]/);
 });
 

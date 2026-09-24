@@ -10,14 +10,14 @@ const sql=read('Rainbows_V3.24.8_produccion_resina.sql');
 test('Extracción ofrece únicamente Rosin y Resina BHO como resultado',()=>{
   assert.match(app,/if\(type==='resina'\)[\s\S]*?\['Rosin','Resina BHO'\]\.map/);
   assert.match(app,/const name=type==='resina'\?output/);
-  assert.match(app,/p_producto_id:type==='resina'\?null/);
+  assert.match(app,/p_producto_id:\['resina','aceite_base'\]\.includes\(type\)\?null/);
   assert.doesNotMatch(html,/placeholder="Ej\.: Resina MC"/);
 });
 
 test('el resultado de Resina queda fijo en gramos',()=>{
   assert.match(html,/id="lab-production-unit-field"/);
   assert.match(app,/\$\('lab-production-unit-field'\)\.hidden=true/);
-  assert.match(app,/const name=type==='resina'\?output:item\?\.nombre\|\|\$\('lab-production-name'\)\.value\.trim\(\),unit=type==='resina'\?'g'/);
+  assert.match(app,/const name=type==='resina'\?output:type==='aceite_base'\?draft\?\.name\|\|''[\s\S]*?unit=type==='resina'\?'g':type==='aceite_base'\?'ml'/);
   assert.match(sql,/if p_tipo='resina'[\s\S]*?p_unidad:='g'/i);
 });
 

@@ -21,7 +21,7 @@ test('las flores se agrupan por tamaño y no por genética',()=>{
 });
 
 test('la lista reúne productos de Laboratorio y Mostrador',()=>{
-  assert.match(app,/state\.medranoLabItems\.filter\(i=>i\.categoria!=='resina'&&medranoLabOrderTypes\.has\(i\.categoria\)\)/);
+  assert.match(app,/state\.medranoLabItems\.filter\(i=>i\.categoria!=='resina'&&!i\.es_aceite_base&&medranoLabOrderTypes\.has\(i\.categoria\)\)/);
   assert.match(app,/const counter=state\.medranoCounterItems\.map/);
   assert.match(app,/Categoría[\s\S]*?Producto[\s\S]*?Tokens por unidad[\s\S]*?Equivalente/);
 });

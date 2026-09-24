@@ -18,7 +18,7 @@ test('agregar y editar Resina comparten todos los campos',()=>{
   assert.match(html,/id="lab-item-resin-genetic"/);
   assert.match(html,/id="lab-item-resin-lot"/);
   assert.match(app,/\$\('lab-item-resin-product'\)\.value=\['Rosin','Resina BHO'\]/);
-  assert.match(app,/p_genetica_id:geneticId,p_lote:lot,p_cantidad:quantity/);
+  assert.match(app,/p_genetica_id:geneticId,p_lote:lot,p_perfil_cannabinoide:profile,p_proporcion_cannabinoides:ratio,p_cantidad:quantity/);
   assert.match(app,/\$\('lab-item-unit-field'\)\.hidden=resin/);
 });
 
