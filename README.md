@@ -9,7 +9,13 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.3. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.4. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.4 — Enmienda Orgánica completa
+- El título visible cambia de “Enmienda completa” a “Enmienda Orgánica”.
+- La información de Floración se sincroniza con la planilla actualizada, incluidas las dosis semanales de FPJ, FFJ y FRJ.
+- Se incorporan las tablas de Veges y Madres con sus etapas y dosis específicas.
+- Cada tabla adapta sus columnas y su ancho a la sala correspondiente, también en pantallas chicas.
 
 ## V3.25.3 — Historial de producción legible
 

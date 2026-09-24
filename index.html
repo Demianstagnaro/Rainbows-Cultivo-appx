@@ -6,15 +6,15 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://fplbxirsbwruazvygciu.supabase.co wss://fplbxirsbwruazvygciu.supabase.co; worker-src 'self'; manifest-src 'self'; upgrade-insecure-requests">
   <title>rainbows</title>
   <meta name="theme-color" content="#111827">
-  <link rel="manifest" href="manifest.json?v=3.25.3">
-  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3.25.3">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.25.3">
-  <link rel="stylesheet" href="styles.css?v=3.25.3">
+  <link rel="manifest" href="manifest.json?v=3.25.4">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png?v=3.25.4">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png?v=3.25.4">
+  <link rel="stylesheet" href="styles.css?v=3.25.4">
 </head>
 <body>
   <section id="auth-screen" class="auth-screen">
     <div class="auth-card">
-      <div class="auth-logo-wrap"><img src="rainbows-logo.webp?v=3.25.3" class="rainbows-logo auth-logo" alt="rainbows"></div>
+      <div class="auth-logo-wrap"><img src="rainbows-logo.webp?v=3.25.4" class="rainbows-logo auth-logo" alt="rainbows"></div>
       <h1>Acceso compartido</h1>
       <p class="muted">Ingresá con correo y contraseña.</p>
       <label class="field-label" hidden>Nombre<input id="auth-name" class="text-input" autocomplete="name"></label>
@@ -30,7 +30,7 @@
   <dialog id="reset-password-dialog" class="dialog"><form method="dialog"><h3>Crear contraseña nueva</h3><p class="muted">Ingresá una contraseña de al menos 6 caracteres.</p><label class="field-label">Contraseña nueva<input id="reset-password" class="text-input" type="password" minlength="6" autocomplete="new-password"></label><label class="field-label">Repetir contraseña<input id="reset-password-confirm" class="text-input" type="password" minlength="6" autocomplete="new-password"></label><p id="reset-password-message" class="auth-message" aria-live="polite"></p><menu><button type="button" id="save-reset-password" class="primary">Guardar contraseña</button></menu></form></dialog>
 
   <div id="app-shell" hidden>
-    <header class="topbar"><div class="header-copy"><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><div class="app-brand"><img src="rainbows-logo.webp?v=3.25.3" class="rainbows-logo header-logo" alt="rainbows"><span id="brand-section-label" class="cultivo-prefix">Cultivo</span></div><div class="header-actions"><div class="header-main-actions"><button id="header-config" class="secondary compact-button" hidden>Config</button><button id="header-help" class="secondary compact-button">Ayuda</button><button id="sign-out" class="secondary compact-button">Salir</button></div><div class="site-switch" aria-label="Seleccionar sede"><button id="site-palestina" class="site-button active" type="button">Palestina</button><button id="site-medrano" class="site-button" type="button">Medrano</button></div></div></header>
+    <header class="topbar"><div class="header-copy"><h1 id="screen-title">Hoy</h1><p id="today-label" class="muted"></p></div><div class="app-brand"><img src="rainbows-logo.webp?v=3.25.4" class="rainbows-logo header-logo" alt="rainbows"><span id="brand-section-label" class="cultivo-prefix">Cultivo</span></div><div class="header-actions"><div class="header-main-actions"><button id="header-config" class="secondary compact-button" hidden>Config</button><button id="header-help" class="secondary compact-button">Ayuda</button><button id="sign-out" class="secondary compact-button">Salir</button></div><div class="site-switch" aria-label="Seleccionar sede"><button id="site-palestina" class="site-button active" type="button">Palestina</button><button id="site-medrano" class="site-button" type="button">Medrano</button></div></div></header>
     <nav class="top-nav"><button data-view="today" class="active">Hoy</button><button data-view="calendar">Calendario</button><button data-view="cultivo-info">Info cultivo</button><button data-view="harvests">Cosechas</button><button data-view="stock">Stock Palestina</button></nav>
     <main id="app"><div class="panel">Cargando…</div></main>
     <button id="voice-button" class="voice-button" type="button" aria-label="Usar comandos de voz" title="Comandos de voz">🎙️</button>
@@ -135,7 +135,7 @@
   <dialog id="medrano-catalog-dialog" class="dialog"><form method="dialog"><h3>Agregar producto a la Lista de precios</h3><label class="field-label">Categoría<select id="medrano-catalog-category" class="text-input"><option value="aceites">Aceites</option><option value="cremas">Cremas</option><option value="capsulas">Cápsulas</option><option value="mostrador">Mostrador</option></select></label><label class="field-label">Producto<input id="medrano-catalog-name" class="text-input" maxlength="180"></label><label class="field-label">Unidad<select id="medrano-catalog-unit" class="text-input"><option value="g">g</option><option value="ml">ml</option><option value="unidades">Unidades</option></select></label><label class="field-label">Tokens por unidad<input id="medrano-catalog-tokens" class="text-input" type="number" min="0" step="0.01" value="0"></label><p class="muted">Esto habilita el producto en su stock correspondiente, pero no crea stock físico hasta que se ingrese o produzca una cantidad.</p><menu><button id="cancel-medrano-catalog" type="button" class="secondary">Cancelar</button><button id="save-medrano-catalog" type="button" class="primary">Guardar producto</button></menu></form></dialog>
   <dialog id="lab-production-finish-dialog" class="dialog"><form method="dialog"><h3>Finalizar producción</h3><p id="lab-production-finish-summary"></p><label class="field-label">Rendimiento real<input id="lab-production-return" class="text-input" type="number" min="0.01" step="0.01" required inputmode="decimal"></label><p class="muted">Al confirmar, el stock se actualiza inmediatamente.</p><menu><button id="lab-production-finish-cancel" type="button" class="secondary">Cancelar</button><button id="lab-production-finish-confirm" type="button" class="primary">Confirmar producción</button></menu></form></dialog>
 
-  <script defer src="rainbows-overrides.js?v=3.25.3"></script>
-  <script type="module" src="app.js?v=3.25.3"></script>
+  <script defer src="rainbows-overrides.js?v=3.25.4"></script>
+  <script type="module" src="app.js?v=3.25.4"></script>
 </body>
 </html>
