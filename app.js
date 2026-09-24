@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.24.5';
+const APP_VERSION='3.24.6';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Vege 1',type:'vege'},{name:'Vege 2',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],medranoCounterItems:[],medranoPatients:[],medranoFlowerPrices:[],editMedranoPatient:null,medranoOrders:[],medranoDispensedOrders:[],medranoDeletedOrders:[],editMedranoOrder:null,pendingDeleteMedranoOrder:null,medranoOrderHistoryYear:null,medranoOrderHistoryMonth:null,stockTransfers:[],stockTransferItems:[],pendingStockTransfer:null,medranoDispensarioSection:null,medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,dayChangeTimer:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
+const state={site:'palestina',medranoView:'stock',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],medranoCounterItems:[],medranoPatients:[],medranoFlowerPrices:[],medranoCategoryPrices:[],editMedranoPatient:null,medranoOrders:[],medranoDispensedOrders:[],medranoDeletedOrders:[],editMedranoOrder:null,pendingDeleteMedranoOrder:null,medranoOrderHistoryYear:null,medranoOrderHistoryMonth:null,stockTransfers:[],stockTransferItems:[],pendingStockTransfer:null,medranoDispensarioSection:null,medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,dayChangeTimer:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
 state.site=localStorage.getItem('rainbows_site')==='medrano'?'medrano':'palestina';
 Object.assign(state,{medranoLabItems:[],medranoLabTransfers:[],medranoStockHistory:[],medranoStockReady:false,medranoLoadIssues:[],editLabItem:null});
 Object.assign(state,{medranoDispensaryProducts:[],medranoLabDispMovements:[],medranoDispensaryTransfersReady:false});
@@ -304,7 +304,8 @@ async function load(){
     loadMedranoStockTable('medrano_laboratorio_trabajos_materiales'),
     loadMedranoStockTable('medrano_caja_movimientos'),
     loadMedranoStockTable('medrano_tokens_movimientos'),
-    loadMedranoStockTable('medrano_precios_flores')
+    loadMedranoStockTable('medrano_precios_flores'),
+    loadMedranoStockTable('medrano_precios_categorias')
   ]);
   for(const q of qs)if(q.error)throw q.error;
   [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.medranoDispensarioLots,state.medranoCounterItems,state.medranoPatients,state.medranoOrders,state.stockTransfers,state.stockTransferItems,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,20).map(q=>q.data||[]);
@@ -335,7 +336,8 @@ async function load(){
   state.medranoTokenMovements=qs[33].data||[];
   state.medranoCajaReady=![qs[32],qs[33]].some(q=>q.missing);
   state.medranoFlowerPrices=qs[34].data||[];
-  state.medranoPriceListReady=state.medranoCajaReady&&!qs[34].missing;
+  state.medranoCategoryPrices=qs[35].data||[];
+  state.medranoPriceListReady=state.medranoCajaReady&&![qs[34],qs[35]].some(q=>q.missing);
   state.medranoLoadIssues=qs.slice(22).flatMap(q=>q.issue?[q.issue]:[]);
   if(state.medranoMultiReady){
     const orders=state.medranoMultiOrders.map(medranoMultiOrderView);
@@ -1518,7 +1520,7 @@ function medranoCatalog(tipo,editing=null){
   const include=id=>editing?.items.some(i=>i.tipo===tipo&&i.origen_id===id);
   if(tipo==='flores')return state.medranoDispensarioLots.map(x=>{const genetic=state.geneticas.find(g=>String(g.id)===String(x.genetica_id));return{id:x.id,name:`${genetic?.nombre||medranoLotGeneticName(x)} · ${x.codigo_lote} · ${stockLotSizes[x.tamano]||'Sin tamaño'}`,qty:Number(x.gramos_actual),unit:'g',tokens:medranoFlowerTokenPrice(x.tamano)}});
   if(tipo==='mostrador')return state.medranoCounterItems.filter(x=>x.activo!==false||include(x.id)).map(x=>({id:x.id,name:x.nombre,qty:Number(x.cantidad),unit:'unidades',tokens:Number(x.tokens_por_unidad)||0}));
-  return state.medranoLabItems.filter(x=>x.categoria===tipo&&(x.activo||include(x.id))).map(x=>({id:x.id,name:x.nombre,qty:Number(x.cantidad),unit:x.unidad,tokens:Number(x.tokens_por_unidad)||0}));
+  return state.medranoLabItems.filter(x=>x.categoria===tipo&&(x.activo||include(x.id))).map(x=>({id:x.id,name:x.nombre,qty:Number(x.cantidad),unit:x.unidad,tokens:tipo==='resina'?medranoCategoryTokenPrice('resina'):Number(x.tokens_por_unidad)||0}));
 }
 function updateMedranoMultiProduct(row){
   const tipo=row.querySelector('[data-order-type]').value,product=row.querySelector('[data-order-product]');
@@ -1886,11 +1888,14 @@ function renderMedranoDispensaryHistory(medranoNav,bindModuleNav){
 }
 
 function medranoFlowerTokenPrice(size){return Number(state.medranoFlowerPrices.find(row=>row.tamano===size)?.tokens_por_gramo)||0}
+function medranoCategoryTokenPrice(category){return Number(state.medranoCategoryPrices.find(row=>row.categoria===category)?.tokens_por_unidad)||0}
 function medranoTokenPriceRows(){
   const flowers=Object.entries(stockLotSizes).map(([size,label])=>{const row=state.medranoFlowerPrices.find(item=>item.tamano===size);return{type:'flores',id:row?.id||'',size,category:'Flores',name:`Flores ${label}`,unit:'g',tokens:Number(row?.tokens_por_gramo)||0,active:true}});
-  const lab=state.medranoLabItems.filter(i=>medranoLabOrderTypes.has(i.categoria)).map(i=>({type:i.categoria,id:i.id,category:medranoOrderCategories[i.categoria],name:i.nombre,unit:i.unidad,tokens:Number(i.tokens_por_unidad)||0,active:i.activo!==false}));
+  const resinRow=state.medranoCategoryPrices.find(item=>item.categoria==='resina');
+  const resin={type:'resina',id:resinRow?.id||'',category:'Resina',name:'Resina',unit:'g',tokens:Number(resinRow?.tokens_por_unidad)||0,active:true};
+  const lab=state.medranoLabItems.filter(i=>i.categoria!=='resina'&&medranoLabOrderTypes.has(i.categoria)).map(i=>({type:i.categoria,id:i.id,category:medranoOrderCategories[i.categoria],name:i.nombre,unit:i.unidad,tokens:Number(i.tokens_por_unidad)||0,active:i.activo!==false}));
   const counter=state.medranoCounterItems.map(i=>({type:'mostrador',id:i.id,category:'Mostrador',name:i.nombre,unit:'unidad',tokens:Number(i.tokens_por_unidad)||0,active:i.activo!==false}));
-  return [...flowers,...lab,...counter].sort((a,b)=>a.category.localeCompare(b.category,'es')||a.name.localeCompare(b.name,'es'));
+  return [...flowers,resin,...lab,...counter].sort((a,b)=>a.category.localeCompare(b.category,'es')||a.name.localeCompare(b.name,'es'));
 }
 function medranoCashBalance(medium){return state.medranoCajaMovements.filter(m=>m.medio===medium).reduce((sum,m)=>sum+(m.tipo==='ingreso'?1:-1)*Number(m.monto||0),0)}
 function openMedranoCashDialog(){
@@ -1920,6 +1925,8 @@ async function saveMedranoTokenPrice(button){
   if(q.error)throw q.error;
   if(button.dataset.tokenType==='flores'){
     const row=state.medranoFlowerPrices.find(item=>item.tamano===button.dataset.tokenSize);if(row)row.tokens_por_gramo=tokens;else state.medranoFlowerPrices.push({tamano:button.dataset.tokenSize,tokens_por_gramo:tokens});
+  }else if(button.dataset.tokenType==='resina'){
+    const row=state.medranoCategoryPrices.find(item=>item.categoria==='resina');if(row)row.tokens_por_unidad=tokens;else state.medranoCategoryPrices.push({categoria:'resina',tokens_por_unidad:tokens});
   }else{
     const rows=button.dataset.tokenType==='mostrador'?state.medranoCounterItems:state.medranoLabItems;
     const row=rows.find(item=>String(item.id)===String(button.dataset.tokenId));if(row)row.tokens_por_unidad=tokens;
@@ -1930,9 +1937,9 @@ async function saveMedranoTokenPrice(button){
 }
 function renderMedranoPriceList(medranoNav,bindModuleNav){
   $('screen-title').textContent='Lista de precios';
-  if(!state.medranoPriceListReady){app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-prices-back" class="secondary compact-button" type="button">← Administración</button><h2>Lista de precios</h2></div></section><section class="panel error-panel"><strong>Falta activar la lista de precios.</strong><p>Aplicá la migración V3.24.5 en Supabase y luego tocá Reintentar.</p><button id="medrano-retry-load" class="primary compact-button" type="button">Reintentar</button></section>`;bindModuleNav();$('medrano-prices-back').onclick=()=>{state.medranoView='administracion';render()};bindMedranoLoadRetry();return}
+  if(!state.medranoPriceListReady){app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-prices-back" class="secondary compact-button" type="button">← Administración</button><h2>Lista de precios</h2></div></section><section class="panel error-panel"><strong>Falta actualizar la lista de precios.</strong><p>Aplicá la migración V3.24.6 en Supabase y luego tocá Reintentar.</p><button id="medrano-retry-load" class="primary compact-button" type="button">Reintentar</button></section>`;bindModuleNav();$('medrano-prices-back').onclick=()=>{state.medranoView='administracion';render()};bindMedranoLoadRetry();return}
   const prices=medranoTokenPriceRows();
-  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-prices-back" class="secondary compact-button" type="button">← Administración</button><h2>Lista de precios</h2><p class="muted">1 Token = $1.000 · Las flores comparten precio por tamaño, sin diferencias entre genéticas.</p></div></section>
+  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-prices-back" class="secondary compact-button" type="button">← Administración</button><h2>Lista de precios</h2><p class="muted">1 Token = $1.000 · Flores y resina tienen valores generales, sin diferencias entre genéticas.</p></div></section>
   <section class="panel stock-detail-panel" data-stock-table-tools>${stockTableToolbar('Buscar por categoría, producto o unidad...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Categoría</th><th data-sort-type="text">Producto</th><th data-sort-type="text">Unidad</th><th data-sort-type="number">Tokens por unidad</th><th data-sort-type="number">Equivalente</th><th>Estado</th><th></th></tr></thead><tbody>${prices.length?prices.map(p=>`<tr><td>${escapeHtml(p.category)}</td><td><strong>${escapeHtml(p.name)}</strong></td><td>${escapeHtml(p.unit)}</td><td data-sort-value="${p.tokens}"><input class="text-input token-price-input" data-token-price type="number" min="0" step="0.01" value="${p.tokens}"></td><td data-token-money data-sort-value="${p.tokens*1000}">${formatMoney(p.tokens*1000)}</td><td>${p.active?'Activo':'Inactivo'}</td><td><button class="secondary compact-button" type="button" data-save-token-price data-token-type="${escapeHtml(p.type)}" data-token-id="${escapeHtml(p.id)}" data-token-size="${escapeHtml(p.size||'')}">Guardar</button></td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="7">No hay productos cargados.</td></tr>'}</tbody></table></div></section>`;
   bindModuleNav();bindStockTableTools(app);$('medrano-prices-back').onclick=()=>{state.medranoView='administracion';render()};
   app.querySelectorAll('[data-save-token-price]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await saveMedranoTokenPrice(b)}catch(e){alert(e.message||'No se pudo guardar el valor.')}finally{b.disabled=false}});

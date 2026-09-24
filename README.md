@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.24.5. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.24.6. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.24.6 — Precio general de resina
+
+- La Lista de precios muestra una sola fila Resina, con un precio general por gramo para todas las genéticas y partidas.
+- Al crear una comanda, cualquier resina toma automáticamente ese valor central.
+- Los cambios recalculan todas las resinas de comandas pendientes que todavía no estén pagadas; las comandas pagadas conservan su valor histórico.
+- Requiere ejecutar `Rainbows_V3.24.6_precio_resina_general.sql` en Supabase después de la migración V3.24.5.
 
 ## V3.24.5 — Lista de precios de Medrano
 
