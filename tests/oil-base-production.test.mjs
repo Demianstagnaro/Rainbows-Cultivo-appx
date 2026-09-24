@@ -3,22 +3,23 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const read=name=>fs.readFileSync(new URL(`../${name}`,import.meta.url),'utf8');
-const app=read('app.js'),html=read('index.html'),sql=read('Rainbows_V3.25.0_perfiles_y_aceites_base.sql'),catalogSql=read('Rainbows_V3.25.1_catalogo_central_productos.sql');
+const app=read('app.js'),html=read('index.html'),sql=read('Rainbows_V3.25.0_perfiles_y_aceites_base.sql'),mixSql=read('Rainbows_V3.25.2_mezclas_aceites.sql'),catalogSql=read('Rainbows_V3.25.1_catalogo_central_productos.sql');
 
-test('Preparar aceite base calcula la concentración desde resina y aceite',()=>{
-  assert.match(html,/value="aceite_base">Preparar aceite base/);
-  assert.match(app,/const concentration=\(resin\.cantidad\+carrier\.cantidad\)\/resin\.cantidad/);
-  assert.match(app,/g de resina \+ [\s\S]*?ml de aceite[\s\S]*?Concentración 1:/);
+test('la producción se llama Aceite y calcula concentración por resina equivalente',()=>{
+  assert.match(html,/value="aceite_base">Aceite<\/option>/);
+  assert.doesNotMatch(html,/Preparar aceite base|>Aceite base</);
+  assert.match(app,/const equivalent=material\.cantidad\/Number\(item\.concentracion_denominador\)/);
+  assert.match(app,/concentration=totalVolume\/resinEquivalent/);
+  assert.match(app,/Resina equivalente[\s\S]*?Concentración 1:/);
   assert.match(app,/type==='aceite_base'\?'ml'/);
 });
 
-test('aceite base exige una resina en gramos y un aceite en mililitros',()=>{
-  assert.match(app,/type!=='aceite_base'\|\|category!=='insumos'\|\|i\.unidad==='ml'/);
-  assert.match(app,/materials\.length!==2/);
-  assert.match(app,/fullSpectrumProfiles\.includes\(resinItem\.perfil_cannabinoide\)/);
-  assert.match(sql,/v_count<>2 or v_resina<>1 or v_insumos<>1/i);
-  assert.match(sql,/v_resina_stock\.unidad<>'g' or v_base_stock\.unidad<>'ml'/i);
-  assert.match(sql,/Primero completá el perfil predominante de la resina/i);
+test('Aceite admite resina, aceite preparado y aceite puro',()=>{
+  assert.match(html,/id="lab-production-add-resin"[\s\S]*?id="lab-production-add-prepared-oil"[\s\S]*?id="lab-production-add-pure-oil"/);
+  assert.match(app,/category==='aceites'&&i\.unidad==='ml'&&i\.es_aceite_base/);
+  assert.match(mixSql,/v_stock\.categoria not in \('flores','resina','insumos','aceites'\)/i);
+  assert.match(mixSql,/v_cantidad\/v_stock\.concentracion_denominador/i);
+  assert.match(mixSql,/v_count<2 or v_fuentes<1 or v_flores<>0/i);
 });
 
 test('finalizar crea un lote trazable a granel y descuenta los insumos',()=>{
