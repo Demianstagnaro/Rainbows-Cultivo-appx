@@ -9,7 +9,12 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.2. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.3. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.3 — Historial de producción legible
+
+- El historial conserva internamente el identificador de cada producción, pero deja de mostrar el UUID técnico.
+- Los movimientos se muestran como “Producción laboratorio · resultado” o “Producción laboratorio · consumo”.
 
 ## V3.25.2 — Mezclas y reformulación de aceites
 
