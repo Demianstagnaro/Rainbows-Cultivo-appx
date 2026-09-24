@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.24.7';
+const APP_VERSION='3.24.8';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1998,8 +1998,18 @@ function labProductionMaterialRow(category,id='',quantity=''){
   const options=(state.medranoLabItems||[]).filter(i=>i.categoria===category&&(i.activo||i.id===id));
   return `<div class="lab-production-material" data-category="${category}"><label class="field-label">${escapeHtml(medranoLabCategoryName(category))}<select class="text-input lab-material-id"><option value="">Elegí un producto</option>${options.map(i=>`<option value="${escapeHtml(i.id)}" ${i.id===id?'selected':''}>${escapeHtml(i.nombre)}${i.lote?` · ${escapeHtml(i.lote)}`:''} (${Number(i.cantidad).toLocaleString('es-AR')} ${escapeHtml(i.unidad)})</option>`).join('')}</select></label><label class="field-label">Cantidad que se va a usar<input class="text-input lab-material-quantity" type="number" min="0.01" step="0.01" inputmode="decimal" value="${escapeHtml(quantity)}"></label>${category==='insumos'?'<button class="secondary compact-button lab-material-remove" type="button">Quitar insumo</button>':''}</div>`;
 }
-function labProductionOutputOptions(selected=''){
-  const category=medranoProductionCategory[$('lab-production-type').value];
+function labProductionOutputOptions(selected='',selectedName=''){
+  const type=$('lab-production-type').value,category=medranoProductionCategory[type];
+  if(type==='resina'){
+    $('lab-production-output').innerHTML='<option value="">Seleccionar producto</option>'+['Rosin','Resina BHO'].map(name=>`<option value="${name}" ${name===selectedName?'selected':''}>${name}</option>`).join('');
+    $('lab-production-name-field').hidden=true;
+    $('lab-production-unit-field').hidden=true;
+    $('lab-production-unit').value='g';
+    $('lab-production-unit').disabled=true;
+    $('lab-production-output').onchange=null;
+    return;
+  }
+  $('lab-production-unit-field').hidden=false;
   $('lab-production-output').innerHTML=`<option value="">Nuevo producto</option>${(state.medranoLabItems||[]).filter(i=>i.categoria===category&&(i.activo||i.id===selected)).map(i=>`<option value="${escapeHtml(i.id)}" ${i.id===selected?'selected':''}>${escapeHtml(i.nombre)} (${escapeHtml(i.unidad)})</option>`).join('')}`;
   $('lab-production-output').onchange=()=>{
     const item=(state.medranoLabItems||[]).find(i=>i.id===$('lab-production-output').value);
@@ -2017,7 +2027,7 @@ function labProductionMaterialDefaults(job=null){
   $('lab-production-add-material').hidden=type==='resina';
   $('lab-production-materials').querySelectorAll('.lab-material-remove').forEach(b=>b.onclick=()=>b.closest('.lab-production-material').remove());
   $('lab-production-materials').querySelectorAll('.lab-material-id').forEach(input=>input.onchange=()=>{
-    if(type==='resina'&&!job&&!$('lab-production-output').value){const item=(state.medranoLabItems||[]).find(i=>i.id===input.value);if(item)$('lab-production-name').value=`Resina ${item.nombre.split(' · ')[0]}`.slice(0,180)}
+    if(type==='resina'&&!job)$('lab-production-output').value='';
   });
 }
 function openLabProduction(job=null){
@@ -2029,17 +2039,17 @@ function openLabProduction(job=null){
   $('lab-production-name').value=job?.resultado_stock_id?'':job?.producto||'';
   $('lab-production-unit').value=job?.resultado_unidad||({resina:'g',aceite_base:'ml',crema:'g',capsulas:'unidades'}[$('lab-production-type').value]);
   $('lab-production-detail').value=job?.detalle||'';
-  labProductionOutputOptions(job?.resultado_stock_id||'');
+  labProductionOutputOptions(job?.resultado_stock_id||'',job?.producto||'');
   $('lab-production-dialog').showModal();
 }
 async function saveLabProduction(){
   const type=$('lab-production-type').value,output=$('lab-production-output').value;
-  const item=(state.medranoLabItems||[]).find(i=>i.id===output);
-  const name=item?.nombre||$('lab-production-name').value.trim(),unit=item?.unidad||$('lab-production-unit').value;
+  const item=type==='resina'?null:(state.medranoLabItems||[]).find(i=>i.id===output);
+  const name=type==='resina'?output:item?.nombre||$('lab-production-name').value.trim(),unit=type==='resina'?'g':item?.unidad||$('lab-production-unit').value;
   const materials=[...$('lab-production-materials').querySelectorAll('.lab-production-material')].map(row=>({id:row.querySelector('.lab-material-id').value,cantidad:Number(row.querySelector('.lab-material-quantity').value),raw:row.querySelector('.lab-material-quantity').value,category:row.dataset.category}));
   if(!medranoProductionCategory[type]||!name||name.length>180||!materials.length||new Set(materials.map(m=>m.id)).size!==materials.length||materials.some(m=>!m.id||!m.raw||!Number.isFinite(m.cantidad)||m.cantidad<=0)||$('lab-production-detail').value.length>2000)throw new Error('Revisá el producto obtenido y las cantidades de materias primas.');
   if(type==='resina'&&(materials.length!==1||materials[0].category!=='flores')||type!=='resina'&&(!materials.some(m=>m.category==='resina')||type==='aceite_base'&&!materials.some(m=>m.category==='insumos')))throw new Error('Elegí las materias primas necesarias para este trabajo.');
-  const q=await db.rpc('guardar_produccion_laboratorio',{p_id:state.editMedranoLabJob?.id||null,p_tipo:type,p_insumos:materials.map(({id,cantidad})=>({id,cantidad})),p_producto:name,p_producto_id:output||null,p_unidad:unit,p_detalle:$('lab-production-detail').value.trim()});
+  const q=await db.rpc('guardar_produccion_laboratorio',{p_id:state.editMedranoLabJob?.id||null,p_tipo:type,p_insumos:materials.map(({id,cantidad})=>({id,cantidad})),p_producto:name,p_producto_id:type==='resina'?null:output||null,p_unidad:unit,p_detalle:$('lab-production-detail').value.trim()});
   if(q.error)throw q.error;
   closeDialog('lab-production-dialog');state.editMedranoLabJob=null;await refresh();
 }
