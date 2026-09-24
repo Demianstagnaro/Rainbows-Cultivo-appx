@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const read=name=>fs.readFileSync(new URL(`../${name}`,import.meta.url),'utf8');
-const app=read('app.js'),html=read('index.html'),sql=read('Rainbows_V3.25.0_perfiles_y_aceites_base.sql');
+const app=read('app.js'),html=read('index.html'),sql=read('Rainbows_V3.25.0_perfiles_y_aceites_base.sql'),catalogSql=read('Rainbows_V3.25.1_catalogo_central_productos.sql');
 
 test('Preparar aceite base calcula la concentración desde resina y aceite',()=>{
   assert.match(html,/value="aceite_base">Preparar aceite base/);
@@ -26,10 +26,10 @@ test('finalizar crea un lote trazable a granel y descuenta los insumos',()=>{
   assert.match(sql,/'AB-'\|\|upper\(substr\(replace\(v_destino::text/i);
   assert.match(sql,/base_aceite,concentracion_denominador,es_aceite_base,cantidad,unidad/i);
   assert.match(sql,/update public\.medrano_laboratorio_stock set cantidad=cantidad-v_material\.cantidad/i);
-  assert.match(app,/category\.key==='aceites'\?[\s\S]*?Base[\s\S]*?Perfil predominante[\s\S]*?Concentración[\s\S]*?Disponible/);
+  assert.match(app,/category\.key==='aceites'\?[\s\S]*?Base[\s\S]*?Perfil de cannabinoides[\s\S]*?Concentración[\s\S]*?Disponible/);
 });
 
 test('los aceites base no se ofrecen para precio ni dispensa',()=>{
   assert.match(app,/!x\.es_aceite_base\|\|include\(x\.id\)/);
-  assert.match(app,/!i\.es_aceite_base&&medranoLabOrderTypes\.has/);
+  assert.match(catalogSql,/not coalesce\(s\.es_aceite_base,false\)/i);
 });

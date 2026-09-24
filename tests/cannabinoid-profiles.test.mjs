@@ -5,12 +5,14 @@ import test from 'node:test';
 const read=name=>fs.readFileSync(new URL(`../${name}`,import.meta.url),'utf8');
 const app=read('app.js'),html=read('index.html'),sql=read('Rainbows_V3.25.0_perfiles_y_aceites_base.sql');
 
-test('Resina registra perfil predominante full spectrum y proporción estimada',()=>{
+test('Resina registra perfil de cannabinoides y proporción estimada',()=>{
   assert.match(html,/id="lab-item-resin-profile"[\s\S]*?THC-CBD-CBN/);
   assert.match(html,/id="lab-item-resin-ratio"/);
   assert.match(app,/const fullSpectrumProfiles=\['THC','CBD','CBN'/);
   assert.match(app,/function medranoCannabinoidProfile\(item\)/);
-  assert.match(app,/Perfil predominante[\s\S]*?Genética[\s\S]*?Lote[\s\S]*?Disponible/);
+  assert.match(app,/Perfil de cannabinoides[\s\S]*?Genética[\s\S]*?Lote[\s\S]*?Disponible/);
+  assert.doesNotMatch(html,/Full spectrum/i);
+  assert.doesNotMatch(app,/· Full spectrum/);
 });
 
 test('la extracción exige el perfil y lo envía protegido a Supabase',()=>{

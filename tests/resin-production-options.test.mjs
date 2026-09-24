@@ -8,7 +8,8 @@ const html=read('index.html');
 const sql=read('Rainbows_V3.24.8_produccion_resina.sql');
 
 test('Extracción ofrece únicamente Rosin y Resina BHO como resultado',()=>{
-  assert.match(app,/if\(type==='resina'\)[\s\S]*?\['Rosin','Resina BHO'\]\.map/);
+  assert.match(app,/if\(type==='resina'\)[\s\S]*?state\.medranoProductCatalog\.filter\(product=>product\.categoria==='resina'/);
+  assert.match(sql,/p_producto not in \('Rosin','Resina BHO'\)/i);
   assert.match(app,/const name=type==='resina'\?output/);
   assert.match(app,/p_producto_id:\['resina','aceite_base'\]\.includes\(type\)\?null/);
   assert.doesNotMatch(html,/placeholder="Ej\.: Resina MC"/);
