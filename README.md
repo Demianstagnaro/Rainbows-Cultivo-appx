@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.1. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.2. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.2 — Mezclas y reformulación de aceites
+
+- La producción “Aceite base” pasa a llamarse “Aceite”.
+- Un aceite puede elaborarse con resina y aceite puro, o reformularse con aceites ya preparados, aceite puro y otros aceites cannabinoides.
+- La nueva concentración se calcula con la resina equivalente de cada aceite preparado.
+- Los perfiles y proporciones cannabinoides se combinan según el aporte equivalente de cada componente.
+- Cada componente queda registrado y se descuenta de su lote al finalizar la producción.
+- Requiere ejecutar `Rainbows_V3.25.2_mezclas_aceites.sql` después de V3.25.1.
 
 ## V3.25.1 — Catálogo central de productos
 
