@@ -9,29 +9,32 @@ const manifest=JSON.parse(read('manifest.json'));
 const overrides=read('rainbows-overrides.js');
 const sw=read('sw.js');
 
-test('todos los componentes declaran la versión 3.25.5',()=>{
-  assert.match(app,/const APP_VERSION='3\.25\.5'/);
-  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.25\.5'/);
-  assert.match(sw,/const VERSION='3\.25\.5'/);
-  assert.equal(manifest.start_url,'./?v=3.25.5');
+test('todos los componentes declaran la versión 3.25.6',()=>{
+  assert.match(app,/const APP_VERSION='3\.25\.6'/);
+  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.25\.6'/);
+  assert.match(sw,/const VERSION='3\.25\.6'/);
+  assert.equal(manifest.start_url,'./?v=3.25.6');
   for(const asset of ['styles.css','app.js','rainbows-overrides.js','manifest.json']){
-    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.25\\.5`));
+    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.25\\.6`));
   }
 });
 
 test('las mejoras se cargan en la primera visita sin reescribir respuestas',()=>{
-  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.25\.5"><\/script>/);
+  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.25\.6"><\/script>/);
   assert.doesNotMatch(sw,/optimizeAppJs|html\.replace|new Response\(out/);
   assert.match(app,/RAINBOWS_PERF_CACHE_V2/);
 });
 
-test('Info cultivo agrupa Enmiendas, Genéticas, Salas y Parámetros',()=>{
+test('Info cultivo agrupa Enmiendas, Genéticas, Croquis, Salas y Parámetros',()=>{
   assert.match(html,/<button data-view="cultivo-info">Info cultivo<\/button>/);
   assert.doesNotMatch(html,/<button data-view="(?:rooms|genetics|amendments)">/);
-  for(const view of ['amendments','genetics','rooms','parameters']){
+  for(const view of ['amendments','genetics','croquis','rooms','parameters']){
     assert.match(app,new RegExp(`data-cultivo-info-view="${view}"`));
   }
   assert.match(app,/function renderParameters\(\)/);
+  assert.match(app,/function renderCroquisView\(\)/);
+  assert.match(app,/data-croquis-room=/);
+  assert.match(app,/state\.view==='croquis'\)renderCroquisView\(\)/);
   assert.match(overrides,/window\.renderAmendments=renderAmendments/);
   assert.doesNotMatch(overrides,/ensureAmendmentsNav/);
 });
