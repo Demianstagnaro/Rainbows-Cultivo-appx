@@ -7,20 +7,21 @@ const app=read('app.js');
 const html=read('index.html');
 const manifest=JSON.parse(read('manifest.json'));
 const overrides=read('rainbows-overrides.js');
+const styles=read('styles.css');
 const sw=read('sw.js');
 
-test('todos los componentes declaran la versión 3.25.6',()=>{
-  assert.match(app,/const APP_VERSION='3\.25\.6'/);
-  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.25\.6'/);
-  assert.match(sw,/const VERSION='3\.25\.6'/);
-  assert.equal(manifest.start_url,'./?v=3.25.6');
+test('todos los componentes declaran la versión 3.25.7',()=>{
+  assert.match(app,/const APP_VERSION='3\.25\.7'/);
+  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.25\.7'/);
+  assert.match(sw,/const VERSION='3\.25\.7'/);
+  assert.equal(manifest.start_url,'./?v=3.25.7');
   for(const asset of ['styles.css','app.js','rainbows-overrides.js','manifest.json']){
-    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.25\\.6`));
+    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.25\\.7`));
   }
 });
 
 test('las mejoras se cargan en la primera visita sin reescribir respuestas',()=>{
-  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.25\.6"><\/script>/);
+  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.25\.7"><\/script>/);
   assert.doesNotMatch(sw,/optimizeAppJs|html\.replace|new Response\(out/);
   assert.match(app,/RAINBOWS_PERF_CACHE_V2/);
 });
@@ -37,6 +38,11 @@ test('Info cultivo agrupa Enmiendas, Genéticas, Croquis, Salas y Parámetros',(
   assert.match(app,/state\.view==='croquis'\)renderCroquisView\(\)/);
   assert.match(overrides,/window\.renderAmendments=renderAmendments/);
   assert.doesNotMatch(overrides,/ensureAmendmentsNav/);
+});
+
+test('Croquis organiza Flora 1 y 2 en cinco columnas y conserva Flora 3',()=>{
+  assert.match(app,/cols=r\.name==='Flora 3'\?4:5/);
+  assert.match(styles,/grid-template-columns:repeat\(var\(--bed-columns\)/);
 });
 
 test('el caché usa las mismas URLs versionadas que el HTML',()=>{
