@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.25.5';
+const APP_VERSION='3.25.6';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2290,7 +2290,7 @@ function renderMedrano(){
   }
   state.medranoView='stock';render();
 }
-const cultivoInfoViews=new Set(['cultivo-info','amendments','genetics','rooms','parameters']);
+const cultivoInfoViews=new Set(['cultivo-info','amendments','genetics','croquis','rooms','parameters']);
 function openCultivoInfo(){state.view='cultivo-info';state.room=null;state.roomDay=null;state.tab='summary';render()}
 function renderCultivoInfo(){
   $('screen-title').textContent='Info cultivo';
@@ -2302,7 +2302,8 @@ function renderCultivoInfo(){
     <section class="cultivo-info-grid" aria-label="Secciones de información de cultivo">
       <button class="cultivo-info-card" type="button" data-cultivo-info-view="amendments"><strong>Enmiendas</strong><span>Composición y dosis por etapa.</span></button>
       <button class="cultivo-info-card" type="button" data-cultivo-info-view="genetics"><strong>Genéticas</strong><span>Variedades, nomenclaturas y características.</span></button>
-      <button class="cultivo-info-card" type="button" data-cultivo-info-view="rooms"><strong>Salas</strong><span>Estado, tareas y croquis de cada sala.</span></button>
+      <button class="cultivo-info-card" type="button" data-cultivo-info-view="croquis"><strong>Croquis</strong><span>Distribución de camas, plantas y genéticas de las salas de flora.</span></button>
+      <button class="cultivo-info-card" type="button" data-cultivo-info-view="rooms"><strong>Salas</strong><span>Estado y tareas de cada sala.</span></button>
       <button class="cultivo-info-card" type="button" data-cultivo-info-view="parameters"><strong>Parámetros</strong><span>Sección preparada para luz, riego, CO₂ y otros parámetros.</span></button>
     </section>`;
   app.querySelectorAll('[data-cultivo-info-view]').forEach(button=>button.onclick=()=>{state.view=button.dataset.cultivoInfoView;state.room=null;state.roomDay=null;state.tab='summary';render()});
@@ -2391,7 +2392,7 @@ $('harvest-total').oninput=updateHarvestLineTotal;
 $('save-harvest').onclick=async()=>{try{await saveHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la cosecha.')}};
 $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
 
-document.querySelectorAll('.top-nav button').forEach(b=>{const view=b.dataset.view;const allowed=canViewOperations()&&(view==='harvests'?canViewHarvests():view==='stock'?canViewStock():true);b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',view==='cultivo-info'?cultivoInfoViews.has(state.view):view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='harvests'&&!canViewHarvests()){state.view='today';state.selectedHarvest=null;}if(state.view==='stock'&&!canViewStock()){state.view='today';state.stockRoom=null;state.stockCycle=null;}if(state.view==='settings'&&currentRole()!=='administrador')state.view='today';if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='cultivo-info')renderCultivoInfo();if(state.view==='amendments')renderAmendmentsView();if(state.view==='parameters')renderParameters();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
+document.querySelectorAll('.top-nav button').forEach(b=>{const view=b.dataset.view;const allowed=canViewOperations()&&(view==='harvests'?canViewHarvests():view==='stock'?canViewStock():true);b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',view==='cultivo-info'?cultivoInfoViews.has(state.view):view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='harvests'&&!canViewHarvests()){state.view='today';state.selectedHarvest=null;}if(state.view==='stock'&&!canViewStock()){state.view='today';state.stockRoom=null;state.stockCycle=null;}if(state.view==='settings'&&currentRole()!=='administrador')state.view='today';if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='cultivo-info')renderCultivoInfo();if(state.view==='amendments')renderAmendmentsView();if(state.view==='parameters')renderParameters();if(state.view==='croquis')renderCroquisView();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
 function renderHelp(){
   $('screen-title').textContent='Ayuda';
   app.innerHTML=`
@@ -2442,7 +2443,7 @@ function renderHelp(){
       <summary>Ver todos los comandos</summary>
       <div class="help-grid help-grid-expanded">
         <article class="help-card"><h3>Generales · navegación</h3><ul>
-          <li>“Abrir Hoy / Calendario / Salas / Genéticas / Cosechas / Stock Palestina / Ayuda”</li>
+          <li>“Abrir Hoy / Calendario / Croquis / Salas / Genéticas / Cosechas / Stock Palestina / Ayuda”</li>
           <li>“Ir a Flora 1 / 2 / 3” · “Mostrar Vege 1 / Vege 2 / Madres / Esquejes”</li>
           <li>“Ir a mañana” · “Día anterior” · “Volver a hoy”</li>
         </ul></article>
@@ -2531,6 +2532,22 @@ function croquisGeneticColor(genetic){
   return palette[Math.abs(hash)%palette.length];
 }
 function renderRooms(){ $('screen-title').textContent='Salas';if(!state.room){app.innerHTML=`<button id="back-cultivo-info" class="secondary cultivo-info-back" type="button">← Info cultivo</button><div class="list">${rules.map(r=>{const pr=progress(r,today());return`<section class="room-card" data-room="${r.name}"><div class="room-head"><div><div class="room-title">${r.name}</div><div class="stage">${roomStatus(r,today())}</div></div><div class="room-head-actions">${taskCounter(pr.done,pr.total)}${canEditTasks()?`<button class="task-menu room-options-button" type="button" data-room-menu="${r.name}" data-room-date="${ymd(today())}" aria-label="Opciones de ${r.name}" title="Opciones de sala">⋮</button>`:''}</div></div></section>`}).join('')}</div>`;$('back-cultivo-info').onclick=openCultivoInfo;app.querySelectorAll('[data-room]').forEach(x=>x.onclick=()=>{state.room=x.dataset.room;state.roomDay=today();render()});app.querySelectorAll('[data-room-menu]').forEach(button=>button.onclick=event=>{event.stopPropagation();openRoomMenu(button.dataset.roomMenu,button.dataset.roomDate)});return}const r=rr(state.room),cro=r.type==='flora',d=state.roomDay||today(),rt=orderedTasks(tasks(d).filter(t=>t.room===r.name)),pr=progress(r,d);app.innerHTML=`<button id="back-room" class="secondary">← Volver</button><section class="panel room-detail-header"><div class="room-head"><div><h2>${r.name}</h2><p class="muted">${roomStatus(r,d)}</p></div><div class="room-head-actions">${taskCounter(pr.done,pr.total)}${canEditTasks()?`<button class="task-menu room-options-button" type="button" data-room-menu="${r.name}" data-room-date="${ymd(d)}" aria-label="Opciones de ${r.name}" title="Opciones de sala">⋮</button>`:''}</div></div><div class="room-date-controls"><button id="room-today" class="secondary room-back-today" ${same(d,today())?'disabled':''}>${same(d,today())?'Hoy':'Volver a hoy'}</button><div class="day-navigator"><button id="room-prev" class="secondary nav-day" aria-label="Día anterior">◀</button><div class="room-date-label">${shortRoomDate(d)}</div><button id="room-next" class="secondary nav-day" aria-label="Día siguiente">▶</button></div></div></section>${cro?`<div class="room-tabs"><button data-tab="summary" class="${state.tab==='summary'?'active':''}">Resumen</button><button data-tab="croquis" class="${state.tab==='croquis'?'active':''}">Croquis</button></div>`:''}${state.tab==='croquis'&&cro?renderCroquis(r):`<div class="section-title">Tareas del ${nice(d)}</div>${renderRoomTaskGroups(rt)}`}`;$('back-room').onclick=()=>{state.room=null;state.roomDay=null;state.tab='summary';render()};$('room-prev').onclick=()=>{state.roomDay=add(d,-1);render()};$('room-next').onclick=()=>{state.roomDay=add(d,1);render()};$('room-today').onclick=()=>{state.roomDay=today();render()};app.querySelectorAll('[data-tab]').forEach(x=>x.onclick=()=>{state.tab=x.dataset.tab;render()});app.querySelectorAll('[data-bed]').forEach(x=>x.onclick=()=>openBed(x.dataset.bed));app.querySelectorAll('[data-plant]').forEach(x=>x.onclick=()=>openPlant(x.dataset.plant));bind(d);app.querySelectorAll('[data-room-menu]').forEach(button=>button.onclick=event=>{event.stopPropagation();openRoomMenu(button.dataset.roomMenu,button.dataset.roomDate||ymd(d))})}
+function renderCroquisView(){
+  $('screen-title').textContent='Croquis';
+  const floraRooms=rules.filter(rule=>rule.type==='flora');
+  if(!state.room){
+    app.innerHTML=`<button id="back-cultivo-info" class="secondary cultivo-info-back" type="button">← Info cultivo</button><section class="panel cultivo-info-head"><h2>Croquis</h2><p class="muted">Elegí una sala para abrir directamente la distribución actual de camas y plantas.</p></section><section class="harvest-room-selector" aria-label="Salas con croquis">${floraRooms.map(room=>{const roomBeds=beds(room.name),roomPlants=roomBeds.flatMap(plants),occupied=roomPlants.filter(plant=>plant.ocupada).length;return`<button class="panel harvest-room-button" type="button" data-croquis-room="${room.name}"><span>${room.name}</span><strong>${roomBeds.length} camas · ${occupied}/${roomPlants.length} plantas</strong></button>`}).join('')}</section>`;
+    $('back-cultivo-info').onclick=openCultivoInfo;
+    app.querySelectorAll('[data-croquis-room]').forEach(button=>button.onclick=()=>{state.room=button.dataset.croquisRoom;state.tab='croquis';render()});
+    return;
+  }
+  const room=rr(state.room);
+  if(!room||room.type!=='flora'){state.room=null;renderCroquisView();return}
+  app.innerHTML=`<button id="back-croquis-rooms" class="secondary cultivo-info-back" type="button">← Croquis</button><section class="panel room-detail-header"><div class="room-head"><div><h2>${room.name}</h2><p class="muted">Distribución actual de camas, plantas y genéticas.</p></div></div></section>${renderCroquis(room)}`;
+  $('back-croquis-rooms').onclick=()=>{state.room=null;state.tab='summary';render()};
+  app.querySelectorAll('[data-bed]').forEach(button=>button.onclick=()=>openBed(button.dataset.bed));
+  app.querySelectorAll('[data-plant]').forEach(button=>button.onclick=()=>openPlant(button.dataset.plant));
+}
 function renderCroquis(r){
   const bs=beds(r.name),ps=bs.flatMap(plants),occ=ps.filter(p=>p.ocupada),cols=r.name==='Flora 3'?4:3;
   const readOnly=!canModify();
@@ -3792,7 +3809,7 @@ function voiceRoomFromText(text,{allowContext=false}={}){
   if(!match){
     // Las consultas son globales. La sala abierta solo se usa como contexto opcional
     // cuando el usuario omite el nombre de la sala.
-    if(allowContext&&state.view==='rooms'&&state.room)return state.room;
+    if(allowContext&&['rooms','croquis'].includes(state.view)&&state.room)return state.room;
     return null;
   }
   const token=match[0];
@@ -4827,7 +4844,7 @@ function executeVoiceTaskAction(rawText){
 }
 
 // V3.16.12 — Modificaciones de Salas/croquis por voz.
-// Las órdenes solo funcionan desde Salas y nunca escriben en Supabase sin una confirmación manual.
+// Las órdenes solo funcionan desde Salas o Croquis y nunca escriben en Supabase sin una confirmación manual.
 function voicePlantPositionFromText(text){
   const m=normalizeVoiceText(text).match(/(?:planta|posicion)\s*(?:numero\s*)?(\d{1,2})/);
   return m?Number(m[1]):null;
@@ -4842,7 +4859,7 @@ function executeVoiceRoomAction(rawText){
   const text=normalizeVoiceText(rawText);
   if(!voiceRoomActionLooksRelevant(rawText))return null;
   if(!canEditTasks())return {ok:true,message:'Tu usuario no tiene permiso para modificar el croquis.'};
-  if(state.view!=='rooms')return {ok:true,message:'Para modificar el croquis por voz, abrí primero Salas. Así Rainbows mantiene los cambios dentro de la sección correcta.'};
+  if(!['rooms','croquis'].includes(state.view))return {ok:true,message:'Para modificar el croquis por voz, abrí primero Croquis o Salas. Así Rainbows mantiene los cambios dentro de la sección correcta.'};
 
   const roomName=voiceRoomFromText(text,{allowContext:true});
   if(!roomName)return {ok:true,message:'Entendí un cambio de croquis, pero me falta la sala. Decime por ejemplo: “En Flora 2 cama 4 poner Mandarin”.'};
@@ -4930,7 +4947,7 @@ function isExplicitVoiceNavigation(rawText){
   // Evitamos usar "mostrar" acá porque puede significar consulta (ej. "mostrar stock de Flora 1").
   const navVerb=/(^|\s)(ir a|abrir|abrime|entra a|entrar a|llevame a)(\s|$)/.test(text);
   if(!navVerb)return false;
-  const destinations=['hoy','inicio','calendario','salas','sala','geneticas','genetica','cosechas','cosecha','stock palestina','stock','ayuda','instructivo','configuracion','config'];
+  const destinations=['hoy','inicio','calendario','croquis','salas','sala','geneticas','genetica','cosechas','cosecha','stock palestina','stock','ayuda','instructivo','configuracion','config'];
   if(destinations.some(label=>text.includes(label)))return true;
   return /flora\s*(1|2|3)|vege\s*(1|2)|madres|esquejes/.test(text);
 }
@@ -4977,12 +4994,14 @@ function executeVoiceNavigation(rawText){
     const token=roomMatch[0];
     const roomName=token.startsWith('flora')?`Flora ${roomMatch[1]}`:(token.startsWith('vege')?`Vege ${roomMatch[2]}`:token.charAt(0).toUpperCase()+token.slice(1));
     if(!rules.some(r=>r.name===roomName))return {ok:false,message:`No encontré la sala ${roomName}.`};
-    state.view='rooms';state.room=roomName;state.roomDay=today();state.day=null;state.tab='summary';render();
-    return {ok:true,message:`Listo. Abrí ${roomName}.`};
+    const openCroquis=text.includes('croquis')&&roomName.startsWith('Flora ');
+    state.view=openCroquis?'croquis':'rooms';state.room=roomName;state.roomDay=openCroquis?null:today();state.day=null;state.tab=openCroquis?'croquis':'summary';render();
+    return {ok:true,message:`Listo. Abrí ${openCroquis?'el croquis de ':''}${roomName}.`};
   }
   const destinations=[
     {view:'today',name:'Hoy',labels:['hoy','inicio']},
     {view:'calendar',name:'Calendario',labels:['calendario']},
+    {view:'croquis',name:'Croquis',labels:['croquis']},
     {view:'rooms',name:'Salas',labels:['salas','sala']},
     {view:'genetics',name:'Genéticas',labels:['geneticas','genetica']},
     {view:'harvests',name:'Cosechas',labels:['cosechas','cosecha']},
@@ -5029,7 +5048,7 @@ function mobileVoiceLooksRelevant(rawText='',confidence=0){
   if(harvestControlCommand)return true;
   if(voiceHarvestFormPhraseLooksRelevant(rawText))return confidence===0||confidence>=0.24;
   if(voiceStockMovementFormPhraseLooksRelevant(rawText))return confidence===0||confidence>=0.24;
-  if(state.view==='rooms'&&voiceRoomActionLooksRelevant(rawText))return confidence===0||confidence>=0.24;
+  if(['rooms','croquis'].includes(state.view)&&voiceRoomActionLooksRelevant(rawText))return confidence===0||confidence>=0.24;
   const words=text.split(/\s+/).filter(Boolean);
   if(words.length<2)return false;
 
@@ -5088,7 +5107,7 @@ function mobileVoiceCandidateScore(rawText='',confidence=0){
   if(harvestControlCommand)score+=40;
   if(voiceHarvestFormPhraseLooksRelevant(rawText))score+=24;
   if(voiceStockMovementFormPhraseLooksRelevant(rawText))score+=24;
-  if(state.view==='rooms'&&voiceRoomActionLooksRelevant(rawText))score+=24;
+  if(['rooms','croquis'].includes(state.view)&&voiceRoomActionLooksRelevant(rawText))score+=24;
   const domainTokens=[
     'tarea','tareas','pendiente','pendientes','realizada','realizadas','responsable','responsables',
     'flora','vege','madres','esquejes','stock','palestina','cosecha','cosechas','genetica','geneticas','calendario','salas','ayuda','config','configuracion',
