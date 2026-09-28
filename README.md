@@ -9,7 +9,12 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.4. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.5. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.5 — Ciclo de enmiendas en Madres
+- La tarea quincenal de Madres se muestra en orden como “Enmienda 1”, “Enmienda 2” y “Enmienda 3”, y luego reinicia el ciclo.
+- Se conserva el identificador interno anterior para no perder las realizaciones ya registradas.
+- Las tres variantes mantienen la prioridad importante de la tarea Enmienda.
 
 ## V3.25.4 — Enmienda Orgánica completa
 - El título visible cambia de “Enmienda completa” a “Enmienda Orgánica”.
