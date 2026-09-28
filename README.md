@@ -9,7 +9,11 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.6. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.7. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.7 — Disposición de los croquis
+- Flora 1 y Flora 2 muestran sus 15 camas en 3 filas de 5 columnas.
+- Flora 3 conserva su disposición actual de 4 columnas.
 
 ## V3.25.6 — Acceso directo a Croquis
 - `Info cultivo` incorpora una entrada propia llamada `Croquis`.

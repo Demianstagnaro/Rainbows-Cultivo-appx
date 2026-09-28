@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.25.6';
+const APP_VERSION='3.25.7';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2549,7 +2549,7 @@ function renderCroquisView(){
   app.querySelectorAll('[data-plant]').forEach(button=>button.onclick=()=>openPlant(button.dataset.plant));
 }
 function renderCroquis(r){
-  const bs=beds(r.name),ps=bs.flatMap(plants),occ=ps.filter(p=>p.ocupada),cols=r.name==='Flora 3'?4:3;
+  const bs=beds(r.name),ps=bs.flatMap(plants),occ=ps.filter(p=>p.ocupada),cols=r.name==='Flora 3'?4:5;
   const readOnly=!canModify();
   return`<section class="panel"><div class="croquis-metrics"><div><span>Plantas</span><strong>${occ.length}</strong></div><div><span>Capacidad</span><strong>${ps.length}</strong></div><div><span>Camas</span><strong>${bs.length}</strong></div></div></section><section class="croquis-shell"><div class="side-aisle"><span>Pasillo lateral</span></div><div class="beds-grid" style="--bed-columns:${cols}">${bs.map(b=>{const pp=plants(b),n=pp.filter(p=>p.ocupada).length,safeBedId=escapeHtml(b.id);return`<article class="bed-card"><button class="bed-edit-button" type="button" data-bed="${safeBedId}" ${readOnly?'disabled':''}><div class="bed-card-head"><strong>Cama ${String(b.numero).padStart(2,'0')}</strong><span>${n}/${b.capacidad}</span></div></button><div class="plant-grid">${Array.from({length:9},(_,i)=>{const p=pp.find(x=>x.posicion===i+1);if(!p)return'<span class="plant-position plant-spacer"></span>';const genetic=state.geneticas.find(x=>String(x.id)===String(p.genetica_id));const g=genetic?(genetic.nomenclatura?`${genetic.nomenclatura} — ${genetic.nombre}`:genetic.nombre):'Sin genética asignada';const code=croquisGeneticCode(genetic);const style=p.ocupada?` style="--plant-color:${croquisGeneticColor(genetic)}"`:'';const label=p.ocupada?`Planta ${p.posicion}: ${g}`:`Posición ${p.posicion} vacía`;return`<button class="plant-position ${p.ocupada?'occupied':''}" type="button" data-plant="${escapeHtml(p.id)}" title="${escapeHtml(p.ocupada?g:'Vacía')}" aria-label="${escapeHtml(label)}" ${readOnly?'disabled':''}${style}>${p.ocupada?`<span class="plant-code">${escapeHtml(code)}</span>`:''}</button>`}).join('')}</div></article>`}).join('')}</div><div class="side-aisle"><span>Pasillo lateral</span></div></section>`;
 }
