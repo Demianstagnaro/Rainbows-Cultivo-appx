@@ -74,3 +74,20 @@ test('Schwazzing comienza en Flora S4 y deja de programarse en Flora S3',()=>{
     assert.ok(taskNames(fourthWeek).includes(`${name}|Enmienda`));
   }
 });
+
+test('Madres alterna Enmienda 1, 2 y 3 cada 14 días',()=>{
+  const cases=[
+    ['2026-07-28','Enmienda 1'],
+    ['2026-08-11','Enmienda 2'],
+    ['2026-08-25','Enmienda 3'],
+    ['2026-09-08','Enmienda 1'],
+    ['2026-09-22','Enmienda 2'],
+    ['2026-10-06','Enmienda 3']
+  ];
+  for(const [date,name] of cases){
+    const amendment=calendar.routine(calendar.parse(date)).find(task=>task.room==='Madres'&&task.task.startsWith('Enmienda'));
+    assert.equal(amendment?.task,name);
+    assert.equal(amendment?.id,`${date}|Madres|Enmienda`);
+  }
+  assert.equal(calendar.routine(calendar.parse('2026-09-29')).some(task=>task.room==='Madres'&&task.task.startsWith('Enmienda')),false);
+});
