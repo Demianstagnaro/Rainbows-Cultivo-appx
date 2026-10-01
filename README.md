@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.10. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.11. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.11 — Detalle en movimientos de Resina
+- Los movimientos de Resina muestran qué producto fue afectado, su perfil, ratio, genética y lote.
+- `Producción laboratorio · resultado` y `Producto retirado de la lista` dejan de aparecer como acciones aisladas sin identificar el producto.
+- El detalle queda guardado en el historial para que no cambie aunque luego se edite o retire el producto.
+- La migración intenta completar también los movimientos anteriores vinculándolos con su registro de stock.
+- Requiere ejecutar `Rainbows_V3.25.11_detalle_movimientos_resina.sql` después de V3.25.9.
 
 ## V3.25.10 — Ratio en columna independiente
 - El stock de Resinas separa `Perfil de cannabinoides` y `Ratio` en dos columnas consecutivas.
