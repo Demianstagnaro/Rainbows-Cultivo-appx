@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.7. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.8. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.8 — Stock validado al iniciar producción
+- Crear una producción sigue permitido como planificación, pero `Iniciar` controla que alcance cada materia prima.
+- El aviso muestra el producto, la cantidad disponible y la solicitada antes de cambiar el trabajo a “En proceso”.
+- Los insumos de otras producciones iniciadas se consideran reservados para impedir que dos trabajos usen el mismo stock.
+- Una producción iniciada no permite cambiar materias primas: debe cancelarse, reabrirse y editarse antes de volver a iniciar.
+- Requiere ejecutar `Rainbows_V3.25.8_stock_al_iniciar_produccion.sql` después de V3.25.2.
 
 ## V3.25.7 — Disposición de los croquis
 - Flora 1 y Flora 2 muestran sus 15 camas en 3 filas de 5 columnas.
