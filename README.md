@@ -9,7 +9,13 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.9. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.10. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.10 — Ratio en columna independiente
+- El stock de Resinas separa `Perfil de cannabinoides` y `Ratio` en dos columnas consecutivas.
+- Los ratios se muestran con formato `1:1`, `1:2` o `2:1:1`, sin repetir la palabra “Proporción” junto al perfil.
+- Los formularios de ingreso y producción también llaman `Ratio` al dato para mantener el mismo criterio.
+- Incluye en la entrega el SQL V3.25.8 que faltaba en GitHub y hacía fallar el test automático; no requiere volver a ejecutarlo en Supabase si ya fue aplicado.
 
 ## V3.25.9 — Proporción visible en Resinas
 - El stock muestra el perfil y la proporción juntos de forma explícita, por ejemplo `THC-CBD · Proporción 1-2`.
