@@ -8,19 +8,21 @@ const app=read('app.js');
 const html=read('index.html');
 const sql=read('Rainbows_V3.25.9_proporcion_resinas.sql');
 
-test('el stock muestra perfil y proporción de manera explícita',()=>{
+test('el stock muestra perfil y ratio en columnas independientes',()=>{
   const start=app.indexOf('function medranoCannabinoidRatioRequired(');
   const end=app.indexOf('function renderLabInventory(',start);
   const context={};
-  vm.runInNewContext(`${app.slice(start,end)}\nglobalThis.format=medranoCannabinoidProfile;`,context);
-  assert.equal(context.format({perfil_cannabinoide:'THC-CBD',proporcion_cannabinoides:'1-2'}),'THC-CBD · Proporción 1-2');
-  assert.equal(context.format({perfil_cannabinoide:'THC-CBD',proporcion_cannabinoides:null}),'THC-CBD · Proporción sin cargar');
-  assert.equal(context.format({perfil_cannabinoide:'CBD',proporcion_cannabinoides:null}),'CBD');
+  vm.runInNewContext(`${app.slice(start,end)}\nglobalThis.profile=medranoCannabinoidProfile;globalThis.ratio=medranoCannabinoidRatio;`,context);
+  assert.equal(context.profile({perfil_cannabinoide:'THC-CBD',proporcion_cannabinoides:'1-2'}),'THC-CBD');
+  assert.equal(context.ratio({perfil_cannabinoide:'THC-CBD',proporcion_cannabinoides:'1-2'}),'1:2');
+  assert.equal(context.ratio({perfil_cannabinoide:'THC-CBD',proporcion_cannabinoides:null}),'Sin cargar');
+  assert.equal(context.ratio({perfil_cannabinoide:'CBD',proporcion_cannabinoides:null}),'—');
+  assert.match(app,/Perfil de cannabinoides<\/th><th[^>]*>Ratio<\/th>/);
 });
 
 test('la proporción deja de presentarse como opcional',()=>{
   assert.doesNotMatch(html,/Proporción estimada \(opcional\)/);
-  assert.match(html,/Proporción de cannabinoides/);
+  assert.match(html,/>Ratio<input id="lab-item-resin-ratio"/);
   assert.match(app,/medranoCannabinoidRatioRequired\(profile\)&&!ratio/);
   assert.match(app,/medranoCannabinoidRatioRequired\(metadata\.perfil\)&&!metadata\.proporcion/);
 });
