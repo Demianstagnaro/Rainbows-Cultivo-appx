@@ -26,7 +26,7 @@ test('envío y recepción de flores se muestran como un único traslado',()=>{
   vm.runInNewContext(`${code}\nglobalThis.history=medranoDailyHistory;`,context);
   const html=context.history('laboratorio','flores','today');
   assert.equal((html.match(/<tr>/g)||[]).length,2); // Encabezado y un solo traslado.
-  assert.match(html,/<td>Dispensario → Laboratorio<\/td><td>\+5 g<\/td>/);
+  assert.match(html,/<td><strong>Dispensario → Laboratorio<\/strong><\/td><td>\+5 g<\/td>/);
   assert.doesNotMatch(html,/Confirmado|En viaje/);
   assert.match(html,/10 → 15 g/);
   assert.doesNotMatch(html,/Recepción confirmada · Dispensario/);
@@ -35,7 +35,7 @@ test('envío y recepción de flores se muestran como un único traslado',()=>{
   state.medranoLabTransfers[0].recibido_at=null;
   state.medranoStockHistory=state.medranoStockHistory.filter(row=>row.id!=='receipt');
   const pending=context.history('laboratorio','flores','today');
-  assert.match(pending,/<td>Dispensario → Laboratorio<\/td><td>5 g<\/td><td>Pendiente de recepción<\/td>/);
+  assert.match(pending,/<td><strong>Dispensario → Laboratorio<\/strong><\/td><td>5 g<\/td><td>Pendiente de recepción<\/td>/);
 });
 test('traslados usan bloqueo, descuento atómico y una sola recepción',()=>{
   assert.match(sql,/for update/g);
