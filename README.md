@@ -9,7 +9,13 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.8. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.9. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.9 — Proporción visible en Resinas
+- El stock muestra el perfil y la proporción juntos de forma explícita, por ejemplo `THC-CBD · Proporción 1-2`.
+- Los registros anteriores de perfiles múltiples sin proporción se identifican como `Proporción sin cargar` para poder corregirlos desde Editar.
+- En nuevos ingresos y producciones, los perfiles con más de un cannabinoide requieren indicar su proporción.
+- Requiere ejecutar `Rainbows_V3.25.9_proporcion_resinas.sql` después de V3.25.8.
 
 ## V3.25.8 — Stock validado al iniciar producción
 - Crear una producción sigue permitido como planificación, pero `Iniciar` controla que alcance cada materia prima.

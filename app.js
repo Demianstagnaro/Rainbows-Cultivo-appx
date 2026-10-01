@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.25.8';
+const APP_VERSION='3.25.9';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1314,13 +1314,20 @@ async function saveLabItem(item=null,active=true){
   if(!name||String(value).trim()===''||!Number.isFinite(quantity)||quantity<0)throw new Error('Revisá el nombre y la cantidad.');
   if(category!=='insumos'&&active&&!catalogProduct&&!selected?.catalogo_producto_id&&!selected?.es_aceite_base)throw new Error('Seleccioná un producto activo de la Lista de precios.');
   if(resin&&active&&(!['Rosin','Resina BHO'].includes(name)||!fullSpectrumProfiles.includes(profile)||!geneticId||!lot))throw new Error('Completá producto, perfil de cannabinoides, genética, lote y disponible.');
+  if(resin&&active&&medranoCannabinoidRatioRequired(profile)&&!ratio)throw new Error('Indicá la proporción de cannabinoides, por ejemplo 1-1 o 1-2.');
   if(unit==='unidades'&&!Number.isInteger(quantity))throw new Error('Las unidades deben ser cantidades enteras.');
   const q=await db.rpc('guardar_stock_laboratorio',{p_id:selected?.id||null,p_categoria:category,p_nombre:name,p_catalogo_producto_id:catalogId,p_genetica_id:geneticId,p_lote:lot,p_perfil_cannabinoide:profile,p_proporcion_cannabinoides:ratio,p_cantidad:quantity,p_unidad:unit,p_activo:active});
   if(q.error)throw q.error;
   closeDialog('lab-item-dialog');state.editLabItem=null;await refresh();
 }
 function medranoLabGeneticName(item){return state.geneticas.find(g=>String(g.id)===String(item.genetica_id))?.nombre||'Sin identificar'}
-function medranoCannabinoidProfile(item){return item.perfil_cannabinoide?`${item.perfil_cannabinoide}${item.proporcion_cannabinoides?` ${item.proporcion_cannabinoides}`:''}`:'Sin definir'}
+function medranoCannabinoidRatioRequired(profile){return String(profile||'').includes('-')}
+function medranoCannabinoidProfile(item){
+  const profile=item?.perfil_cannabinoide;
+  if(!profile)return'Sin definir';
+  const ratio=String(item?.proporcion_cannabinoides||'').trim();
+  return`${profile}${ratio||medranoCannabinoidRatioRequired(profile)?` · Proporción ${ratio||'sin cargar'}`:''}`;
+}
 function renderLabInventory(medranoNav,bindModuleNav,category){
   const items=state.medranoLabItems.filter(item=>item.categoria===category.key&&item.activo);
   const pending=category.key==='flores'?state.medranoLabTransfers.filter(t=>t.estado==='en_viaje'):[];
@@ -2149,6 +2156,7 @@ async function saveLabProduction(){
   const metadata=type==='resina'?{perfil:$('lab-production-resin-profile').value,proporcion:$('lab-production-resin-ratio').value.trim()||null}:type==='aceite_base'&&draft?{perfil:draft.profile,proporcion:draft.ratio||null,base:draft.base,concentracion:draft.concentration}:{};
   if(!medranoProductionCategory[type]||!name||name.length>180||!materials.length||new Set(materials.map(m=>m.id)).size!==materials.length||materials.some(m=>!m.id||!m.raw||!Number.isFinite(m.cantidad)||m.cantidad<=0)||$('lab-production-detail').value.length>2000)throw new Error('Revisá el producto obtenido y las cantidades de materias primas.');
   if(type==='resina'&&!fullSpectrumProfiles.includes(metadata.perfil))throw new Error('Seleccioná el perfil de cannabinoides de la resina.');
+  if(type==='resina'&&medranoCannabinoidRatioRequired(metadata.perfil)&&!metadata.proporcion)throw new Error('Indicá la proporción de cannabinoides de la resina, por ejemplo 1-1 o 1-2.');
   if(type==='resina'&&(materials.length!==1||materials[0].category!=='flores')||type==='aceite_base'&&!draft||!['resina','aceite_base'].includes(type)&&!materials.some(m=>m.category==='resina'))throw new Error('Elegí las materias primas necesarias para este trabajo.');
   const q=await db.rpc('guardar_produccion_laboratorio',{p_id:state.editMedranoLabJob?.id||null,p_tipo:type,p_insumos:materials.map(({id,cantidad})=>({id,cantidad})),p_producto:name,p_producto_id:['resina','aceite_base'].includes(type)?null:output||null,p_unidad:unit,p_detalle:$('lab-production-detail').value.trim(),p_metadata:metadata});
   if(q.error)throw q.error;
