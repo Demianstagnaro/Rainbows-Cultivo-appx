@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.11. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.12. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.12 — Movimientos de stock auditables
+- Una entrega deja de figurar como “Ajuste de stock” y se registra como `Dispensa a paciente`.
+- Cada dispensa conserva producto, cantidad, unidad y paciente; la tabla muestra además hora y persona que la realizó.
+- Los traslados indican cantidad, producto, origen, destino, responsable del envío y, cuando corresponde, quién y a qué hora recibió.
+- `Ajuste manual de stock` queda reservado para cambios manuales reales.
+- La migración recupera dispensas anteriores cuando puede relacionarlas de forma inequívoca por fecha, producto y cantidad.
+- Requiere ejecutar `Rainbows_V3.25.12_movimientos_auditables.sql` después de V3.24.0. También funciona si V3.25.11 todavía no fue aplicada.
 
 ## V3.25.11 — Detalle en movimientos de Resina
 - Los movimientos de Resina muestran qué producto fue afectado, su perfil, ratio, genética y lote.
