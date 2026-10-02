@@ -7,11 +7,13 @@ const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const sql=fs.readFileSync(new URL('../Rainbows_V3.25.11_detalle_movimientos_resina.sql',import.meta.url),'utf8');
 
 test('el historial oculta el UUID técnico de las producciones',()=>{
-  const start=app.indexOf('function medranoMovementAction('),end=app.indexOf('\n',start);
+  const start=app.indexOf('function medranoMovementAction('),end=app.indexOf('function medranoMovementDetail(',start);
   const context={};vm.runInNewContext(`${app.slice(start,end)}\nglobalThis.clean=medranoMovementAction;`,context);
   assert.equal(context.clean('Producción laboratorio · resultado · 0d4811fd-7547-4d12-b2a8-0cd0ac6a07a9'),'Producción laboratorio · resultado');
   assert.equal(context.clean('Producción laboratorio · consumo · 0d4811fd-7547-4d12-b2a8-0cd0ac6a07a9'),'Producción laboratorio · consumo');
   assert.equal(context.clean('Recepción confirmada · Dispensario → Laboratorio'),'Recepción confirmada · Dispensario → Laboratorio');
+  assert.equal(context.clean('Dispensa a paciente · Detalle: 10 g de Rosin · Paciente Juan Pérez'),'Dispensa a paciente');
+  assert.equal(context.clean('Ajuste de stock'),'Ajuste manual de stock');
   assert.match(app,/escapeHtml\(medranoMovementAction\(row\.accion\)\)/);
 });
 

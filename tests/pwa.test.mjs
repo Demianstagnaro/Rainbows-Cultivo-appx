@@ -10,18 +10,18 @@ const overrides=read('rainbows-overrides.js');
 const styles=read('styles.css');
 const sw=read('sw.js');
 
-test('todos los componentes declaran la versión 3.25.11',()=>{
-  assert.match(app,/const APP_VERSION='3\.25\.11'/);
-  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.25\.11'/);
-  assert.match(sw,/const VERSION='3\.25\.11'/);
-  assert.equal(manifest.start_url,'./?v=3.25.11');
+test('todos los componentes declaran la versión 3.25.12',()=>{
+  assert.match(app,/const APP_VERSION='3\.25\.12'/);
+  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.25\.12'/);
+  assert.match(sw,/const VERSION='3\.25\.12'/);
+  assert.equal(manifest.start_url,'./?v=3.25.12');
   for(const asset of ['styles.css','app.js','rainbows-overrides.js','manifest.json']){
-    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.25\\.11`));
+    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.25\\.12`));
   }
 });
 
 test('las mejoras se cargan en la primera visita sin reescribir respuestas',()=>{
-  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.25\.11"><\/script>/);
+  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.25\.12"><\/script>/);
   assert.doesNotMatch(sw,/optimizeAppJs|html\.replace|new Response\(out/);
   assert.match(app,/RAINBOWS_PERF_CACHE_V2/);
 });
