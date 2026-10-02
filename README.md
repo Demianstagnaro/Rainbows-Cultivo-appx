@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.12. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.13. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.13 — Producción trazable de cápsulas
+
+- El resultado se completa automáticamente a partir de la resina y del tamaño indicado en el insumo de cápsulas.
+- La genética se muestra antes del lote al elegir una resina.
+- Al finalizar sólo se informa la cantidad real de cápsulas obtenidas; el consumo de resina permanece independiente para reflejar mermas.
+- Requiere ejecutar `Rainbows_V3.25.13_capsulas_trazables.sql` en Supabase.
 
 ## V3.25.12 — Movimientos de stock auditables
 - Una entrega deja de figurar como “Ajuste de stock” y se registra como `Dispensa a paciente`.
