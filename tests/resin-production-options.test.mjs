@@ -11,7 +11,7 @@ test('Extracción ofrece únicamente Rosin y Resina BHO como resultado',()=>{
   assert.match(app,/if\(type==='resina'\)[\s\S]*?state\.medranoProductCatalog\.filter\(product=>product\.categoria==='resina'/);
   assert.match(sql,/p_producto not in \('Rosin','Resina BHO'\)/i);
   assert.match(app,/const name=type==='resina'\?output/);
-  assert.match(app,/p_producto_id:\['resina','aceite_base'\]\.includes\(type\)\?null/);
+  assert.match(app,/p_producto_id:\['resina','aceite_base','capsulas'\]\.includes\(type\)\?null/);
   assert.doesNotMatch(html,/placeholder="Ej\.: Resina MC"/);
 });
 
