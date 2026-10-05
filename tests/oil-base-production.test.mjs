@@ -5,9 +5,9 @@ import test from 'node:test';
 const read=name=>fs.readFileSync(new URL(`../${name}`,import.meta.url),'utf8');
 const app=read('app.js'),html=read('index.html'),sql=read('Rainbows_V3.25.0_perfiles_y_aceites_base.sql'),mixSql=read('Rainbows_V3.25.2_mezclas_aceites.sql'),catalogSql=read('Rainbows_V3.25.1_catalogo_central_productos.sql');
 
-test('la producción se llama Aceite y calcula concentración por resina equivalente',()=>{
-  assert.match(html,/value="aceite_base">Aceite<\/option>/);
-  assert.doesNotMatch(html,/Preparar aceite base|>Aceite base</);
+test('la producción base queda diferenciada del aceite final y calcula concentración por resina equivalente',()=>{
+  assert.match(html,/value="aceite_base">Preparar aceite base a granel<\/option>/);
+  assert.match(html,/value="aceite_final">Preparar aceite final<\/option>/);
   assert.match(app,/const equivalent=material\.cantidad\/Number\(item\.concentracion_denominador\)/);
   assert.match(app,/concentration=totalVolume\/resinEquivalent/);
   assert.match(app,/Resina equivalente[\s\S]*?Concentración 1:/);

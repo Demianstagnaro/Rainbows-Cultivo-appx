@@ -18,7 +18,7 @@ test('la producción de cápsulas calcula producto, presentación y trazabilidad
 
 test('al finalizar sólo pide cápsulas obtenidas y mantiene separado el consumo real',()=>{
   assert.match(html,/id="lab-production-return-label"/);
-  assert.match(app,/job\.tipo==='capsulas'\?'Cápsulas obtenidas':'Rendimiento real'/);
+  assert.match(app,/job\.tipo==='capsulas'\?'Cápsulas obtenidas':job\.tipo==='aceite_final'\?'Goteros obtenidos':'Rendimiento real'/);
   assert.match(sql,/v_job\.tipo = 'capsulas'.*v_resinas <> 1/s);
   assert.match(sql,/v_job\.tipo in \('resina','aceite_base','capsulas'\).*v_stock\.categoria in \('flores','resina'\)/s);
   assert.match(sql,/categoria = 'capsulas'.*genetica_id is not distinct from v_genetica.*lote is not distinct from v_lote/s);
