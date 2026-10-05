@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.14. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.15. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.15 — Envases y aceites finales
+
+- Los insumos pueden cargarse como ingredientes o envases con capacidad en gramos o mililitros y stock físico en unidades.
+- El nuevo trabajo “Preparar aceite final” mezcla aceites base cannabinoides, aceite puro y goteros.
+- La receta calcula automáticamente consumos según perfil, ratio, concentración, presentación y cantidad de goteros.
+- Supabase vuelve a validar la receta, bloquea concentraciones imposibles y conserva la trazabilidad de todos los componentes.
+- Requiere ejecutar `Rainbows_V3.25.15_envases_y_aceite_final.sql` antes de subir la aplicación.
 
 ## V3.25.14 — Ratio visible en Aceites
 

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.25.14';
+const APP_VERSION='3.25.15';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1289,6 +1289,7 @@ function openLabItemDialog(item=null){
   $('lab-item-title').textContent=item?'Editar producto':'Agregar producto';
   $('lab-item-catalog-field').hidden=category==='insumos'||resin||Boolean(item?.es_aceite_base);
   $('lab-item-name-field').hidden=category!=='insumos';
+  $('lab-item-input-type-field').hidden=category!=='insumos';
   $('lab-item-resin-product-field').hidden=!resin;
   $('lab-item-resin-profile-field').hidden=!resin;
   $('lab-item-resin-ratio-field').hidden=!resin;
@@ -1297,6 +1298,12 @@ function openLabItemDialog(item=null){
   $('lab-item-unit-field').hidden=category!=='insumos';
   $('lab-item-quantity-label').textContent=resin?'Disponible (g)':'Cantidad';
   $('lab-item-name').value=item?.nombre||'';
+  $('lab-item-input-type').value=item?.tipo_insumo||'ingrediente';
+  $('lab-item-input-type').disabled=Boolean(item);
+  $('lab-item-capacity').value=item?.capacidad_envase??'';
+  $('lab-item-capacity-unit').value=item?.unidad_capacidad||'ml';
+  $('lab-item-capacity').disabled=Boolean(item);
+  $('lab-item-capacity-unit').disabled=Boolean(item);
   $('lab-item-catalog').innerHTML='<option value="">Seleccionar producto del catálogo</option>'+catalogProducts.map(product=>`<option value="${escapeHtml(product.id)}">${escapeHtml(product.nombre)} · ${escapeHtml(product.unidad)}</option>`).join('');
   $('lab-item-catalog').value=item?.catalogo_producto_id||'';
   $('lab-item-catalog').disabled=Boolean(item);
@@ -1311,7 +1318,14 @@ function openLabItemDialog(item=null){
   $('lab-item-quantity').value=item?.cantidad??0;
   $('lab-item-unit').value=resin?'g':item?.unidad||(['cremas'].includes(category)?'g':category==='aceites'?'ml':'unidades');
   $('lab-item-unit').disabled=!resin&&Boolean(item);
+  updateLabItemInsumoFields();
   $('lab-item-dialog').showModal();
+}
+function updateLabItemInsumoFields(){
+  const insumo=!$('lab-item-input-type-field').hidden,container=insumo&&$('lab-item-input-type').value==='envase';
+  $('lab-item-capacity-fields').hidden=!container;
+  if(container){$('lab-item-unit').value='unidades';$('lab-item-unit').disabled=true;$('lab-item-quantity-label').textContent='Cantidad de envases disponibles'}
+  else if(insumo){$('lab-item-unit').disabled=Boolean(state.editLabItem);$('lab-item-quantity-label').textContent='Cantidad disponible'}
 }
 async function saveLabItem(item=null,active=true){
   const selected=item||state.editLabItem;
@@ -1326,12 +1340,16 @@ async function saveLabItem(item=null,active=true){
   const lot=item?item.lote||null:resin?$('lab-item-resin-lot').value.trim()||null:null;
   const profile=item?item.perfil_cannabinoide||null:resin?$('lab-item-resin-profile').value||null:null;
   const ratio=item?item.proporcion_cannabinoides||null:resin?$('lab-item-resin-ratio').value.trim()||null:null;
+  const inputType=category==='insumos'?(item?.tipo_insumo||$('lab-item-input-type').value):'ingrediente';
+  const containerCapacity=inputType==='envase'?Number(item?.capacidad_envase??$('lab-item-capacity').value):null;
+  const capacityUnit=inputType==='envase'?(item?.unidad_capacidad||$('lab-item-capacity-unit').value):null;
   if(!name||String(value).trim()===''||!Number.isFinite(quantity)||quantity<0)throw new Error('Revisá el nombre y la cantidad.');
   if(category!=='insumos'&&active&&!catalogProduct&&!selected?.catalogo_producto_id&&!selected?.es_aceite_base)throw new Error('Seleccioná un producto activo de la Lista de precios.');
   if(resin&&active&&(!['Rosin','Resina BHO'].includes(name)||!fullSpectrumProfiles.includes(profile)||!geneticId||!lot))throw new Error('Completá producto, perfil de cannabinoides, genética, lote y disponible.');
   if(resin&&active&&medranoCannabinoidRatioRequired(profile)&&!ratio)throw new Error('Indicá la proporción de cannabinoides, por ejemplo 1-1 o 1-2.');
   if(unit==='unidades'&&!Number.isInteger(quantity))throw new Error('Las unidades deben ser cantidades enteras.');
-  const q=await db.rpc('guardar_stock_laboratorio',{p_id:selected?.id||null,p_categoria:category,p_nombre:name,p_catalogo_producto_id:catalogId,p_genetica_id:geneticId,p_lote:lot,p_perfil_cannabinoide:profile,p_proporcion_cannabinoides:ratio,p_cantidad:quantity,p_unidad:unit,p_activo:active});
+  if(inputType==='envase'&&(!Number.isFinite(containerCapacity)||containerCapacity<=0||!['g','ml'].includes(capacityUnit)))throw new Error('Indicá la capacidad de cada envase y si está expresada en g o ml.');
+  const q=await db.rpc('guardar_stock_laboratorio_v2',{p_id:selected?.id||null,p_categoria:category,p_nombre:name,p_catalogo_producto_id:catalogId,p_genetica_id:geneticId,p_lote:lot,p_perfil_cannabinoide:profile,p_proporcion_cannabinoides:ratio,p_cantidad:quantity,p_unidad:inputType==='envase'?'unidades':unit,p_activo:active,p_tipo_insumo:inputType,p_capacidad_envase:containerCapacity,p_unidad_capacidad:capacityUnit});
   if(q.error)throw q.error;
   closeDialog('lab-item-dialog');state.editLabItem=null;await refresh();
 }
@@ -1344,6 +1362,11 @@ function medranoCannabinoidRatio(item){
   const ratio=String(item?.proporcion_cannabinoides||'').trim();
   if(ratio)return ratio.replaceAll('-',':');
   return medranoCannabinoidRatioRequired(item?.perfil_cannabinoide)?'Sin cargar':'—';
+}
+function labStockItemLabel(item){
+  return item?.tipo_insumo==='envase'&&item.capacidad_envase&&item.unidad_capacidad
+    ?`${item.nombre} · ${Number(item.capacidad_envase).toLocaleString('es-AR',{maximumFractionDigits:2})} ${item.unidad_capacidad}`
+    :item?.nombre||'';
 }
 function renderLabInventory(medranoNav,bindModuleNav,category){
   const items=state.medranoLabItems.filter(item=>item.categoria===category.key&&item.activo);
@@ -1358,6 +1381,12 @@ function renderLabInventory(medranoNav,bindModuleNav,category){
     [...(body?.rows||[])].forEach((row,index)=>{
       if(row.dataset.emptyRow){row.cells[0].colSpan=7;return}
       const td=document.createElement('td');td.textContent=medranoCannabinoidRatio(items[index]);row.insertBefore(td,row.cells[2]);
+      if(!items[index]?.es_aceite_base){row.cells[0].textContent=items[index]?.nombre||'Aceite final';row.cells[5].textContent=`${Number(items[index]?.cantidad||0).toLocaleString('es-AR')} ${items[index]?.unidad||'unidades'}`}
+    });
+  }
+  if(category.key==='insumos'){
+    [...(app.querySelector('.stock-table')?.tBodies?.[0]?.rows||[])].forEach((row,index)=>{
+      if(!row.dataset.emptyRow&&items[index]?.tipo_insumo==='envase')row.cells[0].textContent=labStockItemLabel(items[index]);
     });
   }
   bindModuleNav();bindStockTableTools(app);bindMedranoStockHistoryButtons();
@@ -2060,14 +2089,14 @@ function renderMedranoLaboratoryStock(medranoNav,bindModuleNav,categoryKey=''){
   }
   renderLabInventory(medranoNav,bindModuleNav,category);
 }
-const medranoJobTypes={comanda_paciente:'Comanda para paciente',aceite_base:'Aceite',crema:'Crema',capsulas:'Cápsulas',resina:'Extracción de resina',otra_produccion:'Otra producción'};
-const medranoProductionCategory={resina:'resina',aceite_base:'aceites',crema:'cremas',capsulas:'capsulas'};
+const medranoJobTypes={comanda_paciente:'Comanda para paciente',aceite_base:'Aceite base',aceite_final:'Aceite final',crema:'Crema',capsulas:'Cápsulas',resina:'Extracción de resina',otra_produccion:'Otra producción'};
+const medranoProductionCategory={resina:'resina',aceite_base:'aceites',aceite_final:'aceites',crema:'cremas',capsulas:'capsulas'};
 function labProductionMaterialRow(category,id='',quantity=''){
   const type=typeof $==='function'?$('lab-production-type')?.value:'';
-  const options=(state.medranoLabItems||[]).filter(i=>i.categoria===category&&(i.activo||i.id===id)&&(type!=='aceite_base'||category==='resina'&&i.unidad==='g'||category==='insumos'&&i.unidad==='ml'||category==='aceites'&&i.unidad==='ml'&&i.es_aceite_base));
-  const label=type==='aceite_base'?({resina:'Resina',insumos:'Aceite puro',aceites:'Aceite preparado'}[category]||medranoLabCategoryName(category)):medranoLabCategoryName(category);
-  const removable=type==='aceite_base'||category==='insumos';
-  return `<div class="lab-production-material" data-category="${category}"><label class="field-label">${escapeHtml(label)}<select class="text-input lab-material-id"><option value="">Elegí un producto</option>${options.map(i=>`<option value="${escapeHtml(i.id)}" ${i.id===id?'selected':''}>${escapeHtml(i.nombre)}${i.perfil_cannabinoide?` · ${escapeHtml(medranoCannabinoidProfile(i))}`:''}${category==='resina'&&i.proporcion_cannabinoides?` · Ratio ${escapeHtml(i.proporcion_cannabinoides)}`:''}${category==='resina'&&i.genetica_id?` · Genética ${escapeHtml(medranoLabGeneticName(i))}`:''}${i.concentracion_denominador?` · 1:${Number(i.concentracion_denominador).toLocaleString('es-AR',{maximumFractionDigits:2})}`:''}${i.lote?` · ${category==='resina'?'Lote ':''}${escapeHtml(i.lote)}`:''} (${Number(i.cantidad).toLocaleString('es-AR')} ${escapeHtml(i.unidad)})</option>`).join('')}</select></label><label class="field-label">Cantidad que se va a usar<input class="text-input lab-material-quantity" type="number" min="0.01" step="0.01" inputmode="decimal" value="${escapeHtml(quantity)}"></label>${removable?'<button class="secondary compact-button lab-material-remove" type="button">Quitar</button>':''}</div>`;
+  const options=(state.medranoLabItems||[]).filter(i=>i.categoria===category&&(i.activo||i.id===id)&&(type==='aceite_final'?category==='aceites'&&i.unidad==='ml'&&i.es_aceite_base&&!String(i.perfil_cannabinoide||'').includes('-'):type!=='aceite_base'||category==='resina'&&i.unidad==='g'||category==='insumos'&&i.unidad==='ml'&&i.tipo_insumo!=='envase'||category==='aceites'&&i.unidad==='ml'&&i.es_aceite_base));
+  const label=type==='aceite_final'?'Aceite base cannabinoide':type==='aceite_base'?({resina:'Resina',insumos:'Aceite puro',aceites:'Aceite preparado'}[category]||medranoLabCategoryName(category)):medranoLabCategoryName(category);
+  const removable=['aceite_base','aceite_final'].includes(type)||category==='insumos';
+  return `<div class="lab-production-material" data-category="${category}"><label class="field-label">${escapeHtml(label)}<select class="text-input lab-material-id"><option value="">Elegí un producto</option>${options.map(i=>`<option value="${escapeHtml(i.id)}" ${i.id===id?'selected':''}>${escapeHtml(i.nombre)}${i.tipo_insumo==='envase'&&i.capacidad_envase?` · ${Number(i.capacidad_envase).toLocaleString('es-AR',{maximumFractionDigits:2})} ${escapeHtml(i.unidad_capacidad)}`:''}${i.perfil_cannabinoide?` · ${escapeHtml(medranoCannabinoidProfile(i))}`:''}${category==='resina'&&i.proporcion_cannabinoides?` · Ratio ${escapeHtml(i.proporcion_cannabinoides)}`:''}${category==='resina'&&i.genetica_id?` · Genética ${escapeHtml(medranoLabGeneticName(i))}`:''}${i.concentracion_denominador?` · 1:${Number(i.concentracion_denominador).toLocaleString('es-AR',{maximumFractionDigits:2})}`:''}${i.lote?` · ${category==='resina'?'Lote ':''}${escapeHtml(i.lote)}`:''} (${Number(i.cantidad).toLocaleString('es-AR')} ${escapeHtml(i.unidad)})</option>`).join('')}</select></label><label class="field-label">Cantidad que se va a usar<input class="text-input lab-material-quantity" type="number" min="0.01" step="0.001" inputmode="decimal" value="${escapeHtml(quantity)}" ${type==='aceite_final'?'readonly':''}></label>${removable?'<button class="secondary compact-button lab-material-remove" type="button">Quitar</button>':''}</div>`;
 }
 function labProductionMaterialsValue(){return [...$('lab-production-materials').querySelectorAll('.lab-production-material')].map(row=>({id:row.querySelector('.lab-material-id').value,cantidad:Number(row.querySelector('.lab-material-quantity').value),raw:row.querySelector('.lab-material-quantity').value,category:row.dataset.category}))}
 function labOilProfileWeights(item,equivalent){
@@ -2120,10 +2149,52 @@ function labCapsuleDraft(){
   const details=[`${size.toLocaleString('es-AR',{maximumFractionDigits:3})} g`,resin.item.nombre,genetic&&genetic!=='Sin identificar'?`Genética ${genetic}`:'',profile&&profile!=='Sin definir'?profile:'',ratio&&ratio!=='—'&&ratio!=='Sin cargar'?`Ratio ${ratio}`:'',resin.item.lote?`Lote ${resin.item.lote}`:''].filter(Boolean);
   return{name:`Cápsulas · ${details.join(' · ')}`.slice(0,180),size,resin,capsule,genetic,profile,ratio,planned:capsule.material.cantidad,metadata:{perfil:resin.item.perfil_cannabinoide||null,proporcion:resin.item.proporcion_cannabinoides||null,genetica_id:resin.item.genetica_id||null,genetica:genetic||null,lote:resin.item.lote||null,resina_producto:resin.item.nombre,tamano_gramos:size,capsulas_previstas:capsule.material.cantidad,resina_gramos:resin.material.cantidad}};
 }
+function setupLabFinalOilFields(metadata={}){
+  const pure=(state.medranoLabItems||[]).filter(i=>i.categoria==='insumos'&&i.activo&&i.tipo_insumo!=='envase'&&i.unidad==='ml');
+  const containers=(state.medranoLabItems||[]).filter(i=>i.categoria==='insumos'&&i.activo&&i.tipo_insumo==='envase'&&i.unidad==='unidades'&&i.unidad_capacidad==='ml');
+  $('lab-final-oil-pure').innerHTML='<option value="">Seleccionar aceite puro</option>'+pure.map(i=>`<option value="${escapeHtml(i.id)}">${escapeHtml(i.nombre)} (${Number(i.cantidad).toLocaleString('es-AR')} ml)</option>`).join('');
+  $('lab-final-oil-container').innerHTML='<option value="">Seleccionar gotero</option>'+containers.map(i=>`<option value="${escapeHtml(i.id)}">${escapeHtml(labStockItemLabel(i))} (${Number(i.cantidad).toLocaleString('es-AR')} unidades)</option>`).join('');
+  $('lab-final-oil-profile').value=metadata.perfil||'';
+  $('lab-final-oil-ratio').value=metadata.proporcion||'';
+  $('lab-final-oil-concentration').value=metadata.concentracion||'';
+  $('lab-final-oil-count').value=metadata.unidades_previstas||'';
+  $('lab-final-oil-pure').value=metadata.aceite_puro_id||'';
+  $('lab-final-oil-container').value=metadata.envase_id||'';
+}
+function labFinalOilDraft(){
+  const profile=$('lab-final-oil-profile').value,names=profile.split('-').filter(Boolean),rawRatio=$('lab-final-oil-ratio').value.trim();
+  const ratio=rawRatio.split(/[-:]/).filter(Boolean).map(Number),concentration=Number($('lab-final-oil-concentration').value),count=Number($('lab-final-oil-count').value);
+  const pure=(state.medranoLabItems||[]).find(i=>i.id===$('lab-final-oil-pure').value),container=(state.medranoLabItems||[]).find(i=>i.id===$('lab-final-oil-container').value);
+  const rows=[...$('lab-production-materials').querySelectorAll('.lab-production-material')],sources=rows.map(row=>({row,item:(state.medranoLabItems||[]).find(i=>i.id===row.querySelector('.lab-material-id').value)}));
+  const weights=names.length===1&&(!rawRatio||ratio.length===1)?[1]:ratio;
+  if(!names.length||weights.length!==names.length||weights.some(x=>!Number.isFinite(x)||x<=0)||!Number.isFinite(concentration)||concentration<=1||!Number.isInteger(count)||count<=0||!pure||pure.tipo_insumo==='envase'||pure.unidad!=='ml'||!container||container.tipo_insumo!=='envase'||container.unidad!=='unidades'||container.unidad_capacidad!=='ml'||!Number(container.capacidad_envase)||sources.length!==names.length||sources.some(x=>!x.item))return null;
+  const byProfile=new Map(sources.map(source=>[source.item.perfil_cannabinoide,source]));
+  if(byProfile.size!==names.length||names.some(name=>!byProfile.has(name)))return null;
+  const totalVolume=Number(container.capacidad_envase)*count,totalEquivalent=totalVolume/concentration,totalWeight=weights.reduce((sum,value)=>sum+value,0),parts=[],materials=[];
+  let cannabinoidVolume=0;
+  names.forEach((name,index)=>{
+    const source=byProfile.get(name),amount=totalEquivalent*(weights[index]/totalWeight)*Number(source.item.concentracion_denominador);
+    cannabinoidVolume+=amount;materials.push({id:source.item.id,cantidad:amount,category:'aceites'});parts.push(`${amount.toLocaleString('es-AR',{maximumFractionDigits:3})} ml ${source.item.nombre}`);
+  });
+  const pureVolume=totalVolume-cannabinoidVolume;
+  if(!Number.isFinite(pureVolume)||pureVolume<=0)return null;
+  materials.push({id:pure.id,cantidad:pureVolume,category:'insumos'},{id:container.id,cantidad:count,category:'insumos'});
+  const ratioLabel=weights.join(':'),presentation=Number(container.capacidad_envase),base=pure.nombre;
+  return{name:`Aceite · ${base} · ${profile} · Ratio ${ratioLabel} · 1:${concentration.toLocaleString('es-AR',{maximumFractionDigits:2})} · ${presentation.toLocaleString('es-AR',{maximumFractionDigits:2})} ml`.slice(0,180),profile,ratio:ratioLabel,concentration,count,presentation,pure,container,pureVolume,totalVolume,parts,materials,metadata:{perfil:profile,proporcion:ratioLabel,concentracion:concentration,base,unidades_previstas:count,presentacion_ml:presentation,aceite_puro_id:pure.id,envase_id:container.id}};
+}
+function refreshLabFinalOilDraft(){
+  if($('lab-production-type').value!=='aceite_final')return;
+  const draft=labFinalOilDraft();
+  if(draft){
+    const amounts=new Map(draft.materials.filter(x=>x.category==='aceites').map(x=>[x.id,x.cantidad]));
+    $('lab-production-materials').querySelectorAll('.lab-production-material').forEach(row=>{const input=row.querySelector('.lab-material-quantity'),id=row.querySelector('.lab-material-id').value;input.value=amounts.has(id)?amounts.get(id).toFixed(3):''});
+  }
+  labProductionOutputOptions();
+}
 function labProductionOutputOptions(selected='',selectedName=''){
   const type=$('lab-production-type').value,category=medranoProductionCategory[type];
   $('lab-production-resin-meta').hidden=type!=='resina';
-  $('lab-production-oil-summary').hidden=!['aceite_base','capsulas'].includes(type);
+  $('lab-production-oil-summary').hidden=!['aceite_base','aceite_final','capsulas'].includes(type);
   if(type==='resina'){
     const resinProducts=state.medranoProductCatalog.filter(product=>product.categoria==='resina'&&product.activo!==false);
     $('lab-production-output').innerHTML='<option value="">Seleccionar producto</option>'+resinProducts.map(product=>`<option value="${escapeHtml(product.nombre)}" ${product.nombre===selectedName?'selected':''}>${escapeHtml(product.nombre)}</option>`).join('');
@@ -2144,6 +2215,13 @@ function labProductionOutputOptions(selected='',selectedName=''){
     $('lab-production-oil-summary').textContent=draft?`${draft.parts.join(' + ')} = ${draft.totalVolume.toLocaleString('es-AR',{maximumFractionDigits:2})} ml teóricos · Resina equivalente ${draft.resinEquivalent.toLocaleString('es-AR',{maximumFractionDigits:3})} g · Concentración 1:${draft.concentration.toLocaleString('es-AR',{maximumFractionDigits:2})} · ${draft.profile}${draft.ratio?` ${draft.ratio}`:''}`:'Agregá al menos una fuente cannabinoide (resina o aceite preparado) y otro componente para calcular el aceite.';
     $('lab-production-output').onchange=null;
     return;
+  }
+  if(type==='aceite_final'){
+    const draft=labFinalOilDraft();
+    $('lab-production-output').innerHTML=`<option value="${escapeHtml(draft?.name||'')}">${escapeHtml(draft?.name||'Completá la receta, los aceites base y el envase')}</option>`;
+    $('lab-production-name-field').hidden=true;$('lab-production-unit-field').hidden=true;$('lab-production-unit').value='unidades';$('lab-production-unit').disabled=true;
+    $('lab-production-oil-summary').textContent=draft?`${draft.parts.join(' + ')} + ${draft.pureVolume.toLocaleString('es-AR',{maximumFractionDigits:3})} ml ${draft.pure.nombre} + ${draft.count} ${labStockItemLabel(draft.container)} = ${draft.count} aceites de ${draft.presentation.toLocaleString('es-AR',{maximumFractionDigits:2})} ml.`:'La receta necesita un aceite base simple por cada cannabinoide del perfil, el ratio, la concentración, un aceite puro y el gotero correspondiente.';
+    $('lab-production-output').onchange=null;return;
   }
   if(type==='capsulas'){
     const draft=labCapsuleDraft();
@@ -2168,19 +2246,21 @@ function labProductionOutputOptions(selected='',selectedName=''){
 }
 function labProductionMaterialDefaults(job=null){
   const type=$('lab-production-type').value;
-  const rows=job?(state.medranoLabMaterials||[]).filter(x=>x.trabajo_id===job.id):[];
-  const required=type==='resina'?['flores']:['resina','insumos'];
+  const jobRows=job?(state.medranoLabMaterials||[]).filter(x=>x.trabajo_id===job.id):[];
+  const rows=type==='aceite_final'?jobRows.filter(x=>x.categoria==='aceites'):jobRows;
+  const required=type==='resina'?['flores']:type==='aceite_final'?['aceites','aceites']:['resina','insumos'];
   $('lab-production-materials').innerHTML=rows.length?rows.map(x=>labProductionMaterialRow(x.categoria,x.stock_id,x.cantidad)).join(''):required.map(x=>labProductionMaterialRow(x)).join('');
   $('lab-production-add-material').hidden=['resina','aceite_base'].includes(type);
+  $('lab-production-add-material').textContent=type==='aceite_final'?'+ Agregar aceite base':'+ Agregar insumo';
   $('lab-production-oil-additions').hidden=type!=='aceite_base';
-  $('lab-production-materials').querySelectorAll('.lab-material-remove').forEach(b=>b.onclick=()=>{b.closest('.lab-production-material').remove();if(['aceite_base','capsulas'].includes(type))labProductionOutputOptions()});
-  $('lab-production-materials').querySelectorAll('.lab-material-id').forEach(input=>input.onchange=()=>{if(type==='resina'&&!job)$('lab-production-output').value='';if(['aceite_base','capsulas'].includes(type))labProductionOutputOptions()});
+  $('lab-production-materials').querySelectorAll('.lab-material-remove').forEach(b=>b.onclick=()=>{b.closest('.lab-production-material').remove();if(type==='aceite_final')refreshLabFinalOilDraft();else if(['aceite_base','capsulas'].includes(type))labProductionOutputOptions()});
+  $('lab-production-materials').querySelectorAll('.lab-material-id').forEach(input=>input.onchange=()=>{if(type==='resina'&&!job)$('lab-production-output').value='';if(type==='aceite_final')refreshLabFinalOilDraft();else if(['aceite_base','capsulas'].includes(type))labProductionOutputOptions()});
   $('lab-production-materials').querySelectorAll('.lab-material-quantity').forEach(input=>input.oninput=()=>{if(['aceite_base','capsulas'].includes(type))labProductionOutputOptions()});
 }
 function addLabProductionMaterial(category){
   const div=document.createElement('div');div.innerHTML=labProductionMaterialRow(category);const row=div.firstElementChild;$('lab-production-materials').append(row);
-  row.querySelector('.lab-material-remove')?.addEventListener('click',()=>{row.remove();if(['aceite_base','capsulas'].includes($('lab-production-type').value))labProductionOutputOptions()});
-  row.querySelector('.lab-material-id').onchange=()=>{if(['aceite_base','capsulas'].includes($('lab-production-type').value))labProductionOutputOptions()};
+  row.querySelector('.lab-material-remove')?.addEventListener('click',()=>{row.remove();if($('lab-production-type').value==='aceite_final')refreshLabFinalOilDraft();else if(['aceite_base','capsulas'].includes($('lab-production-type').value))labProductionOutputOptions()});
+  row.querySelector('.lab-material-id').onchange=()=>{if($('lab-production-type').value==='aceite_final')refreshLabFinalOilDraft();else if(['aceite_base','capsulas'].includes($('lab-production-type').value))labProductionOutputOptions()};
   row.querySelector('.lab-material-quantity').oninput=()=>{if(['aceite_base','capsulas'].includes($('lab-production-type').value))labProductionOutputOptions()};
   if(['aceite_base','capsulas'].includes($('lab-production-type').value))labProductionOutputOptions();
 }
@@ -2189,10 +2269,12 @@ function openLabProduction(job=null){
   state.editMedranoLabJob=job;
   $('lab-production-title').textContent=job?'Editar producción':'Nueva producción';
   $('lab-production-type').value=job?.tipo||'resina';
+  const metadata=job?.resultado_metadata||{};
+  $('lab-production-final-oil-fields').hidden=$('lab-production-type').value!=='aceite_final';
+  setupLabFinalOilFields(metadata);
   labProductionMaterialDefaults(job);
   $('lab-production-name').value=job?.resultado_stock_id?'':job?.producto||'';
-  $('lab-production-unit').value=job?.resultado_unidad||({resina:'g',aceite_base:'ml',crema:'g',capsulas:'unidades'}[$('lab-production-type').value]);
-  const metadata=job?.resultado_metadata||{};
+  $('lab-production-unit').value=job?.resultado_unidad||({resina:'g',aceite_base:'ml',aceite_final:'unidades',crema:'g',capsulas:'unidades'}[$('lab-production-type').value]);
   $('lab-production-resin-profile').value=metadata.perfil||'';
   $('lab-production-resin-ratio').value=metadata.proporcion||'';
   $('lab-production-detail').value=job?.detalle||'';
@@ -2202,23 +2284,24 @@ function openLabProduction(job=null){
 async function saveLabProduction(){
   const type=$('lab-production-type').value,output=$('lab-production-output').value;
   const draft=type==='aceite_base'?labOilBaseDraft():null;
+  const finalOilDraft=type==='aceite_final'?labFinalOilDraft():null;
   const capsuleDraft=type==='capsulas'?labCapsuleDraft():null;
-  const item=['resina','aceite_base','capsulas'].includes(type)?null:(state.medranoLabItems||[]).find(i=>i.id===output);
-  const name=type==='resina'?output:type==='aceite_base'?draft?.name||'':type==='capsulas'?capsuleDraft?.name||'':item?.nombre||$('lab-production-name').value.trim(),unit=type==='resina'?'g':type==='aceite_base'?'ml':type==='capsulas'?'unidades':item?.unidad||$('lab-production-unit').value;
-  const materials=labProductionMaterialsValue();
-  const metadata=type==='resina'?{perfil:$('lab-production-resin-profile').value,proporcion:$('lab-production-resin-ratio').value.trim()||null}:type==='aceite_base'&&draft?{perfil:draft.profile,proporcion:draft.ratio||null,base:draft.base,concentracion:draft.concentration}:type==='capsulas'&&capsuleDraft?capsuleDraft.metadata:{};
+  const item=['resina','aceite_base','aceite_final','capsulas'].includes(type)?null:(state.medranoLabItems||[]).find(i=>i.id===output);
+  const name=type==='resina'?output:type==='aceite_base'?draft?.name||'':type==='aceite_final'?finalOilDraft?.name||'':type==='capsulas'?capsuleDraft?.name||'':item?.nombre||$('lab-production-name').value.trim(),unit=type==='resina'?'g':type==='aceite_base'?'ml':['aceite_final','capsulas'].includes(type)?'unidades':item?.unidad||$('lab-production-unit').value;
+  const materials=type==='aceite_final'&&finalOilDraft?finalOilDraft.materials:labProductionMaterialsValue();
+  const metadata=type==='resina'?{perfil:$('lab-production-resin-profile').value,proporcion:$('lab-production-resin-ratio').value.trim()||null}:type==='aceite_base'&&draft?{perfil:draft.profile,proporcion:draft.ratio||null,base:draft.base,concentracion:draft.concentration}:type==='aceite_final'&&finalOilDraft?finalOilDraft.metadata:type==='capsulas'&&capsuleDraft?capsuleDraft.metadata:{};
   if(!medranoProductionCategory[type]||!name||name.length>180||!materials.length||new Set(materials.map(m=>m.id)).size!==materials.length||materials.some(m=>!m.id||!m.raw||!Number.isFinite(m.cantidad)||m.cantidad<=0)||$('lab-production-detail').value.length>2000)throw new Error('Revisá el producto obtenido y las cantidades de materias primas.');
   if(type==='resina'&&!fullSpectrumProfiles.includes(metadata.perfil))throw new Error('Seleccioná el perfil de cannabinoides de la resina.');
   if(type==='resina'&&medranoCannabinoidRatioRequired(metadata.perfil)&&!metadata.proporcion)throw new Error('Indicá la proporción de cannabinoides de la resina, por ejemplo 1-1 o 1-2.');
-  if(type==='resina'&&(materials.length!==1||materials[0].category!=='flores')||type==='aceite_base'&&!draft||type==='capsulas'&&!capsuleDraft||!['resina','aceite_base','capsulas'].includes(type)&&!materials.some(m=>m.category==='resina'))throw new Error(type==='capsulas'?'Elegí una resina y un insumo de cápsulas cuyo nombre indique el tamaño, por ejemplo “Cápsulas de 1 g”.':'Elegí las materias primas necesarias para este trabajo.');
-  const q=await db.rpc('guardar_produccion_laboratorio',{p_id:state.editMedranoLabJob?.id||null,p_tipo:type,p_insumos:materials.map(({id,cantidad})=>({id,cantidad})),p_producto:name,p_producto_id:['resina','aceite_base','capsulas'].includes(type)?null:output||null,p_unidad:unit,p_detalle:$('lab-production-detail').value.trim(),p_metadata:metadata});
+  if(type==='resina'&&(materials.length!==1||materials[0].category!=='flores')||type==='aceite_base'&&!draft||type==='aceite_final'&&!finalOilDraft||type==='capsulas'&&!capsuleDraft||!['resina','aceite_base','aceite_final','capsulas'].includes(type)&&!materials.some(m=>m.category==='resina'))throw new Error(type==='capsulas'?'Elegí una resina y un insumo de cápsulas cuyo nombre indique el tamaño, por ejemplo “Cápsulas de 1 g”.':type==='aceite_final'?'Completá la receta y elegí un aceite base simple por cannabinoide, el aceite puro y el gotero.':'Elegí las materias primas necesarias para este trabajo.');
+  const q=type==='aceite_final'?await db.rpc('guardar_produccion_aceite_final',{p_id:state.editMedranoLabJob?.id||null,p_aceites:materials.filter(x=>x.category==='aceites').map(x=>x.id),p_aceite_puro_id:finalOilDraft.pure.id,p_envase_id:finalOilDraft.container.id,p_perfil:finalOilDraft.profile,p_proporcion:finalOilDraft.ratio,p_concentracion:finalOilDraft.concentration,p_unidades:finalOilDraft.count,p_detalle:$('lab-production-detail').value.trim()}):await db.rpc('guardar_produccion_laboratorio',{p_id:state.editMedranoLabJob?.id||null,p_tipo:type,p_insumos:materials.map(({id,cantidad})=>({id,cantidad})),p_producto:name,p_producto_id:['resina','aceite_base','capsulas'].includes(type)?null:output||null,p_unidad:unit,p_detalle:$('lab-production-detail').value.trim(),p_metadata:metadata});
   if(q.error)throw q.error;
   closeDialog('lab-production-dialog');state.editMedranoLabJob=null;await refresh();
 }
 function openLabProductionFinish(job){
   state.finishMedranoLabJob=job;
-  $('lab-production-finish-summary').textContent=job.tipo==='capsulas'?`${job.producto}. Ingresá cuántas cápsulas salieron realmente; los insumos se descontarán según lo cargado al crear el trabajo.`:`${job.producto} · resultado en ${job.resultado_unidad}`;
-  $('lab-production-return-label').firstChild.textContent=job.tipo==='capsulas'?'Cápsulas obtenidas':'Rendimiento real';
+  $('lab-production-finish-summary').textContent=job.tipo==='capsulas'?`${job.producto}. Ingresá cuántas cápsulas salieron realmente; los insumos se descontarán según lo cargado al crear el trabajo.`:job.tipo==='aceite_final'?`${job.producto}. Ingresá cuántos goteros completos salieron realmente; la receta conserva los consumos calculados.`:`${job.producto} · resultado en ${job.resultado_unidad}`;
+  $('lab-production-return-label').firstChild.textContent=job.tipo==='capsulas'?'Cápsulas obtenidas':job.tipo==='aceite_final'?'Goteros obtenidos':'Rendimiento real';
   $('lab-production-return').value='';$('lab-production-return').step=job.resultado_unidad==='unidades'?'1':'0.01';
   $('lab-production-finish-dialog').showModal();
 }
@@ -2412,11 +2495,12 @@ function bindMedranoDialogActions(){
   $('medrano-credit-cancel').onclick=()=>closeDialog('medrano-credit-dialog');
   $('medrano-credit-tokens').oninput=updateMedranoCreditTotal;
   $('medrano-credit-save').onclick=async()=>{const b=$('medrano-credit-save');b.disabled=true;try{await saveMedranoCredit()}catch(e){console.error(e);alert(e.message||'No se pudieron acreditar los Tokens.')}finally{b.disabled=false}};
-  $('lab-production-type').onchange=()=>{labProductionMaterialDefaults();$('lab-production-unit').value=({resina:'g',aceite_base:'ml',crema:'g',capsulas:'unidades'}[$('lab-production-type').value]);$('lab-production-name').value='';$('lab-production-resin-profile').value='';$('lab-production-resin-ratio').value='';labProductionOutputOptions()};
-  $('lab-production-add-material').onclick=()=>addLabProductionMaterial('insumos');
+  $('lab-production-type').onchange=()=>{const type=$('lab-production-type').value;$('lab-production-final-oil-fields').hidden=type!=='aceite_final';if(type==='aceite_final')setupLabFinalOilFields();labProductionMaterialDefaults();$('lab-production-unit').value=({resina:'g',aceite_base:'ml',aceite_final:'unidades',crema:'g',capsulas:'unidades'}[type]);$('lab-production-name').value='';$('lab-production-resin-profile').value='';$('lab-production-resin-ratio').value='';labProductionOutputOptions()};
+  $('lab-production-add-material').onclick=()=>addLabProductionMaterial($('lab-production-type').value==='aceite_final'?'aceites':'insumos');
   $('lab-production-add-resin').onclick=()=>addLabProductionMaterial('resina');
   $('lab-production-add-prepared-oil').onclick=()=>addLabProductionMaterial('aceites');
   $('lab-production-add-pure-oil').onclick=()=>addLabProductionMaterial('insumos');
+  for(const id of ['lab-final-oil-profile','lab-final-oil-ratio','lab-final-oil-concentration','lab-final-oil-count','lab-final-oil-pure','lab-final-oil-container'])$(id).oninput=refreshLabFinalOilDraft;
   $('lab-production-cancel').onclick=()=>{state.editMedranoLabJob=null;closeDialog('lab-production-dialog')};
   $('lab-production-save').onclick=async()=>{const b=$('lab-production-save');b.disabled=true;try{await saveLabProduction()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la producción.')}finally{b.disabled=false}};
   $('lab-production-finish-cancel').onclick=()=>{state.finishMedranoLabJob=null;closeDialog('lab-production-finish-dialog')};
@@ -2430,6 +2514,7 @@ function bindMedranoDialogActions(){
   $('cancel-lab-transfer').onclick=()=>closeDialog('lab-transfer-dialog');
   $('save-lab-transfer').onclick=async()=>{const b=$('save-lab-transfer');b.disabled=true;try{await sendMedranoLabTransfer()}catch(e){alert(e.message)}finally{b.disabled=false}};
   $('cancel-lab-item').onclick=()=>{state.editLabItem=null;closeDialog('lab-item-dialog')};
+  $('lab-item-input-type').onchange=updateLabItemInsumoFields;
   $('save-lab-item').onclick=async()=>{const b=$('save-lab-item');b.disabled=true;try{await saveLabItem()}catch(e){alert(e.message)}finally{b.disabled=false}};
   $('cancel-medrano-counter').onclick=()=>closeDialog('medrano-counter-dialog');
   $('save-medrano-counter').onclick=async()=>{const b=$('save-medrano-counter');b.disabled=true;try{await saveMedranoCounterItem()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el producto.')}finally{b.disabled=false}};
