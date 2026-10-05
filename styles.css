@@ -930,6 +930,7 @@ body{
 .stock-day-total{text-align:right;display:grid;gap:2px;white-space:nowrap}
 .stock-day-total strong{font-size:1.08rem}
 .stock-day-detail{border-top:1px solid var(--border);padding:10px 12px 14px}
+.movement-operation-badge{display:inline-flex;margin-top:6px;padding:3px 8px;border-radius:999px;background:#e8f1ec;color:#245c3d;font-size:.78rem;font-weight:700}
 .stock-day-empty{padding:18px 4px;color:var(--muted)}
 .stock-movement-search-wrap{display:flex;align-items:center;gap:10px;margin:10px 0}
 .stock-movement-search-wrap .text-input{flex:1}

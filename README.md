@@ -9,7 +9,17 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.15. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.0. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.0 — Trazabilidad relacionada de Medrano
+
+- Las cremas heredan automáticamente el perfil de cannabinoides y el ratio de la resina utilizada.
+- La producción de cremas registra presentación, frascos previstos, rendimiento real, lote e insumos consumidos.
+- El stock de Cremas muestra Producto, Perfil de cannabinoides, Ratio, Presentación, Lote y unidades disponibles.
+- Producciones, traslados, dispensas, movimientos de Caja y Tokens comparten una referencia interna de operación.
+- El historial muestra los movimientos relacionados sin exponer identificadores técnicos.
+- La carga inicial trae sólo los movimientos recientes; el historial completo se consulta al abrirlo.
+- Requiere ejecutar `Rainbows_V3.26.0_trazabilidad_medrano.sql` antes de subir la aplicación.
 
 ## V3.25.15 — Envases y aceites finales
 
