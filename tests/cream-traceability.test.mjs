@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const read=name=>fs.readFileSync(new URL(`../${name}`,import.meta.url),'utf8');
-const app=read('app.js'),html=read('index.html'),sql=read('Rainbows_V3.26.0_trazabilidad_medrano.sql');
+const app=read('app.js'),html=read('index.html'),sql=read('Rainbows_V3.26.0_trazabilidad_medrano.sql'),sql261=read('Rainbows_V3.26.1_concentracion_cremas_y_catalogo.sql');
 
 test('el stock de cremas muestra perfil, ratio, presentación, lote y unidades',()=>{
   assert.match(app,/function labCreamInventoryMarkup\(items\)/);
@@ -24,4 +24,12 @@ test('el rendimiento final de crema se registra en frascos enteros',()=>{
   assert.match(app,/job\.tipo==='crema'\?'Frascos obtenidos'/);
   assert.match(sql,/v_job\.tipo='crema'[\s\S]*?resultado_unidad<>'unidades'/);
   assert.match(sql,/v_job\.resultado_unidad='unidades' and p_retorno<>trunc\(p_retorno\)/);
+});
+
+test('la crema calcula y muestra la concentración de resina',()=>{
+  assert.match(app,/concentration=totalGrams\/resinGrams/);
+  assert.match(app,/Concentración<\/th>/);
+  assert.match(app,/concentración 1:\$\{draft\.concentration/);
+  assert.match(sql261,/v_concentracion:=v_gramos_totales\/v_resina_cantidad/);
+  assert.match(sql261,/'concentracion',v_concentracion/);
 });
