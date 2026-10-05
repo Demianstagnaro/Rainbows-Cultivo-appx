@@ -9,7 +9,18 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.0. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.1. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.1 — Concentración de cremas y catálogo automático
+
+- La crema calcula su concentración como peso final planificado dividido por gramos de resina; por ejemplo, 1 g de resina en 50 g finales se identifica como 1:50.
+- Stock de Cremas muestra la concentración en una columna independiente.
+- Cremas, aceites finales, cápsulas y resinas elaboradas se vinculan automáticamente con la Lista de precios.
+- La genética y el lote de origen quedan en la trazabilidad, pero no crean artículos ni precios duplicados.
+- Cada elaboración final genera un lote físico independiente aunque comparta producto y precio con otras partidas.
+- Un producto nuevo aparece como `Sin precio` hasta que Administración le asigna Tokens.
+- Al guardar el precio, el valor se propaga a todos los lotes de stock relacionados con ese producto.
+- Requiere ejecutar `Rainbows_V3.26.1_concentracion_cremas_y_catalogo.sql` después de V3.26.0.
 
 ## V3.26.0 — Trazabilidad relacionada de Medrano
 
