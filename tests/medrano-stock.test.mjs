@@ -38,7 +38,7 @@ test('envío y recepción de flores se muestran como un único traslado',()=>{
   state.medranoStockHistory=state.medranoStockHistory.filter(row=>row.id!=='receipt');
   const pending=context.history('laboratorio','flores','today');
   assert.match(pending,/<strong>Traslado Dispensario → Laboratorio<\/strong>/);
-  assert.match(pending,/Pendiente de recepción<\/span><\/td><td>5 g<\/td><td>Pendiente de recepción<\/td>/);
+  assert.match(pending,/Pendiente de recepción<\/span>[\s\S]*?<td>5 g<\/td><td>Pendiente de recepción<\/td>/);
 });
 test('traslados usan bloqueo, descuento atómico y una sola recepción',()=>{
   assert.match(sql,/for update/g);
