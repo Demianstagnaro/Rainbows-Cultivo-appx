@@ -30,6 +30,13 @@ test('finalizar crea un lote trazable a granel y descuenta los insumos',()=>{
   assert.match(app,/category\.key==='aceites'\?[\s\S]*?Base[\s\S]*?Perfil de cannabinoides[\s\S]*?Concentración[\s\S]*?Disponible/);
 });
 
+test('el stock de Aceites muestra el ratio separado del perfil y la concentración',()=>{
+  assert.match(app,/category\.key==='aceites'[\s\S]*?th\.textContent='Ratio'/);
+  assert.match(app,/td\.textContent=medranoCannabinoidRatio\(items\[index\]\)/);
+  assert.match(app,/head\.insertBefore\(th,head\.cells\[2\]\)/);
+  assert.match(app,/row\.insertBefore\(td,row\.cells\[2\]\)/);
+});
+
 test('los aceites base no se ofrecen para precio ni dispensa',()=>{
   assert.match(app,/!x\.es_aceite_base\|\|include\(x\.id\)/);
   assert.match(catalogSql,/not coalesce\(s\.es_aceite_base,false\)/i);
