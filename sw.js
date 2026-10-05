@@ -1,4 +1,4 @@
-const VERSION='3.25.13';
+const VERSION='3.25.14';
 const CACHE=`rainbows-v${VERSION.replaceAll('.','-')}`;
 const SUPABASE_MODULE='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 const APP_SHELL='./index.html';

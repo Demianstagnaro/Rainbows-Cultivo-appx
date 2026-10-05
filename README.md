@@ -9,7 +9,12 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.25.13. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.25.14. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.25.14 — Ratio visible en Aceites
+
+- El stock de Aceites muestra el Ratio en una columna independiente entre el perfil de cannabinoides y la concentración.
+- Reutiliza la proporción ya guardada en cada aceite, por lo que no requiere una migración nueva de Supabase.
 
 ## V3.25.13 — Producción trazable de cápsulas
 
