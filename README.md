@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.1. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.2. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.2 — Medidas sin ceros innecesarios
+
+- Las presentaciones se muestran como `1 g`, `50 g` o `10 ml`, sin formatos técnicos como `1.000 g` o `50.00 g`.
+- Los valores con decimales reales se conservan y se presentan con coma, por ejemplo `0,5 g`.
+- Corrige cápsulas, cremas, aceites, catálogo, comandas, trabajos e historial ya registrados.
+- No modifica cantidades, recetas, concentraciones ni precios.
+- Requiere ejecutar `Rainbows_V3.26.2_medidas_sin_ceros.sql` después de V3.26.1.
 
 ## V3.26.1 — Concentración de cremas y catálogo automático
 
