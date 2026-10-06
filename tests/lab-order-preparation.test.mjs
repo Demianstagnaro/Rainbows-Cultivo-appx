@@ -5,6 +5,7 @@ import fs from 'node:fs';
 const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const sql=fs.readFileSync(new URL('../Rainbows_V3.26.3_preparacion_comandas_laboratorio.sql',import.meta.url),'utf8');
 const sqlStock=fs.readFileSync(new URL('../Rainbows_V3.26.4_comandas_desde_stock.sql',import.meta.url),'utf8');
+const sqlTrace=fs.readFileSync(new URL('../Rainbows_V3.26.5_lotes_en_comandas.sql',import.meta.url),'utf8');
 
 test('los productos elaborados usan tres estados de preparación',()=>{
   assert.match(sql,/preparacion_estado[\s\S]*?'pendiente','en_proceso','listo'/i);
@@ -17,6 +18,7 @@ test('iniciar preparación usa el lote reservado sin crear otra producción',()=
   assert.match(sqlStock,/add column if not exists preparacion_estado text/);
   assert.match(sqlStock,/add column if not exists preparacion_trabajo_id uuid/);
   assert.match(sqlStock,/create trigger normalizar_preparacion_item_comanda/i);
+  assert.match(sqlStock,/to_jsonb\(new\)-array\['preparacion_estado','preparacion_trabajo_id'\]/i);
   assert.match(sqlStock,/create or replace function public\.cambiar_preparacion_item_comanda/i);
   assert.doesNotMatch(sqlStock,/insert into public\.medrano_laboratorio_trabajos\s*\(/i);
   assert.match(sqlStock,/set preparacion_estado=p_estado,preparacion_trabajo_id=null/i);
@@ -24,12 +26,16 @@ test('iniciar preparación usa el lote reservado sin crear otra producción',()=
   assert.match(app,/cambiar_preparacion_item_comanda/);
 });
 
-test('Resinas y Cápsulas muestran genética y lote',()=>{
-  assert.match(app,/function medranoLabOrderTrace\(item\)/);
-  assert.match(app,/\['resina','capsulas'\]\.includes\(item\?\.tipo\)/);
+test('todos los productos trazables muestran genética y lote',()=>{
+  assert.match(app,/function medranoOrderItemTrace\(item\)/);
   assert.match(app,/`Genética: \$\{genetic\}`/);
   assert.match(app,/`Lote: \$\{lot\}`/);
-  assert.match(app,/\['resina','capsulas'\]\.includes\(tipo\)/);
+  assert.match(app,/Producto \/ trazabilidad/);
+  assert.match(sqlTrace,/add column if not exists genetica_nombre text/);
+  assert.match(sqlTrace,/add column if not exists numero_lote text/);
+  assert.match(sqlTrace,/create trigger completar_trazabilidad_item_comanda/i);
+  assert.match(sqlTrace,/where i\.tipo='flores'/i);
+  assert.match(sqlTrace,/where i\.tipo in \('resina','aceites','cremas','capsulas'\)/i);
 });
 
 test('la comanda no se dispensa hasta que Laboratorio termina',()=>{

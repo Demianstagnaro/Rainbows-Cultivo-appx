@@ -31,7 +31,7 @@ test('las reservas reducen el saldo libre sin modificar el stock físico al guar
   assert.match(context.availability('flores','lot',3,'g'),/Libre: -9 g/);
 });
 
-test('el detalle muestra tipo, genética y cantidad en filas separadas sin exponer los códigos de lote',()=>{
+test('el detalle muestra tipo, genética, lote y cantidad en filas separadas',()=>{
   const categories=app.slice(app.indexOf('const medranoOrderCategories='),app.indexOf('function medranoMultiOrderView('));
   const itemHelpers=app.slice(app.indexOf('function medranoOrderItemName('),app.indexOf('function medranoReserved('));
   const state={medranoDispensarioLots:[{id:'one',genetica_id:'g1',nombre_historico:'MCxCCC',codigo_lote:'F1C9MCXCCC110826'}],geneticas:[{id:'g1',nombre:'MCxCCC'}]};
@@ -42,9 +42,9 @@ test('el detalle muestra tipo, genética y cantidad en filas separadas sin expon
     {tipo:'aceites',origen_id:'two',nombre:'Aceite base <p>',cantidad:100,unidad:'ml'},
   ]});
   assert.match(html,/<details class="medrano-order-details"><summary>Ver productos<\/summary>/);
-  assert.match(html,/<td>Flores<\/td><td>MCxCCC<\/td><td>50 g<\/td>/);
-  assert.match(html,/<td>Aceites<\/td><td>Aceite base &lt;p&gt;<\/td><td>100 ml<\/td>/);
-  assert.doesNotMatch(html,/F1C9MCXCCC110826|<p>|2 productos/);
+  assert.match(html,/<td>Flores<\/td><td><strong>MCxCCC<\/strong><br><span class="muted">Genética: MCxCCC · Lote: F1C9MCXCCC110826<\/span><\/td><td>50 g<\/td>/);
+  assert.match(html,/<td>Aceites<\/td><td><strong>Aceite base &lt;p&gt;<\/strong><\/td><td>100 ml<\/td>/);
+  assert.doesNotMatch(html,/<p>|2 productos/);
   assert.equal(context.qty({multiple:true,items:[]}), '');
 });
 
