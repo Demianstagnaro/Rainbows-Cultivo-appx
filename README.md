@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.7. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.8. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.8 — Resultado automático de aceites finales
+
+- El perfil final crea automáticamente una fila de aceite base por cannabinoide.
+- Cada fila ofrece únicamente bases compatibles con THC, CBD o CBN según corresponda.
+- El sistema calcula mililitros de cada base, aceite puro, envases y resultado esperado.
+- Laboratorio sólo confirma los goteros obtenidos al finalizar; entonces se descuentan los insumos y se ingresa el producto terminado.
+- Esta versión no requiere una migración nueva de Supabase.
 
 ## V3.26.7 — Preparación automática de comandas de Laboratorio
 
