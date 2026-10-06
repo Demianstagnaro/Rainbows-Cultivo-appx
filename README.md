@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.5. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.6. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.6 — Cobro, dispensa y cantidades enteras
+
+- Administración confirma el cobro de la comanda de forma separada.
+- Administración y Dispensario pueden confirmar la entrega solamente después del pago.
+- Cápsulas, cremas, aceites envasados, picadores y demás productos por unidad avanzan en números enteros.
+- Supabase rechaza cantidades fraccionarias cuando el producto está expresado en unidades.
+- Requiere ejecutar `Rainbows_V3.26.6_cobro_dispensa_y_unidades.sql` después de V3.26.5.
 
 ## V3.26.5 — Genética y lote en comandas
 

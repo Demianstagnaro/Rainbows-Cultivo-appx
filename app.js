@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.5';
+const APP_VERSION='3.26.6';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1339,6 +1339,7 @@ function updateLabItemInsumoFields(){
   $('lab-item-capacity-fields').hidden=!container;
   if(container){$('lab-item-unit').value='unidades';$('lab-item-unit').disabled=true;$('lab-item-quantity-label').textContent='Cantidad de envases disponibles'}
   else if(insumo){$('lab-item-unit').disabled=Boolean(state.editLabItem);$('lab-item-quantity-label').textContent='Cantidad disponible'}
+  configureWholeUnitInput($('lab-item-quantity'),$('lab-item-unit').value,true);
 }
 async function saveLabItem(item=null,active=true){
   const selected=item||state.editLabItem;
@@ -1666,6 +1667,14 @@ function medranoAvailabilityHtml(tipo,id,quantity,unit){
   const reserved=medranoReserved(tipo,id);
   return reserved?`<br><small class="muted">Reservado: ${reserved.toLocaleString('es-AR')} ${escapeHtml(unit)} · Libre: ${(Number(quantity)-reserved).toLocaleString('es-AR')} ${escapeHtml(unit)}</small>`:'';
 }
+function configureWholeUnitInput(input,unit,allowZero=false){
+  if(!input)return;
+  const whole=unit==='unidades';
+  input.step=whole?'1':'0.01';
+  input.min=whole?(allowZero?'0':'1'):(allowZero?'0':'0.01');
+  input.inputMode=whole?'numeric':'decimal';
+  input.title=whole?'Ingresá una cantidad entera':'';
+}
 function medranoCatalog(tipo,editing=null){
   const include=id=>editing?.items.some(i=>i.tipo===tipo&&i.origen_id===id);
   if(tipo==='flores')return state.medranoDispensarioLots.map(x=>{const genetic=state.geneticas.find(g=>String(g.id)===String(x.genetica_id));return{id:x.id,name:`${genetic?.nombre||medranoLotGeneticName(x)} · ${x.codigo_lote} · ${stockLotSizes[x.tamano]||'Sin tamaño'}`,qty:Number(x.gramos_actual),unit:'g',tokens:medranoFlowerTokenPrice(x.tamano)}});
@@ -1681,9 +1690,9 @@ function updateMedranoMultiProduct(row){
 }
 function updateMedranoMultiUnit(row){
   const product=medranoCatalog(row.querySelector('[data-order-type]').value,state.editMedranoMultiOrder).find(p=>p.id===row.querySelector('[data-order-product]').value);
-  const quantity=Number(row.querySelector('[data-order-quantity]').value)||0;
+  const input=row.querySelector('[data-order-quantity]'),quantity=Number(input.value)||0;
   row.querySelector('[data-order-unit]').textContent=product?`${product.unit} · ${formatTokens(product.tokens*quantity)}`:'';
-  row.querySelector('[data-order-quantity]').step=product?.unit==='unidades'?'1':'0.01';
+  configureWholeUnitInput(input,product?.unit||'',false);
   updateMedranoMultiTotal();
 }
 function updateMedranoMultiTotal(){
@@ -1799,28 +1808,27 @@ async function markMedranoOrderDispensed(orderId){
   if(!order)throw new Error('No se encontró la comanda.');
   if(order.dispensada_at)return;
   if(!medranoOrderLabReady(order))throw new Error('Laboratorio todavía tiene productos pendientes de preparación.');
-  if(order.multiple&&order.pago_estado!=='pagada'){openMedranoPaymentDialog(order,true);return}
+  if(order.multiple&&order.pago_estado!=='pagada')throw new Error('Administración debe confirmar primero el cobro de la comanda.');
   const q=order.multiple?await db.rpc('cerrar_comanda_multiproducto',{p_id:order.id,p_medio:null}):await db.rpc('marcar_comanda_dispensada',{objetivo_id:order.id});
   if(q.error)throw q.error;
   await refresh();
 }
 
-function openMedranoPaymentDialog(order,dispenseAfter=false){
+function openMedranoPaymentDialog(order){
   if(!order?.multiple||!state.medranoCajaReady)return;
   const patient=state.medranoPatients.find(p=>String(p.id)===String(order.paciente_id));
   const balance=Number(patient?.saldo_tokens)||0,total=Number(order.tokens_total)||0,missing=Math.max(total-balance,0);
-  state.pendingMedranoPayment={order,dispenseAfter,missing};
-  $('medrano-payment-title').textContent=dispenseAfter?'Cobrar y dispensar comanda':'Cobrar comanda';
+  state.pendingMedranoPayment={order,missing};
+  $('medrano-payment-title').textContent='Cobrar comanda';
   $('medrano-payment-summary').innerHTML=`<strong>${escapeHtml(order.paciente_nombre||medranoPatientName(patient))}</strong><br>${formatTokens(total)} · saldo actual ${formatTokens(balance)}<br>${missing?`A cobrar: <strong>${formatMoney(missing*1000)}</strong> (${formatTokens(missing)})`:'Se pagará completamente con el saldo de Tokens.'}`;
   $('medrano-payment-method-field').hidden=missing<=0;
   $('medrano-payment-method').value='efectivo';
-  $('medrano-payment-confirm').textContent=dispenseAfter?'Confirmar cobro y dispensa':'Confirmar pago';
+  $('medrano-payment-confirm').textContent='Confirmar pago';
   $('medrano-payment-dialog').showModal();
 }
 async function confirmMedranoPayment(){
   const pending=state.pendingMedranoPayment;if(!pending)return;
-  const fn=pending.dispenseAfter?'cerrar_comanda_multiproducto':'pagar_comanda_multiproducto';
-  const q=await db.rpc(fn,{p_id:pending.order.id,p_medio:pending.missing>0?$('medrano-payment-method').value:null});
+  const q=await db.rpc('pagar_comanda_multiproducto',{p_id:pending.order.id,p_medio:pending.missing>0?$('medrano-payment-method').value:null});
   if(q.error)throw q.error;
   state.pendingMedranoPayment=null;closeDialog('medrano-payment-dialog');await refresh();
 }
@@ -1831,14 +1839,18 @@ function medranoOrderOptionsHtml(order){
   return `<details class="medrano-order-menu"><summary aria-label="Opciones de la comanda">⋮</summary><div class="medrano-order-menu-options">${editable?`<button type="button" data-edit-medrano-order="${safeId}">Editar</button>`:''}<button type="button" class="danger-text" data-delete-medrano-order="${safeId}">Eliminar</button></div></details>`;
 }
 
-function medranoOrderActionsHtml(order){
+function medranoOrderActionsHtml(order,area='administracion'){
   const safeId=escapeHtml(order.id);
   const dispensed=Boolean(order.dispensada_at);
   const paid=order.multiple&&order.pago_estado==='pagada';
   const historical=order.multiple&&order.pago_estado==='historica';
   const labReady=medranoOrderLabReady(order);
-  const payment=order.multiple?`<span class="payment-badge ${paid||historical?'paid':'pending'}">${historical?'Histórica':paid?'Pagada':'Pago pendiente'}</span>${!paid&&!historical&&!dispensed?`<button type="button" class="secondary compact-button" data-pay-medrano-order="${safeId}">Cobrar</button>`:''}`:'';
-  return `<div class="medrano-order-actions">${payment}${!labReady&&!dispensed?'<span class="preparation-badge preparation-pendiente">Esperando Laboratorio</span>':''}<label class="medrano-order-dispensed"><input type="checkbox" data-dispense-medrano-order="${safeId}" ${dispensed?'checked disabled':!labReady?'disabled title="Esperando productos de Laboratorio"':''}><span>Dispensada</span></label>${medranoOrderOptionsHtml(order)}</div>`;
+  const canCharge=area==='administracion',canDispense=['administracion','dispensario'].includes(area);
+  const payment=order.multiple?`<span class="payment-badge ${paid||historical?'paid':'pending'}">${historical?'Histórica':paid?'Pagada':'Pago pendiente'}</span>${canCharge&&!paid&&!historical&&!dispensed?`<button type="button" class="secondary compact-button" data-pay-medrano-order="${safeId}">Cobrar</button>`:''}`:'';
+  const paymentPending=order.multiple&&!paid&&!historical;
+  const disabledReason=!labReady?'Esperando productos de Laboratorio':paymentPending?'Administración debe confirmar el cobro':!canDispense?'La dispensa se confirma desde Administración o Dispensario':'';
+  const dispenseDisabled=dispensed||Boolean(disabledReason);
+  return `<div class="medrano-order-actions">${payment}${!labReady&&!dispensed?'<span class="preparation-badge preparation-pendiente">Esperando Laboratorio</span>':''}${paymentPending&&area==='dispensario'?'<span class="preparation-badge preparation-pendiente">Esperando cobro de Administración</span>':''}<label class="medrano-order-dispensed"><input type="checkbox" data-dispense-medrano-order="${safeId}" ${dispensed?'checked ':''}${dispenseDisabled?`disabled${disabledReason?` title="${escapeHtml(disabledReason)}"`:''}`:''}><span>Dispensada</span></label>${medranoOrderOptionsHtml(order)}</div>`;
 }
 
 function findEditableMedranoOrder(orderId){
@@ -1846,7 +1858,7 @@ function findEditableMedranoOrder(orderId){
 }
 
 function bindMedranoOrderActions(){
-  app.querySelectorAll('[data-pay-medrano-order]').forEach(button=>button.onclick=()=>{const order=findEditableMedranoOrder(button.dataset.payMedranoOrder);if(order)openMedranoPaymentDialog(order,false)});
+  app.querySelectorAll('[data-pay-medrano-order]').forEach(button=>button.onclick=()=>{const order=findEditableMedranoOrder(button.dataset.payMedranoOrder);if(order)openMedranoPaymentDialog(order)});
   app.querySelectorAll('[data-edit-medrano-order]').forEach(button=>button.onclick=()=>{
     const order=findEditableMedranoOrder(button.dataset.editMedranoOrder);
     const menu=button.closest('details');if(menu)menu.open=false;
@@ -1988,11 +2000,11 @@ function renderMedranoOrders(medranoNav,bindModuleNav){
         <td data-sort-value="${Number(o.tokens_total)||0}">${medranoOrderTokensCell(o)}</td>
         <td>${escapeHtml(o.nombre_paciente||'—')}</td>
         <td data-sort-value="${escapeHtml(o.fecha||'')}">${o.fecha?parse(o.fecha).toLocaleDateString('es-AR'):'—'}</td>
-        ${canManageMedrano()?`<td>${medranoOrderActionsHtml(o)}</td>`:''}
+        ${canManageMedrano()?`<td>${medranoOrderActionsHtml(o,'administracion')}</td>`:''}
       </tr>`).join(''):`<tr data-empty-row="1"><td colspan="${canManageMedrano()?5:4}">No hay comandas pendientes.</td></tr>`}</tbody>
     </table></div>
   </section>
-  <section class="panel stock-detail-panel"><h3 class="status-heading-completed">Comandas dispensadas hoy</h3><div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Producto</th><th>Tokens</th><th>Paciente</th><th>Fecha</th>${canManageMedrano()?'<th>Estado y acciones</th>':''}</tr></thead><tbody>${completedToday.length?completedToday.map(o=>`<tr><td>${medranoOrderProductCell(o)}</td><td>${medranoOrderTokensCell(o)}</td><td>${escapeHtml(o.nombre_paciente||'—')}</td><td>${o.fecha?parse(o.fecha).toLocaleDateString('es-AR'):'—'}</td>${canManageMedrano()?`<td>${medranoOrderActionsHtml(o)}</td>`:''}</tr>`).join(''):`<tr><td colspan="${canManageMedrano()?5:4}" class="muted">No hay comandas dispensadas hoy.</td></tr>`}</tbody></table></div></section>`;
+  <section class="panel stock-detail-panel"><h3 class="status-heading-completed">Comandas dispensadas hoy</h3><div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Producto</th><th>Tokens</th><th>Paciente</th><th>Fecha</th>${canManageMedrano()?'<th>Estado y acciones</th>':''}</tr></thead><tbody>${completedToday.length?completedToday.map(o=>`<tr><td>${medranoOrderProductCell(o)}</td><td>${medranoOrderTokensCell(o)}</td><td>${escapeHtml(o.nombre_paciente||'—')}</td><td>${o.fecha?parse(o.fecha).toLocaleDateString('es-AR'):'—'}</td>${canManageMedrano()?`<td>${medranoOrderActionsHtml(o,'administracion')}</td>`:''}</tr>`).join(''):`<tr><td colspan="${canManageMedrano()?5:4}" class="muted">No hay comandas dispensadas hoy.</td></tr>`}</tbody></table></div></section>`;
   bindModuleNav();
   bindMedranoLoadRetry();
   bindStockTableTools(app);
@@ -2022,7 +2034,7 @@ function renderMedranoDispensary(medranoNav,bindModuleNav){
   const pending=(state.medranoOrders||[]).filter(order=>order.requiere_cierre!==false&&!order.dispensada_at);
   const events=dispensaryEvents(dateKey);
   app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><h2>Dispensario</h2><p class="muted">${parse(dateKey).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p></div><div class="dispensary-head-actions">${canManageMedrano()&&state.medranoStockReady?'<button id="dispensary-new-movement" class="primary compact-button" type="button">+ Crear movimiento</button>':''}<button id="dispensary-history" class="secondary compact-button" type="button">Historial de Dispensario</button></div></section>
-    <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3 class="status-heading-pending">Comandas pendientes</h3><p class="muted">${pending.length} pendiente${pending.length===1?'':'s'} · Permanecen hasta dispensarlas o eliminarlas.</p></div></div><div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tokens</th><th>Paciente</th>${canManageMedrano()?'<th>Estado y acciones</th>':''}</tr></thead><tbody>${pending.length?pending.map(o=>`<tr><td>${o.fecha?parse(o.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${medranoOrderProductCell(o)}</td><td>${medranoOrderTokensCell(o)}</td><td>${escapeHtml(o.nombre_paciente||'—')}</td>${canManageMedrano()?`<td>${medranoOrderActionsHtml(o)}</td>`:''}</tr>`).join(''):`<tr><td colspan="${canManageMedrano()?5:4}" class="muted">No hay comandas pendientes.</td></tr>`}</tbody></table></div></section>
+    <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3 class="status-heading-pending">Comandas pendientes</h3><p class="muted">${pending.length} pendiente${pending.length===1?'':'s'} · Permanecen hasta dispensarlas o eliminarlas.</p></div></div><div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tokens</th><th>Paciente</th>${canManageMedrano()?'<th>Estado y acciones</th>':''}</tr></thead><tbody>${pending.length?pending.map(o=>`<tr><td>${o.fecha?parse(o.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${medranoOrderProductCell(o)}</td><td>${medranoOrderTokensCell(o)}</td><td>${escapeHtml(o.nombre_paciente||'—')}</td>${canManageMedrano()?`<td>${medranoOrderActionsHtml(o,'dispensario')}</td>`:''}</tr>`).join(''):`<tr><td colspan="${canManageMedrano()?5:4}" class="muted">No hay comandas pendientes.</td></tr>`}</tbody></table></div></section>
     <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3 class="status-heading-completed">Comandas entregadas y movimientos de hoy</h3><p class="muted">${events.length} registro${events.length===1?'':'s'} · Mañana estarán en el historial.</p></div></div>${dispensaryEventsTable(events,true)}</section>
     ${!state.medranoStockReady?'<section class="panel"><p class="muted">No se pudieron cargar los datos necesarios para crear movimientos.</p></section>':''}${medranoLoadIssueHtml(['medrano_laboratorio_stock','medrano_traslados_laboratorio','medrano_stock_historial','medrano_comandas_multiproducto','medrano_comandas_multiproducto_items'])}`;
   bindModuleNav();bindMedranoOrderActions();bindMedranoLoadRetry();
@@ -2384,7 +2396,7 @@ function openLabProductionFinish(job){
   state.finishMedranoLabJob=job;
   $('lab-production-finish-summary').textContent=job.tipo==='capsulas'?`${job.producto}. Ingresá cuántas cápsulas salieron realmente; los insumos se descontarán según lo cargado al crear el trabajo.`:job.tipo==='crema'?`${job.producto}. Ingresá cuántos frascos completos salieron realmente; se conservarán los lotes e insumos utilizados.`:job.tipo==='aceite_final'?`${job.producto}. Ingresá cuántos goteros completos salieron realmente; la receta conserva los consumos calculados.`:`${job.producto} · resultado en ${job.resultado_unidad}`;
   $('lab-production-return-label').firstChild.textContent=job.tipo==='capsulas'?'Cápsulas obtenidas':job.tipo==='crema'?'Frascos obtenidos':job.tipo==='aceite_final'?'Goteros obtenidos':'Rendimiento real';
-  $('lab-production-return').value='';$('lab-production-return').step=job.resultado_unidad==='unidades'?'1':'0.01';
+  $('lab-production-return').value='';configureWholeUnitInput($('lab-production-return'),job.resultado_unidad,false);
   $('lab-production-finish-dialog').showModal();
 }
 async function finishLabProduction(){
@@ -2405,6 +2417,7 @@ function openMedranoLabJobDialog(type='aceite_base',job=null){
   $('lab-job-patient').value=job?.paciente||'';
   $('lab-job-quantity').value=job?.cantidad??'';
   $('lab-job-unit').value=job?.unidad||'';
+  configureWholeUnitInput($('lab-job-quantity'),$('lab-job-unit').value,false);
   $('lab-job-detail').value=job?.detalle||'';
   $('lab-job-patients').innerHTML=state.medranoPatients.map(p=>`<option value="${escapeHtml(`${p.nombre||''} ${p.apellido||''}`.trim())}"></option>`).join('');
   $('lab-job-patient-field').hidden=$('lab-job-type').value!=='comanda_paciente';
@@ -2603,12 +2616,14 @@ function bindMedranoDialogActions(){
   $('medrano-multi-cancel').onclick=()=>{state.editMedranoMultiOrder=null;closeDialog('medrano-multi-dialog')};
   $('medrano-multi-save').onclick=async()=>{const button=$('medrano-multi-save');button.disabled=true;try{await saveMedranoMultiOrder()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la comanda.')}finally{button.disabled=false}};
   $('lab-job-type').onchange=()=>{$('lab-job-patient-field').hidden=$('lab-job-type').value!=='comanda_paciente'};
+  $('lab-job-unit').onchange=()=>configureWholeUnitInput($('lab-job-quantity'),$('lab-job-unit').value,false);
   $('cancel-lab-job').onclick=()=>{state.editMedranoLabJob=null;closeDialog('lab-job-dialog')};
   $('save-lab-job').onclick=async()=>{const button=$('save-lab-job');button.disabled=true;try{await saveMedranoLabJob()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el trabajo.')}finally{button.disabled=false}};
   $('cancel-lab-transfer').onclick=()=>closeDialog('lab-transfer-dialog');
   $('save-lab-transfer').onclick=async()=>{const b=$('save-lab-transfer');b.disabled=true;try{await sendMedranoLabTransfer()}catch(e){alert(e.message)}finally{b.disabled=false}};
   $('cancel-lab-item').onclick=()=>{state.editLabItem=null;closeDialog('lab-item-dialog')};
   $('lab-item-input-type').onchange=updateLabItemInsumoFields;
+  $('lab-item-unit').onchange=updateLabItemInsumoFields;
   $('save-lab-item').onclick=async()=>{const b=$('save-lab-item');b.disabled=true;try{await saveLabItem()}catch(e){alert(e.message)}finally{b.disabled=false}};
   $('cancel-medrano-counter').onclick=()=>closeDialog('medrano-counter-dialog');
   $('save-medrano-counter').onclick=async()=>{const b=$('save-medrano-counter');b.disabled=true;try{await saveMedranoCounterItem()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el producto.')}finally{b.disabled=false}};
