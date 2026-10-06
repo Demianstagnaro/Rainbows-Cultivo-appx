@@ -22,6 +22,8 @@ test('aceite final calcula aceites base, diluyente y goteros por receta',()=>{
   assert.match(app,/RECETA PARA[\s\S]*RESULTADO ESPERADO:[\s\S]*Los números que figuran dentro de los selectores son sólo el stock disponible/);
   assert.match(app,/stock disponible:.*ml/);
   assert.match(app,/capacidad:.*ml · stock disponible:.*unidades/);
+  assert.match(app,/String\(Number\(amounts\.get\(id\)\.toFixed\(6\)\)\)/);
+  assert.doesNotMatch(app,/amounts\.get\(id\)\.toFixed\(3\)/);
   assert.match(app,/totalEquivalent=totalVolume\/concentration/);
   assert.match(app,/pureVolume=totalVolume-cannabinoidVolume/);
   assert.match(app,/guardar_produccion_aceite_final/);
