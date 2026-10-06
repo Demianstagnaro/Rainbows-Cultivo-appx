@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.8. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.9. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.9 — Receta visible de aceites finales
+
+- Los selectores diferencian claramente el stock disponible de la cantidad que se utilizará.
+- La receta muestra el volumen calculado de cada aceite base y del aceite puro.
+- El resultado esperado respeta la cantidad de goteros ingresada, sin tomar todo el stock.
+- Esta versión no requiere una migración nueva de Supabase.
 
 ## V3.26.8 — Resultado automático de aceites finales
 

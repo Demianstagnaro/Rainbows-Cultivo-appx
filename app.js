@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.8';
+const APP_VERSION='3.26.9';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2233,8 +2233,10 @@ function labCreamDraft(){
 function setupLabFinalOilFields(metadata={}){
   const pure=(state.medranoLabItems||[]).filter(i=>i.categoria==='insumos'&&i.activo&&i.tipo_insumo!=='envase'&&i.unidad==='ml');
   const containers=(state.medranoLabItems||[]).filter(i=>i.categoria==='insumos'&&i.activo&&i.tipo_insumo==='envase'&&i.unidad==='unidades'&&i.unidad_capacidad==='ml');
-  $('lab-final-oil-pure').innerHTML='<option value="">Seleccionar aceite puro</option>'+pure.map(i=>`<option value="${escapeHtml(i.id)}">${escapeHtml(formatMeasurementText(i.nombre))} (${Number(i.cantidad).toLocaleString('es-AR')} ml)</option>`).join('');
-  $('lab-final-oil-container').innerHTML='<option value="">Seleccionar gotero</option>'+containers.map(i=>`<option value="${escapeHtml(i.id)}">${escapeHtml(labStockItemLabel(i))} (${Number(i.cantidad).toLocaleString('es-AR')} unidades)</option>`).join('');
+  $('lab-final-oil-pure').parentElement.firstChild.textContent='Aceite puro (se calcularán los ml necesarios)';
+  $('lab-final-oil-container').parentElement.firstChild.textContent='Tamaño de gotero';
+  $('lab-final-oil-pure').innerHTML='<option value="">Seleccionar aceite puro</option>'+pure.map(i=>`<option value="${escapeHtml(i.id)}">${escapeHtml(formatMeasurementText(i.nombre))} · stock disponible: ${Number(i.cantidad).toLocaleString('es-AR')} ml</option>`).join('');
+  $('lab-final-oil-container').innerHTML='<option value="">Seleccionar gotero</option>'+containers.map(i=>`<option value="${escapeHtml(i.id)}">${escapeHtml(formatMeasurementText(i.nombre))} · capacidad: ${Number(i.capacidad_envase).toLocaleString('es-AR',{maximumFractionDigits:2})} ml · stock disponible: ${Number(i.cantidad).toLocaleString('es-AR')} unidades</option>`).join('');
   $('lab-final-oil-profile').value=metadata.perfil||'';
   $('lab-final-oil-ratio').value=metadata.proporcion||'';
   $('lab-final-oil-concentration').value=metadata.concentracion||'';
@@ -2320,7 +2322,7 @@ function labProductionOutputOptions(selected='',selectedName=''){
     const draft=labFinalOilDraft();
     $('lab-production-output').innerHTML=`<option value="${escapeHtml(draft?.name||'')}">${escapeHtml(draft?.name||'Completá la receta, los aceites base y el envase')}</option>`;
     $('lab-production-name-field').hidden=true;$('lab-production-unit-field').hidden=true;$('lab-production-unit').value='unidades';$('lab-production-unit').disabled=true;
-    $('lab-production-oil-summary').textContent=draft?`Resultado automático: ${draft.name}. Receta: ${draft.parts.join(' + ')} + ${draft.pureVolume.toLocaleString('es-AR',{maximumFractionDigits:3})} ml ${draft.pure.nombre} + ${draft.count} ${labStockItemLabel(draft.container)} = ${draft.count} gotero${draft.count===1?'':'s'} de ${draft.presentation.toLocaleString('es-AR',{maximumFractionDigits:2})} ml. Al finalizar, Laboratorio confirmará cuántos salieron realmente y recién entonces se descontará el stock.`:'Elegí el perfil final para que aparezca una base compatible por cada cannabinoide; después completá ratio, concentración, cantidad de goteros, aceite puro y envase.';
+    $('lab-production-oil-summary').textContent=draft?`RECETA PARA ${draft.count} GOTERO${draft.count===1?'':'S'}: volumen final ${draft.totalVolume.toLocaleString('es-AR',{maximumFractionDigits:3})} ml. Usar ${draft.parts.join(' + ')} + ${draft.pureVolume.toLocaleString('es-AR',{maximumFractionDigits:3})} ml de ${draft.pure.nombre} + ${draft.count} gotero${draft.count===1?'':'s'} de ${draft.presentation.toLocaleString('es-AR',{maximumFractionDigits:2})} ml. RESULTADO ESPERADO: ${draft.count} aceite${draft.count===1?'':'s'} terminado${draft.count===1?'':'s'} · ${draft.profile}${draft.ratio?` · Ratio ${draft.ratio}`:''} · 1:${draft.concentration.toLocaleString('es-AR',{maximumFractionDigits:2})}. Los números que figuran dentro de los selectores son sólo el stock disponible; no se usará el total. Al finalizar, Laboratorio confirmará cuántos salieron realmente y recién entonces se descontará lo calculado.`:'Elegí el perfil final para que aparezca una base compatible por cada cannabinoide; después completá ratio, concentración, cantidad de goteros, aceite puro y tamaño de gotero.';
     $('lab-production-output').onchange=null;return;
   }
   if(type==='capsulas'){
