@@ -32,7 +32,7 @@ test('finalizar crea un lote trazable a granel y descuenta los insumos',()=>{
 
 test('el stock de Aceites muestra el ratio separado del perfil y la concentración',()=>{
   assert.match(app,/category\.key==='aceites'[\s\S]*?th\.textContent='Ratio'/);
-  assert.match(app,/td\.textContent=medranoCannabinoidRatio\(items\[index\]\)/);
+  assert.match(app,/td\.textContent=medranoCannabinoidRatio\(item\)/);
   assert.match(app,/head\.insertBefore\(th,head\.cells\[2\]\)/);
   assert.match(app,/row\.insertBefore\(td,row\.cells\[2\]\)/);
 });

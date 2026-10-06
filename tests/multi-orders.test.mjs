@@ -28,7 +28,7 @@ test('las reservas reducen el saldo libre sin modificar el stock físico al guar
   vm.runInNewContext(`${code}\nglobalThis.reserved=medranoReserved;globalThis.availability=medranoAvailabilityHtml;`,context);
   assert.equal(context.reserved('flores','lot'),12);
   assert.equal(context.reserved('flores','lot','a'),5);
-  assert.match(context.availability('flores','lot',3,'g'),/Libre: -9 g/);
+  assert.match(context.availability('flores','lot',3,'g'),/Disponible: -9 g/);
 });
 
 test('el detalle muestra tipo, genética, lote y cantidad en filas separadas',()=>{
