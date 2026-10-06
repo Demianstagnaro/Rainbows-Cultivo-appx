@@ -9,7 +9,18 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.2. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.3. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.3 — Preparación de comandas en Laboratorio
+
+- Cada Resina, Aceite, Crema o Cápsula pedida queda en `Pendiente de preparación`.
+- Laboratorio puede pasar cada producto a `En preparación` y luego a `Listo para entregar`.
+- Al iniciar se genera un trabajo vinculado con el producto, la cantidad, la comanda y el paciente.
+- Administración y Dispensario muestran el estado de preparación dentro del detalle de la comanda.
+- La opción `Dispensada` permanece bloqueada hasta que todos los productos de Laboratorio estén listos.
+- Supabase aplica la misma validación para impedir entregas incompletas aunque se intente omitir la interfaz.
+- Flores y productos de Mostrador no requieren preparación de Laboratorio.
+- Requiere ejecutar `Rainbows_V3.26.3_preparacion_comandas_laboratorio.sql` después de V3.26.2.
 
 ## V3.26.2 — Medidas sin ceros innecesarios
 
