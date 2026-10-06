@@ -43,7 +43,8 @@ test('la comanda no se dispensa hasta que Laboratorio termina',()=>{
   assert.match(sql,/Laboratorio todavía tiene productos pendientes de preparación/);
   assert.match(app,/function medranoOrderLabReady/);
   assert.match(app,/Esperando Laboratorio/);
-  assert.match(app,/data-dispense-medrano-order[\s\S]*?!labReady\?'disabled/i);
+  assert.match(app,/disabledReason=!labReady\?'Esperando productos de Laboratorio'/i);
+  assert.match(app,/data-dispense-medrano-order[\s\S]*?dispenseDisabled/i);
 });
 
 test('flores y mostrador quedan fuera de la preparación',()=>{
