@@ -16,6 +16,10 @@ test('los envases separan capacidad y cantidad física',()=>{
 test('aceite final calcula aceites base, diluyente y goteros por receta',()=>{
   assert.match(html,/value="aceite_final">Preparar aceite final/);
   assert.match(app,/function labFinalOilDraft\(\)/);
+  assert.match(app,/function syncLabFinalOilSourceRows\(jobRows=\[\]\)/);
+  assert.match(app,/names\.map\(name=>/);
+  assert.match(app,/perfil_cannabinoide===requiredProfile/);
+  assert.match(app,/Resultado automático:[\s\S]*Al finalizar, Laboratorio confirmará cuántos salieron realmente/);
   assert.match(app,/totalEquivalent=totalVolume\/concentration/);
   assert.match(app,/pureVolume=totalVolume-cannabinoidVolume/);
   assert.match(app,/guardar_produccion_aceite_final/);
