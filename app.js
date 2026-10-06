@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.10';
+const APP_VERSION='3.26.11';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2410,7 +2410,7 @@ async function saveLabProduction(){
   const name=type==='resina'?output:type==='aceite_base'?draft?.name||'':type==='aceite_final'?finalOilDraft?.name||'':type==='crema'?creamDraft?.name||'':type==='capsulas'?capsuleDraft?.name||'':item?.nombre||$('lab-production-name').value.trim(),unit=type==='resina'?'g':type==='aceite_base'?'ml':['aceite_final','crema','capsulas'].includes(type)?'unidades':item?.unidad||$('lab-production-unit').value;
   const materials=type==='aceite_final'&&finalOilDraft?finalOilDraft.materials:labProductionMaterialsValue();
   const metadata=type==='resina'?{perfil:$('lab-production-resin-profile').value,proporcion:$('lab-production-resin-ratio').value.trim()||null}:type==='aceite_base'&&draft?{perfil:draft.profile,proporcion:draft.ratio||null,base:draft.base,concentracion:draft.concentration}:type==='aceite_final'&&finalOilDraft?finalOilDraft.metadata:type==='crema'&&creamDraft?creamDraft.metadata:type==='capsulas'&&capsuleDraft?capsuleDraft.metadata:{};
-  if(!medranoProductionCategory[type]||!name||name.length>180||!materials.length||new Set(materials.map(m=>m.id)).size!==materials.length||materials.some(m=>!m.id||!m.raw||!Number.isFinite(m.cantidad)||m.cantidad<=0)||$('lab-production-detail').value.length>2000)throw new Error('Revisá el producto obtenido y las cantidades de materias primas.');
+  if(!medranoProductionCategory[type]||!name||name.length>180||!materials.length||new Set(materials.map(m=>m.id)).size!==materials.length||materials.some(m=>!m.id||!Number.isFinite(m.cantidad)||m.cantidad<=0)||$('lab-production-detail').value.length>2000)throw new Error('Revisá el producto obtenido y las cantidades de materias primas.');
   if(type==='resina'&&!fullSpectrumProfiles.includes(metadata.perfil))throw new Error('Seleccioná el perfil de cannabinoides de la resina.');
   if(type==='resina'&&medranoCannabinoidRatioRequired(metadata.perfil)&&!metadata.proporcion)throw new Error('Indicá la proporción de cannabinoides de la resina, por ejemplo 1-1 o 1-2.');
   if(type==='resina'&&(materials.length!==1||materials[0].category!=='flores')||type==='aceite_base'&&!draft||type==='aceite_final'&&!finalOilDraft||type==='crema'&&!creamDraft||type==='capsulas'&&!capsuleDraft||!['resina','aceite_base','aceite_final','crema','capsulas'].includes(type)&&!materials.some(m=>m.category==='resina'))throw new Error(type==='capsulas'?'Elegí una resina y un insumo de cápsulas cuyo nombre indique el tamaño, por ejemplo “Cápsulas de 1 g”.':type==='crema'?'Elegí una resina trazable, la base y un frasco con capacidad en gramos.':type==='aceite_final'?'Completá la receta y elegí un aceite base simple por cannabinoide, el aceite puro y el gotero.':'Elegí las materias primas necesarias para este trabajo.');
