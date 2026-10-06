@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.6';
+const APP_VERSION='3.26.7';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1621,7 +1621,7 @@ function medranoLabOrders(orders,items){
   return orders.map(order=>medranoLabOrderView(order,items)).filter(Boolean);
 }
 const medranoPreparationLabels={pendiente:'Pendiente de preparación',en_proceso:'En preparación',listo:'Listo para entregar'};
-function medranoPreparationState(item){return medranoLabOrderTypes.has(item?.tipo)?item.preparacion_estado||'pendiente':null}
+function medranoPreparationState(item){return medranoLabOrderTypes.has(item?.tipo)?item.preparacion_estado||'en_proceso':null}
 function medranoPreparationBadge(item){
   const status=medranoPreparationState(item);
   return status?`<span class="preparation-badge preparation-${status}">${escapeHtml(medranoPreparationLabels[status]||status)}</span>`:'—';
@@ -1629,8 +1629,8 @@ function medranoPreparationBadge(item){
 function medranoOrderLabReady(order){return !order?.multiple||(order.items||[]).filter(item=>medranoLabOrderTypes.has(item.tipo)).every(item=>medranoPreparationState(item)==='listo')}
 function medranoPreparationActions(item,order){
   if(typeof canManageMedrano!=='function'||!canManageMedrano()||order.estado!=='pendiente')return medranoPreparationBadge(item);
-  const status=medranoPreparationState(item),next=status==='pendiente'?'en_proceso':status==='en_proceso'?'listo':'pendiente';
-  const label=status==='pendiente'?'Iniciar':status==='en_proceso'?'Marcar listo':'Reabrir';
+  const status=medranoPreparationState(item),next=status==='listo'?'en_proceso':'listo';
+  const label=status==='listo'?'Reabrir':'Marcar listo';
   return `<div class="preparation-actions">${medranoPreparationBadge(item)}<button type="button" class="${status==='en_proceso'?'primary':'secondary'} compact-button" data-lab-preparation-item="${escapeHtml(item.id)}" data-lab-preparation-status="${next}">${label}</button></div>`;
 }
 function medranoLabOrderRows(orders){
