@@ -144,10 +144,10 @@ test('los controles de los diálogos de Medrano se enlazan antes de salir del re
 });
 
 test('las comandas siguen pendientes hasta confirmar la dispensación',()=>{
-  assert.match(app,/state\.medranoOrders=allMedranoOrders\.filter[\s\S]*?order\.requiere_cierre!==false&&\(!order\.dispensada_at\|\|order\.dispensada_fecha>=todayKey\)/);
+  assert.match(app,/function applyMedranoOrderRows[\s\S]*?state\.medranoOrders=legacy\.filter[\s\S]*?order\.requiere_cierre!==false&&\(!order\.dispensada_at\|\|order\.dispensada_fecha>=todayKey\)/);
   assert.match(app,/data-dispense-medrano-order/);
   assert.match(app,/function markMedranoOrderDispensed\(orderId\)/);
-  assert.match(app,/state\.medranoDispensedOrders=allMedranoOrders\.filter[\s\S]*?order\.dispensada_fecha<todayKey/);
+  assert.match(app,/state\.medranoDispensedOrders=legacy\.filter[\s\S]*?order\.dispensada_fecha<todayKey/);
   assert.match(orderPendingSql,/create or replace function public\.marcar_comanda_dispensada[\s\S]*?security definer[\s\S]*?set search_path = ''/i);
   assert.match(orderPendingSql,/dispensada_fecha = \(now\(\) at time zone 'America\/Argentina\/Buenos_Aires'\)::date/i);
   assert.match(orderPendingSql,/alter column requiere_cierre set default true/i);
