@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.11. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.12. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.12 — Stock físico, reservado y disponible
+
+- Medrano muestra en los inventarios cuánto stock existe físicamente, cuánto está reservado y cuánto queda disponible.
+- Las reservas incluyen comandas pendientes y materias primas comprometidas por producciones iniciadas.
+- Aceites conserva el mismo desglose tanto para aceites base como para productos finales.
+- Los selectores de comandas informan la disponibilidad real antes de elegir una cantidad.
+- No requiere cambios en Supabase.
 
 ## V3.26.11 — Guardado de recetas automáticas
 
