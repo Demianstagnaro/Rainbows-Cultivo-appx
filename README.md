@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.12. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.13. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.13 — Hoy en Medrano
+
+- Los administradores abren Medrano con una pantalla operativa que reúne los pendientes del día; los demás roles no ven esa pestaña.
+- Resume comandas sin cobrar, productos en preparación, comandas listas para entregar, producciones activas y recepciones pendientes.
+- Cada tarjeta abre directamente el módulo correspondiente sin ejecutar cobros, entregas ni cambios de stock.
+- Cuando no quedan acciones pendientes, el estado general se muestra en verde.
+- No requiere cambios en Supabase.
 
 ## V3.26.12 — Stock físico, reservado y disponible
 
