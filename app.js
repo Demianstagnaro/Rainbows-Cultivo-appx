@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.4';
+const APP_VERSION='3.26.5';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1602,12 +1602,19 @@ function medranoLabOrderView(order,items){
   const labItems=items.filter(item=>item.comanda_id===order.id&&medranoLabOrderTypes.has(item.tipo));
   return labItems.length?{...order,items:labItems}:null;
 }
-function medranoLabOrderTrace(item){
-  if(!['resina','capsulas'].includes(item?.tipo))return '';
-  const stock=(typeof state==='undefined'?[]:state.medranoLabItems||[]).find(row=>String(row.id)===String(item.origen_id));
-  if(!stock)return '';
-  const genetic=medranoLabGeneticName(stock),lot=stock.lote||'';
-  return [genetic&&genetic!=='—'?`Genética: ${genetic}`:'',lot?`Lote: ${lot}`:''].filter(Boolean).join(' · ');
+function medranoOrderItemTrace(item){
+  if(!item||item.tipo==='mostrador')return '';
+  let genetic=item.genetica_nombre||'',lot=item.numero_lote||'';
+  if(typeof state!=='undefined'&&(!genetic||!lot)){
+    if(item.tipo==='flores'){
+      const stock=(state.medranoDispensarioLots||[]).find(row=>String(row.id)===String(item.origen_id));
+      if(stock){genetic=genetic||state.geneticas.find(g=>String(g.id)===String(stock.genetica_id))?.nombre||stock.nombre_historico||'';lot=lot||stock.codigo_lote||''}
+    }else if(medranoLabOrderTypes.has(item.tipo)){
+      const stock=(state.medranoLabItems||[]).find(row=>String(row.id)===String(item.origen_id));
+      if(stock){const stockGenetic=medranoLabGeneticName(stock);genetic=genetic||(stockGenetic==='—'?'':stockGenetic);lot=lot||stock.lote||''}
+    }
+  }
+  return [genetic?`Genética: ${genetic}`:'',lot?`Lote: ${lot}`:''].filter(Boolean).join(' · ');
 }
 function medranoLabOrders(orders,items){
   return orders.map(order=>medranoLabOrderView(order,items)).filter(Boolean);
@@ -1626,7 +1633,7 @@ function medranoPreparationActions(item,order){
   return `<div class="preparation-actions">${medranoPreparationBadge(item)}<button type="button" class="${status==='en_proceso'?'primary':'secondary'} compact-button" data-lab-preparation-item="${escapeHtml(item.id)}" data-lab-preparation-status="${next}">${label}</button></div>`;
 }
 function medranoLabOrderRows(orders){
-  return `<div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tokens</th><th>Paciente</th><th>Preparación</th></tr></thead><tbody>${orders.length?orders.map(order=>`<tr><td>${order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${order.items.map(item=>{const trace=medranoLabOrderTrace(item);return `<div class="lab-order-item"><strong>${escapeHtml(medranoOrderItemName(item))}</strong> · ${Number(item.cantidad).toLocaleString('es-AR')} ${escapeHtml(item.unidad)}${trace?`<br><span class="muted">${escapeHtml(trace)}</span>`:''}</div>`}).join('')}</td><td>${Number(order.items.reduce((sum,item)=>sum+Number(item.tokens_total||0),0)).toLocaleString('es-AR',{maximumFractionDigits:2})} Tokens</td><td>${escapeHtml(order.paciente_nombre||'—')}</td><td>${order.items.map(item=>medranoPreparationActions(item,order)).join('')}</td></tr>`).join(''):'<tr><td colspan="5" class="muted">No hay comandas con productos de Laboratorio.</td></tr>'}</tbody></table></div>`;
+  return `<div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tokens</th><th>Paciente</th><th>Preparación</th></tr></thead><tbody>${orders.length?orders.map(order=>`<tr><td>${order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${order.items.map(item=>{const trace=medranoOrderItemTrace(item);return `<div class="lab-order-item"><strong>${escapeHtml(medranoOrderItemName(item))}</strong> · ${Number(item.cantidad).toLocaleString('es-AR')} ${escapeHtml(item.unidad)}${trace?`<br><span class="muted">${escapeHtml(trace)}</span>`:''}</div>`}).join('')}</td><td>${Number(order.items.reduce((sum,item)=>sum+Number(item.tokens_total||0),0)).toLocaleString('es-AR',{maximumFractionDigits:2})} Tokens</td><td>${escapeHtml(order.paciente_nombre||'—')}</td><td>${order.items.map(item=>medranoPreparationActions(item,order)).join('')}</td></tr>`).join(''):'<tr><td colspan="5" class="muted">No hay comandas con productos de Laboratorio.</td></tr>'}</tbody></table></div>`;
 }
 function medranoMultiOrderView(order){
   const items=state.medranoMultiItems.filter(item=>item.comanda_id===order.id);
@@ -1641,7 +1648,7 @@ function medranoOrderItemName(item){
   return lot?state.geneticas.find(g=>String(g.id)===String(lot.genetica_id))?.nombre||lot.nombre_historico||item.nombre.split(' · ')[0]:String(item.nombre||'').split(' · ')[0];
 }
 function medranoOrderItemTable(order){
-  return `<div class="stock-table-wrap"><table class="stock-table medrano-order-items-table"><thead><tr><th>Tipo</th><th>Producto</th><th>Cantidad</th><th>Tokens</th><th>Preparación</th></tr></thead><tbody>${order.items.map(item=>`<tr><td>${escapeHtml(medranoOrderCategories[item.tipo]||item.tipo)}</td><td>${escapeHtml(medranoOrderItemName(item))}</td><td>${Number(item.cantidad).toLocaleString('es-AR')} ${escapeHtml(item.unidad)}</td><td>${formatTokens(item.tokens_total)}</td><td>${medranoPreparationBadge(item)}</td></tr>`).join('')}</tbody></table></div>`;
+  return `<div class="stock-table-wrap"><table class="stock-table medrano-order-items-table"><thead><tr><th>Tipo</th><th>Producto / trazabilidad</th><th>Cantidad</th><th>Tokens</th><th>Preparación</th></tr></thead><tbody>${order.items.map(item=>{const trace=medranoOrderItemTrace(item);return `<tr><td>${escapeHtml(medranoOrderCategories[item.tipo]||item.tipo)}</td><td><strong>${escapeHtml(medranoOrderItemName(item))}</strong>${trace?`<br><span class="muted">${escapeHtml(trace)}</span>`:''}</td><td>${Number(item.cantidad).toLocaleString('es-AR')} ${escapeHtml(item.unidad)}</td><td>${formatTokens(item.tokens_total)}</td><td>${medranoPreparationBadge(item)}</td></tr>`}).join('')}</tbody></table></div>`;
 }
 function medranoOrderProductCell(order){
   return order.multiple?`<details class="medrano-order-details"><summary>Ver productos</summary>${medranoOrderItemTable(order)}</details>`:`<strong>${escapeHtml(order.producto||'—')}</strong>`;
@@ -1663,7 +1670,7 @@ function medranoCatalog(tipo,editing=null){
   const include=id=>editing?.items.some(i=>i.tipo===tipo&&i.origen_id===id);
   if(tipo==='flores')return state.medranoDispensarioLots.map(x=>{const genetic=state.geneticas.find(g=>String(g.id)===String(x.genetica_id));return{id:x.id,name:`${genetic?.nombre||medranoLotGeneticName(x)} · ${x.codigo_lote} · ${stockLotSizes[x.tamano]||'Sin tamaño'}`,qty:Number(x.gramos_actual),unit:'g',tokens:medranoFlowerTokenPrice(x.tamano)}});
   if(tipo==='mostrador')return state.medranoCounterItems.filter(x=>x.activo!==false||include(x.id)).map(x=>({id:x.id,name:x.nombre,qty:Number(x.cantidad),unit:'unidades',tokens:Number(x.tokens_por_unidad)||0}));
-  return state.medranoLabItems.filter(x=>x.categoria===tipo&&(!x.es_aceite_base||include(x.id))&&(x.activo||include(x.id))).map(x=>{const trace=['resina','capsulas'].includes(tipo)?[medranoLabGeneticName(x)!=='—'?medranoLabGeneticName(x):'',x.lote?`Lote ${x.lote}`:''].filter(Boolean).join(' · '):'';return{id:x.id,name:`${x.nombre}${trace?` · ${trace}`:''}`,qty:Number(x.cantidad),unit:x.unidad,tokens:tipo==='resina'?medranoCategoryTokenPrice('resina'):Number(x.tokens_por_unidad)||0}});
+  return state.medranoLabItems.filter(x=>x.categoria===tipo&&(!x.es_aceite_base||include(x.id))&&(x.activo||include(x.id))).map(x=>{const genetic=medranoLabGeneticName(x),trace=[genetic!=='—'?genetic:'',x.lote?`Lote ${x.lote}`:''].filter(Boolean).join(' · ');return{id:x.id,name:`${x.nombre}${trace?` · ${trace}`:''}`,qty:Number(x.cantidad),unit:x.unidad,tokens:tipo==='resina'?medranoCategoryTokenPrice('resina'):Number(x.tokens_por_unidad)||0}});
 }
 function updateMedranoMultiProduct(row){
   const tipo=row.querySelector('[data-order-type]').value,product=row.querySelector('[data-order-product]');

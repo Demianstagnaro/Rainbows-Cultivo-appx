@@ -9,7 +9,17 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.4. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.5. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.5 — Genética y lote en comandas
+
+- Flores, Resinas, Aceites, Cremas y Cápsulas muestran el número de lote utilizado.
+- Resinas y Cápsulas muestran claramente la genética; los demás elaborados también la muestran cuando su stock la tiene registrada.
+- La selección de productos de Laboratorio diferencia lotes y genéticas antes de crear la comanda.
+- Administración, Laboratorio, Dispensario y los historiales de comandas dispensadas usan el mismo detalle trazable.
+- Genética y lote se copian dentro de la comanda al crearla, para conservarlos aunque el stock cambie o se desactive posteriormente.
+- Las comandas históricas recuperan genética y lote desde el stock existente sin modificar cantidades, precios ni Tokens.
+- Requiere ejecutar `Rainbows_V3.26.5_lotes_en_comandas.sql` después de V3.26.4.
 
 ## V3.26.4 — Comandas preparadas desde stock
 
