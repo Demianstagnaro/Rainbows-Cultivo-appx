@@ -9,7 +9,17 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.15. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.16. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.16 — Actualizaciones parciales en Medrano
+
+- Después de guardar una acción, Medrano actualiza solamente los módulos relacionados en lugar de volver a descargar toda la sede.
+- Comandas, inventarios, Laboratorio, Caja, pacientes, catálogo y transferencias se recargan de forma independiente.
+- Cobrar y dispensar actualizan juntos los saldos, Tokens, Caja, comandas y stock que corresponden.
+- Finalizar una producción actualiza producción, materias primas, producto obtenido y catálogo sin consultar secciones ajenas.
+- Realtime evita repetir inmediatamente la misma carga provocada por una acción local.
+- Si una actualización parcial falla, la app utiliza automáticamente la carga completa como respaldo.
+- No requiere cambios en Supabase.
 
 ## V3.26.15 — Historiales bajo demanda
 

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.15';
+const APP_VERSION='3.26.16';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -265,6 +265,20 @@ async function loadMedranoStockTable(table,maxRows=Infinity){
     if(rows.length>=maxRows)return {data:rows,error:null,complete:false};
   }
 }
+function applyMedranoOrderRows(legacyOrders,multiOrders,multiItems){
+  state.medranoMultiOrders=multiOrders||[];
+  state.medranoMultiItems=multiItems||[];
+  const todayKey=ymd(today()),legacy=legacyOrders||[];
+  state.medranoDeletedOrders=legacy.filter(order=>Boolean(order.eliminada_at));
+  state.medranoDispensedOrders=legacy.filter(order=>!order.eliminada_at&&((order.requiere_cierre===false&&order.fecha<todayKey)||(Boolean(order.dispensada_at)&&order.dispensada_fecha<todayKey)));
+  state.medranoOrders=legacy.filter(order=>!order.eliminada_at&&((order.requiere_cierre===false&&order.fecha>=todayKey)||(order.requiere_cierre!==false&&(!order.dispensada_at||order.dispensada_fecha>=todayKey))));
+  if(state.medranoMultiReady){
+    const orders=state.medranoMultiOrders.map(medranoMultiOrderView);
+    state.medranoOrders.push(...orders.filter(order=>!order.eliminada_at&&(!order.dispensada_at||order.dispensada_fecha>=todayKey)));
+    state.medranoDispensedOrders.push(...orders.filter(order=>!order.eliminada_at&&order.dispensada_at&&order.dispensada_fecha<todayKey));
+    state.medranoDeletedOrders.push(...orders.filter(order=>order.eliminada_at));
+  }
+}
 async function load(){
   // V3.16.14: primero resolvemos el rol del usuario. Cosechas y Stock solo se
   // consultan desde Supabase si el usuario actual es administrador.
@@ -321,11 +335,7 @@ async function load(){
   ]);
   for(const q of qs)if(q.error)throw q.error;
   [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.medranoDispensarioLots,state.medranoCounterItems,state.medranoPatients,state.medranoOrders,state.stockTransfers,state.stockTransferItems,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,20).map(q=>q.data||[]);
-  const allMedranoOrders=state.medranoOrders;
-  const todayKey=ymd(today());
-  state.medranoDeletedOrders=allMedranoOrders.filter(order=>Boolean(order.eliminada_at));
-  state.medranoDispensedOrders=allMedranoOrders.filter(order=>!order.eliminada_at&&((order.requiere_cierre===false&&order.fecha<todayKey)||(Boolean(order.dispensada_at)&&order.dispensada_fecha<todayKey)));
-  state.medranoOrders=allMedranoOrders.filter(order=>!order.eliminada_at&&((order.requiere_cierre===false&&order.fecha>=todayKey)||(order.requiere_cierre!==false&&(!order.dispensada_at||order.dispensada_fecha>=todayKey))));
+  const legacyMedranoOrders=state.medranoOrders;
   state.profile=state.profile||state.perfiles.find(p=>p.id===state.session?.user?.id)||null;
   state.generalTasks=qs[20].data||[];
   state.generalJoins=qs[21].data||[];
@@ -353,12 +363,7 @@ async function load(){
   state.medranoProductCatalog=(qs[36].data||[]).map(product=>({...product,nombre:formatMeasurementText(product.nombre)}));
   state.medranoPriceListReady=state.medranoCajaReady&&![qs[34],qs[35],qs[36]].some(q=>q.missing);
   state.medranoLoadIssues=qs.slice(22).flatMap(q=>q.issue?[q.issue]:[]);
-  if(state.medranoMultiReady){
-    const orders=state.medranoMultiOrders.map(medranoMultiOrderView);
-    state.medranoOrders.push(...orders.filter(o=>!o.eliminada_at&&(!o.dispensada_at||o.dispensada_fecha>=todayKey)));
-    state.medranoDispensedOrders.push(...orders.filter(o=>!o.eliminada_at&&o.dispensada_at&&o.dispensada_fecha<todayKey));
-    state.medranoDeletedOrders.push(...orders.filter(o=>o.eliminada_at));
-  }
+  applyMedranoOrderRows(legacyMedranoOrders,state.medranoMultiOrders,state.medranoMultiItems);
   if(!admin){
     state.cosechas=[];state.cosechaDetalles=[];state.selectedHarvest=null;state.editHarvest=null;
   }
@@ -366,7 +371,98 @@ async function load(){
     state.stockCycles=[];state.stockItems=[];state.stockMovements=[];state.stockRoom=null;state.stockCycle=null;
   }
 }
-let refreshInFlight=null,realtimeRefreshTimer=null,refreshAgain=false;
+async function refreshMedranoModules(...requested){
+  const scopes=new Set(requested.flat());
+  if(state.site!=='medrano'||!canAccessMedrano()||!scopes.size)return refresh();
+  if(realtimeRefreshTimer){clearTimeout(realtimeRefreshTimer);realtimeRefreshTimer=null}
+  medranoLocalRefreshUntil=Date.now()+1500;
+  medranoLocalRefreshTables=new Set([
+    ...(scopes.has('orders')?['medrano_comandas','medrano_comandas_multiproducto','medrano_comandas_multiproducto_items']:[]),
+    ...(scopes.has('inventory')?['medrano_dispensario_lotes','medrano_mostrador_productos','medrano_laboratorio_stock','medrano_traslados_laboratorio','medrano_stock_historial','medrano_laboratorio_dispensario_movimientos']:[]),
+    ...(scopes.has('laboratory')?['medrano_laboratorio_trabajos','medrano_laboratorio_trabajos_materiales']:[]),
+    ...(scopes.has('cash')?['medrano_caja_movimientos','medrano_tokens_movimientos']:[]),
+    ...(scopes.has('patients')?['medrano_pacientes']:[]),
+    ...(scopes.has('catalog')?['medrano_precios_flores','medrano_precios_categorias','medrano_catalogo_productos']:[]),
+    ...(scopes.has('transfers')?['stock_transferencias','stock_transferencia_items']:[])
+  ]);
+  const jobs=new Map(),add=(key,promise)=>jobs.set(key,promise);
+  const orderHistory=String(state.medranoView||'').startsWith('administracion-comandas-historial')||state.medranoView==='administracion-comandas-eliminadas'||state.medranoView==='dispensario-historial';
+  const labHistory=state.medranoView==='laboratorio-historial';
+  const dispensaryHistory=state.medranoView==='dispensario-historial';
+  if(scopes.has('orders')){
+    add('legacyOrders',loadMedranoStockTable('medrano_comandas',orderHistory?Infinity:1000));
+    add('multiOrders',loadMedranoStockTable('medrano_comandas_multiproducto',orderHistory?Infinity:1000));
+    add('multiItems',loadMedranoStockTable('medrano_comandas_multiproducto_items',orderHistory?Infinity:4000));
+  }
+  if(scopes.has('inventory')){
+    add('dispensaryLots',db.from('medrano_dispensario_lotes').select('*').order('fecha_ingreso',{ascending:false}).order('created_at',{ascending:false}));
+    add('counterItems',loadMedranoCounterItems(true));
+    add('labItems',loadMedranoStockTable('medrano_laboratorio_stock'));
+    add('labTransfers',loadMedranoStockTable('medrano_traslados_laboratorio',dispensaryHistory?Infinity:1000));
+    add('stockHistory',loadMedranoStockTable('medrano_stock_historial',state.medranoView==='stock-historial'?Infinity:500));
+    add('labDispMovements',loadMedranoStockTable('medrano_laboratorio_dispensario_movimientos',dispensaryHistory?Infinity:1000));
+  }
+  if(scopes.has('laboratory')){
+    add('labJobs',loadMedranoStockTable('medrano_laboratorio_trabajos',labHistory?Infinity:1000));
+    add('labMaterials',loadMedranoStockTable('medrano_laboratorio_trabajos_materiales',labHistory?Infinity:4000));
+  }
+  if(scopes.has('cash')){
+    add('cashMovements',loadMedranoStockTable('medrano_caja_movimientos'));
+    if(state.medranoView==='administracion-caja')add('tokenMovements',loadMedranoStockTable('medrano_tokens_movimientos'));
+  }
+  if(scopes.has('patients'))add('patients',db.from('medrano_pacientes').select('*').order('apellido').order('nombre'));
+  if(scopes.has('catalog')){
+    add('flowerPrices',loadMedranoStockTable('medrano_precios_flores'));
+    add('categoryPrices',loadMedranoStockTable('medrano_precios_categorias'));
+    add('productCatalog',loadMedranoStockTable('medrano_catalogo_productos'));
+  }
+  if(scopes.has('transfers')){
+    add('stockTransfers',db.from('stock_transferencias').select('*').order('created_at',{ascending:false}));
+    add('stockTransferItems',db.from('stock_transferencia_items').select('*').order('created_at'));
+  }
+  try{
+    const entries=await Promise.all([...jobs].map(async([key,promise])=>[key,await promise]));
+    const result=Object.fromEntries(entries);
+    for(const query of Object.values(result)){if(query.error)throw query.error;if(query.missing)throw new Error(`No se pudo actualizar ${query.issue?.table||'Medrano'}.`)}
+    if(scopes.has('orders')){
+      state.medranoMultiReady=true;
+      applyMedranoOrderRows(result.legacyOrders.data||[],result.multiOrders.data||[],result.multiItems.data||[]);
+    }
+    if(scopes.has('inventory')){
+      state.medranoDispensarioLots=result.dispensaryLots.data||[];
+      state.medranoCounterItems=result.counterItems.data||[];
+      state.medranoLabItems=(result.labItems.data||[]).map(item=>({...item,nombre:formatMeasurementText(item.nombre),nombre_comercial:item.nombre_comercial?formatMeasurementText(item.nombre_comercial):item.nombre_comercial}));
+      state.medranoLabTransfers=result.labTransfers.data||[];
+      state.medranoStockHistory=(result.stockHistory.data||[]).map(row=>({...row,producto:formatMeasurementText(row.producto),detalle:formatMeasurementText(row.detalle)}));
+      state.medranoStockHistoryComplete=result.stockHistory.complete!==false;
+      state.medranoLabDispMovements=result.labDispMovements.data||[];
+      state.medranoStockReady=true;state.medranoDispensaryTransfersReady=true;
+    }
+    if(scopes.has('laboratory')){
+      state.medranoLabJobs=(result.labJobs.data||[]).map(job=>({...job,producto:formatMeasurementText(job.producto)}));
+      state.medranoLabMaterials=(result.labMaterials.data||[]).map(material=>({...material,nombre:formatMeasurementText(material.nombre)}));
+      state.medranoLabJobsReady=true;state.medranoProductionReady=true;
+    }
+    if(scopes.has('cash')){
+      state.medranoCajaMovements=result.cashMovements.data||[];
+      if(result.tokenMovements)state.medranoTokenMovements=result.tokenMovements.data||[];
+      state.medranoCajaReady=true;
+    }
+    if(scopes.has('patients'))state.medranoPatients=result.patients.data||[];
+    if(scopes.has('catalog')){
+      state.medranoFlowerPrices=result.flowerPrices.data||[];
+      state.medranoCategoryPrices=result.categoryPrices.data||[];
+      state.medranoProductCatalog=(result.productCatalog.data||[]).map(product=>({...product,nombre:formatMeasurementText(product.nombre)}));
+      state.medranoPriceListReady=true;
+    }
+    if(scopes.has('transfers')){state.stockTransfers=result.stockTransfers.data||[];state.stockTransferItems=result.stockTransferItems.data||[]}
+    __resetDataPerfCaches();render();
+  }catch(error){
+    console.error('Falló la actualización parcial de Medrano; se usa la carga completa.',error);
+    await refresh();
+  }
+}
+let refreshInFlight=null,realtimeRefreshTimer=null,refreshAgain=false,medranoLocalRefreshUntil=0,medranoLocalRefreshTables=new Set();
 async function refresh(){
   if(refreshInFlight){refreshAgain=true;return refreshInFlight}
   if(realtimeRefreshTimer){clearTimeout(realtimeRefreshTimer);realtimeRefreshTimer=null}
@@ -380,12 +476,13 @@ async function refresh(){
     if(refreshAgain){refreshAgain=false;scheduleRealtimeRefresh()}
   }
 }
-function scheduleRealtimeRefresh(){
+function scheduleRealtimeRefresh(payload){
   if(!state.session)return;
+  if(state.site==='medrano'&&Date.now()<medranoLocalRefreshUntil&&medranoLocalRefreshTables.has(String(payload?.table||'')))return;
   if(realtimeRefreshTimer)clearTimeout(realtimeRefreshTimer);
   realtimeRefreshTimer=setTimeout(()=>{realtimeRefreshTimer=null;refresh()},300);
 }
-function subscribe(){if(state.channel)db.removeChannel(state.channel);state.channel=db.channel('rainbows-shared').on('postgres_changes',{event:'*',schema:'public'},scheduleRealtimeRefresh).subscribe()}
+function subscribe(){if(state.channel)db.removeChannel(state.channel);state.channel=db.channel('rainbows-shared').on('postgres_changes',{event:'*',schema:'public'},payload=>scheduleRealtimeRefresh(payload)).subscribe()}
 function progress(r,d){const x=tasks(d).filter(t=>t.room===r.name),n=x.filter(done).length;return{total:x.length,done:n,pct:x.length?Math.round(n/x.length*100):100}}
 function taskCounter(doneCount,totalCount){const complete=totalCount>0&&doneCount===totalCount;return `<span class="task-counter ${complete?'is-complete':''}">Tareas ${doneCount}/${totalCount}</span>`}
 function taskPriority(t){const critical=['Cosecha','Trasplante','Esquejes','Inicio flora'];const important=['Schwazzing','Calibrar riego','Poda bajos','Redes'];if(critical.includes(t.task))return{rank:0,cls:'priority-critical',label:'Crítica'};if(t.task.startsWith('Enmienda')||important.includes(t.task)||t.task.startsWith('Trimming - '))return{rank:1,cls:'priority-important',label:'Importante'};return{rank:2,cls:'priority-routine',label:'Rutina'}}
@@ -1145,6 +1242,7 @@ function bindStockLotSizes(root=app){
       select.dataset.previousSize=value;
       const rows=table==='medrano_dispensario_lotes'?state.medranoDispensarioLots:state.stockItems;
       const row=rows.find(item=>String(item.id)===String(select.dataset.stockSizeId));if(row)row.tamano=value;
+      if(table==='medrano_dispensario_lotes')await refreshMedranoModules('inventory');
     }
     select.disabled=false;
   });
@@ -1182,7 +1280,7 @@ async function saveMedranoLot(){
   const q=await db.from('medrano_dispensario_lotes').insert(payload);
   if(q.error)throw q.error;
   closeDialog('medrano-lot-dialog');
-  await refresh();
+  await refreshMedranoModules('inventory');
 }
 
 function openMedranoReceptionDialog(transferId){
@@ -1218,7 +1316,7 @@ async function confirmMedranoReception(){
   if(q.error)throw q.error;
   state.pendingStockTransfer=null;
   closeDialog('medrano-reception-dialog');
-  await refresh();
+  await refreshMedranoModules('inventory','transfers');
 }
 
 function medranoDailyHistory(sector,categoria,period="past"){
@@ -1302,7 +1400,7 @@ async function sendMedranoLabTransfer(){
   if(!confirm(`¿Enviar ${formatGrams(grams)} del lote ${lot.codigo_lote} a Laboratorio? Se descontarán del disponible y quedarán en viaje.`))return;
   const q=await db.rpc('enviar_flores_laboratorio',{p_lote_id:id,p_gramos:grams});
   if(q.error)throw q.error;
-  closeDialog('lab-transfer-dialog');await refresh();
+  closeDialog('lab-transfer-dialog');await refreshMedranoModules('inventory');
 }
 function openLabItemDialog(item=null){
   state.editLabItem=item;
@@ -1381,7 +1479,7 @@ async function saveLabItem(item=null,active=true){
   if(inputType==='envase'&&(!Number.isFinite(containerCapacity)||containerCapacity<=0||!['g','ml'].includes(capacityUnit)))throw new Error('Indicá la capacidad de cada envase y si está expresada en g o ml.');
   const q=await db.rpc('guardar_stock_laboratorio_v3',{p_id:selected?.id||null,p_categoria:category,p_nombre:name,p_catalogo_producto_id:catalogId,p_genetica_id:geneticId,p_lote:lot,p_perfil_cannabinoide:profile,p_proporcion_cannabinoides:ratio,p_cantidad:quantity,p_unidad:inputType==='envase'||cream?'unidades':unit,p_activo:active,p_tipo_insumo:inputType,p_capacidad_envase:containerCapacity,p_unidad_capacidad:capacityUnit,p_presentacion_cantidad:presentation,p_presentacion_unidad:presentationUnit});
   if(q.error)throw q.error;
-  closeDialog('lab-item-dialog');state.editLabItem=null;await refresh();
+  closeDialog('lab-item-dialog');state.editLabItem=null;await refreshMedranoModules('inventory','catalog');
 }
 function medranoLabGeneticName(item){return state.geneticas.find(g=>String(g.id)===String(item.genetica_id))?.nombre||'Sin identificar'}
 function medranoCannabinoidRatioRequired(profile){return String(profile||'').includes('-')}
@@ -1436,7 +1534,7 @@ function renderLabInventory(medranoNav,bindModuleNav,category){
   const add=$('lab-add-item');if(add)add.onclick=()=>openLabItemDialog();
   app.querySelectorAll('[data-edit-lab]').forEach(b=>b.onclick=()=>openLabItemDialog(items.find(i=>String(i.id)===b.dataset.editLab)));
   app.querySelectorAll('[data-remove-lab]').forEach(b=>b.onclick=async()=>{const item=items.find(i=>String(i.id)===b.dataset.removeLab);if(!item||!confirm(`¿Sacar “${item.nombre}” de la lista? Se conservará su historial.`))return;b.disabled=true;try{await saveLabItem(item,false)}catch(e){alert(e.message)}finally{b.disabled=false}});
-  app.querySelectorAll('[data-receive-lab]').forEach(b=>b.onclick=async()=>{const transfer=pending.find(t=>String(t.id)===b.dataset.receiveLab);if(!confirm(`¿Confirmar que recibiste ${formatGrams(transfer.gramos)} del lote ${transfer.codigo_lote}?`))return;b.disabled=true;try{const q=await db.rpc('recibir_flores_laboratorio',{p_traslado_id:transfer.id});if(q.error)throw q.error;await refresh()}catch(e){alert(e.message)}finally{b.disabled=false}});
+  app.querySelectorAll('[data-receive-lab]').forEach(b=>b.onclick=async()=>{const transfer=pending.find(t=>String(t.id)===b.dataset.receiveLab);if(!confirm(`¿Confirmar que recibiste ${formatGrams(transfer.gramos)} del lote ${transfer.codigo_lote}?`))return;b.disabled=true;try{const q=await db.rpc('recibir_flores_laboratorio',{p_traslado_id:transfer.id});if(q.error)throw q.error;await refreshMedranoModules('inventory')}catch(e){alert(e.message)}finally{b.disabled=false}});
 }
 
 function renderMedranoCounterStock(medranoNav,bindModuleNav){
@@ -1481,7 +1579,7 @@ async function saveMedranoCounterItem(){
   const q=await db.rpc('guardar_stock_mostrador_catalogo',{p_catalogo_producto_id:catalogId,p_cantidad:cantidad});
   if(q.error)throw q.error;
   closeDialog('medrano-counter-dialog');
-  await refresh();
+  await refreshMedranoModules('inventory');
 }
 async function saveMedranoCounterQuantity(id,value){
   if(!canManageMedrano())throw new Error('No tenés permiso para modificar el Mostrador.');
@@ -1489,13 +1587,13 @@ async function saveMedranoCounterQuantity(id,value){
   if(!Number.isInteger(cantidad)||cantidad<0)throw new Error('Ingresá una cantidad válida, sin decimales.');
   const q=await db.from('medrano_mostrador_productos').update({cantidad,updated_at:new Date().toISOString()}).eq('id',id);
   if(q.error)throw q.error;
-  await refresh();
+  await refreshMedranoModules('inventory');
 }
 async function removeMedranoCounterItem(id){
   if(!canManageMedrano())throw new Error('No tenés permiso para modificar el Mostrador.');
   const q=await db.from('medrano_mostrador_productos').update({activo:false,updated_at:new Date().toISOString()}).eq('id',id);
   if(q.error)throw q.error;
-  await refresh();
+  await refreshMedranoModules('inventory');
 }
 
 function renderMedranoDispensarioStock(medranoNav,bindModuleNav){
@@ -1593,7 +1691,7 @@ async function saveMedranoPatient(){
   if(q.error)throw q.error;
   state.editMedranoPatient=null;
   closeDialog('medrano-patient-dialog');
-  await refresh();
+  await refreshMedranoModules('patients');
 }
 function renderMedranoPatients(medranoNav,bindModuleNav){
   $('screen-title').textContent='Pacientes';
@@ -1762,7 +1860,7 @@ async function saveMedranoMultiOrder(){
   for(const item of items){const product=medranoCatalog(item.tipo,state.editMedranoMultiOrder).find(p=>p.id===item.origen_id);if(!product?.tokens)throw new Error(`Configurá el valor en Tokens de “${product?.name||'este producto'}” desde Lista de precios.`);if(product.unit==='unidades'&&!Number.isInteger(item.cantidad))throw new Error('Las unidades deben ser enteras.')}
   const q=await db.rpc('guardar_comanda_multiproducto',{p_id:state.editMedranoMultiOrder?.id||null,p_paciente:patient,p_fecha:$('medrano-multi-date').value,p_items:items});
   if(q.error)throw q.error;
-  state.editMedranoMultiOrder=null;closeDialog('medrano-multi-dialog');await refresh();
+  state.editMedranoMultiOrder=null;closeDialog('medrano-multi-dialog');await refreshMedranoModules('orders');
 }
 function openMedranoOrderDialog(order=null){
   if(state.medranoMultiReady&&(!order||order.multiple)){openMedranoMultiDialog(order);return}
@@ -1806,7 +1904,7 @@ async function saveMedranoOrder(){
   if(q.error)throw q.error;
   state.editMedranoOrder=null;
   const d=$('medrano-order-dialog');if(d?.open)d.close();
-  await refresh();
+  await refreshMedranoModules('orders');
 }
 
 function openMedranoOrderDeleteDialog(order){
@@ -1825,7 +1923,7 @@ async function deleteMedranoOrder(orderId,reason=''){
   if(q.error)throw q.error;
   state.pendingDeleteMedranoOrder=null;
   closeDialog('medrano-order-delete-dialog');
-  await refresh();
+  await refreshMedranoModules('orders');
 }
 
 async function markMedranoOrderDispensed(orderId){
@@ -1837,7 +1935,7 @@ async function markMedranoOrderDispensed(orderId){
   if(order.multiple&&order.pago_estado!=='pagada')throw new Error('Administración debe confirmar primero el cobro de la comanda.');
   const q=order.multiple?await db.rpc('cerrar_comanda_multiproducto',{p_id:order.id,p_medio:null}):await db.rpc('marcar_comanda_dispensada',{objetivo_id:order.id});
   if(q.error)throw q.error;
-  await refresh();
+  await refreshMedranoModules('orders','inventory','cash','patients');
 }
 
 function openMedranoPaymentDialog(order){
@@ -1856,7 +1954,7 @@ async function confirmMedranoPayment(){
   const pending=state.pendingMedranoPayment;if(!pending)return;
   const q=await db.rpc('pagar_comanda_multiproducto',{p_id:pending.order.id,p_medio:pending.missing>0?$('medrano-payment-method').value:null});
   if(q.error)throw q.error;
-  state.pendingMedranoPayment=null;closeDialog('medrano-payment-dialog');await refresh();
+  state.pendingMedranoPayment=null;closeDialog('medrano-payment-dialog');await refreshMedranoModules('orders','cash','patients');
 }
 
 function medranoOrderOptionsHtml(order){
@@ -2093,7 +2191,7 @@ async function saveMedranoCashMovement(){
   const amount=Number($('medrano-cash-amount').value),concept=$('medrano-cash-concept').value.trim();
   if(!Number.isFinite(amount)||amount<=0||!concept)throw new Error('Completá un monto válido y el concepto.');
   const q=await db.rpc('registrar_movimiento_caja',{p_tipo:$('medrano-cash-type').value,p_medio:$('medrano-cash-method').value,p_monto:amount,p_concepto:concept});
-  if(q.error)throw q.error;closeDialog('medrano-cash-dialog');await refresh();
+  if(q.error)throw q.error;closeDialog('medrano-cash-dialog');await refreshMedranoModules('cash');
 }
 function updateMedranoCreditTotal(){$('medrano-credit-total').textContent=`Importe: ${formatMoney((Number($('medrano-credit-tokens').value)||0)*1000)}`}
 function openMedranoCreditDialog(){
@@ -2104,7 +2202,7 @@ async function saveMedranoCredit(){
   const patient=$('medrano-credit-patient').value,tokens=Number($('medrano-credit-tokens').value);
   if(!patient||!Number.isInteger(tokens)||tokens<=0)throw new Error('Seleccioná un paciente e ingresá una cantidad entera de Tokens.');
   const q=await db.rpc('acreditar_tokens_paciente',{p_paciente:patient,p_tokens:tokens,p_medio:$('medrano-credit-method').value,p_detalle:$('medrano-credit-detail').value.trim()||null});
-  if(q.error)throw q.error;closeDialog('medrano-credit-dialog');await refresh();
+  if(q.error)throw q.error;closeDialog('medrano-credit-dialog');await refreshMedranoModules('cash','patients');
 }
 async function saveMedranoTokenPrice(button){
   const input=button.closest('tr').querySelector('[data-token-price]'),tokens=Number(input.value);
@@ -2121,7 +2219,7 @@ async function saveMedranoTokenPrice(button){
   }
   const tableRow=button.closest('tr'),money=tableRow.querySelector('[data-token-money]');if(money){money.textContent=formatMoney(tokens*1000);money.dataset.sortValue=String(tokens*1000)}
   input.closest('td').dataset.sortValue=String(tokens);
-  button.textContent='Guardado';setTimeout(()=>{button.textContent='Guardar'},1200);
+  await refreshMedranoModules('catalog','orders');
 }
 function openMedranoCatalogDialog(){
   $('medrano-catalog-category').value='aceites';
@@ -2136,7 +2234,7 @@ async function saveMedranoCatalogProduct(){
   if(!Number.isFinite(tokens)||tokens<0)throw new Error('Ingresá un valor de Tokens válido.');
   const q=await db.rpc('guardar_producto_catalogo_medrano',{p_id:null,p_categoria:category,p_nombre:name,p_unidad:unit,p_tokens:tokens,p_activo:true});
   if(q.error)throw q.error;
-  closeDialog('medrano-catalog-dialog');await refresh();
+  closeDialog('medrano-catalog-dialog');await refreshMedranoModules('catalog');
 }
 function renderMedranoPriceList(medranoNav,bindModuleNav){
   $('screen-title').textContent='Lista de precios';
@@ -2443,7 +2541,7 @@ async function saveLabProduction(){
   const payload=materials.map(({id,cantidad})=>({id,cantidad}));
   const q=type==='aceite_final'?await db.rpc('guardar_produccion_aceite_final',{p_id:state.editMedranoLabJob?.id||null,p_aceites:materials.filter(x=>x.category==='aceites').map(x=>x.id),p_aceite_puro_id:finalOilDraft.pure.id,p_envase_id:finalOilDraft.container.id,p_perfil:finalOilDraft.profile,p_proporcion:finalOilDraft.ratio,p_concentracion:finalOilDraft.concentration,p_unidades:finalOilDraft.count,p_detalle:$('lab-production-detail').value.trim()}):type==='crema'?await db.rpc('guardar_produccion_crema',{p_id:state.editMedranoLabJob?.id||null,p_insumos:payload,p_detalle:$('lab-production-detail').value.trim()}):await db.rpc('guardar_produccion_laboratorio',{p_id:state.editMedranoLabJob?.id||null,p_tipo:type,p_insumos:payload,p_producto:name,p_producto_id:['resina','aceite_base','capsulas'].includes(type)?null:output||null,p_unidad:unit,p_detalle:$('lab-production-detail').value.trim(),p_metadata:metadata});
   if(q.error)throw q.error;
-  closeDialog('lab-production-dialog');state.editMedranoLabJob=null;await refresh();
+  closeDialog('lab-production-dialog');state.editMedranoLabJob=null;await refreshMedranoModules('laboratory');
 }
 function openLabProductionFinish(job){
   state.finishMedranoLabJob=job;
@@ -2457,7 +2555,7 @@ async function finishLabProduction(){
   if(!job||!raw||!Number.isFinite(value)||value<=0||job.resultado_unidad==='unidades'&&!Number.isInteger(value))throw new Error('Ingresá el rendimiento real.');
   const q=await db.rpc('finalizar_produccion_laboratorio',{p_id:job.id,p_retorno:value});
   if(q.error)throw q.error;
-  closeDialog('lab-production-finish-dialog');state.finishMedranoLabJob=null;await refresh();
+  closeDialog('lab-production-finish-dialog');state.finishMedranoLabJob=null;await refreshMedranoModules('laboratory','inventory','catalog');
 }
 function medranoJobDay(value){return value?new Date(value).toLocaleDateString('en-CA',{timeZone:'America/Argentina/Buenos_Aires'}):''}
 function openMedranoLabJobDialog(type='aceite_base',job=null){
@@ -2486,7 +2584,7 @@ async function saveMedranoLabJob(){
   if(q.error)throw q.error;
   closeDialog('lab-job-dialog');state.editMedranoLabJob=null;
   if(state.medranoView==='administracion-comandas')state.medranoView='laboratorio';
-  await refresh();
+  await refreshMedranoModules('laboratory');
 }
 function medranoLabProductionStockIssue(job){
   if(!job?.produccion_controlada)return null;
@@ -2514,7 +2612,7 @@ async function changeMedranoLabJobStatus(job,status){
   if(!action||!confirm(`¿${action.charAt(0).toUpperCase()+action.slice(1)} ${job.tipo==='comanda_paciente'?'la comanda':'el trabajo'} “${job.producto}”?`))return;
   const q=await db.rpc('cambiar_estado_trabajo_laboratorio',{p_id:job.id,p_estado:status});
   if(q.error)throw q.error;
-  await refresh();
+  await refreshMedranoModules('laboratory');
 }
 function medranoLabJobRows(jobs){
   return `<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Tipo</th><th>Producto / paciente</th><th>Materias primas / resultado</th><th>Estado</th><th>Fecha</th><th>Registrado por</th>${canManageMedrano()?'<th>Acciones</th>':''}</tr></thead><tbody>${jobs.length?jobs.map(job=>{
@@ -2535,7 +2633,7 @@ async function changeMedranoPreparationState(itemId,status){
   if(!confirm(`¿${action.charAt(0).toUpperCase()+action.slice(1)} de “${medranoOrderItemName(item)}”?`))return;
   const q=await db.rpc('cambiar_preparacion_item_comanda',{p_item:item.id,p_estado:status});
   if(q.error)throw q.error;
-  await refresh();
+  await refreshMedranoModules('orders');
 }
 function bindMedranoLabJobActions(){
   app.querySelectorAll('[data-lab-job-edit]').forEach(button=>button.onclick=()=>{const job=state.medranoLabJobs.find(j=>j.id===button.dataset.labJobEdit);if(job?.produccion_controlada)openLabProduction(job);else openMedranoLabJobDialog('aceite_base',job)});
