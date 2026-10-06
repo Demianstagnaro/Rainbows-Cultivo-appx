@@ -19,7 +19,9 @@ test('aceite final calcula aceites base, diluyente y goteros por receta',()=>{
   assert.match(app,/function syncLabFinalOilSourceRows\(jobRows=\[\]\)/);
   assert.match(app,/names\.map\(name=>/);
   assert.match(app,/perfil_cannabinoide===requiredProfile/);
-  assert.match(app,/Resultado automático:[\s\S]*Al finalizar, Laboratorio confirmará cuántos salieron realmente/);
+  assert.match(app,/RECETA PARA[\s\S]*RESULTADO ESPERADO:[\s\S]*Los números que figuran dentro de los selectores son sólo el stock disponible/);
+  assert.match(app,/stock disponible:.*ml/);
+  assert.match(app,/capacidad:.*ml · stock disponible:.*unidades/);
   assert.match(app,/totalEquivalent=totalVolume\/concentration/);
   assert.match(app,/pureVolume=totalVolume-cannabinoidVolume/);
   assert.match(app,/guardar_produccion_aceite_final/);
