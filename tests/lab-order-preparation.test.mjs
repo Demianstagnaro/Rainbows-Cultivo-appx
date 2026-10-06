@@ -18,7 +18,7 @@ test('iniciar preparación usa el lote reservado sin crear otra producción',()=
   assert.match(sqlStock,/add column if not exists preparacion_estado text/);
   assert.match(sqlStock,/add column if not exists preparacion_trabajo_id uuid/);
   assert.match(sqlStock,/create trigger normalizar_preparacion_item_comanda/i);
-  assert.match(sqlStock,/to_jsonb\(new\)-array\['preparacion_estado','preparacion_trabajo_id'\]/i);
+  assert.match(sqlTrace,/to_jsonb\(new\)-array\['preparacion_estado','preparacion_trabajo_id'\]/i);
   assert.match(sqlStock,/create or replace function public\.cambiar_preparacion_item_comanda/i);
   assert.doesNotMatch(sqlStock,/insert into public\.medrano_laboratorio_trabajos\s*\(/i);
   assert.match(sqlStock,/set preparacion_estado=p_estado,preparacion_trabajo_id=null/i);
