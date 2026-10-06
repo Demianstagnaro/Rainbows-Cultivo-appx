@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.14. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.15. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.15 — Historiales bajo demanda
+
+- Las pantallas operativas de Medrano dejan de descargar todos los registros históricos en cada actualización.
+- Los historiales completos de comandas, dispensario y laboratorio se cargan recién al abrir cada botón `Historial`.
+- Caja carga el historial de Tokens únicamente al entrar en esa sección.
+- Se eliminan consultas a tablas que la interfaz ya no utiliza.
+- Mientras se abre un historial se muestra un estado breve de carga.
+- No requiere cambios en Supabase.
 
 ## V3.26.14 — Carga separada por sede
 

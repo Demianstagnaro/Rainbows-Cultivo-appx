@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.14';
+const APP_VERSION='3.26.15';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -277,6 +277,9 @@ async function load(){
   const empty=()=>Promise.resolve({data:[],error:null});
   const medranoPage=state.site==='medrano'&&canAccessMedrano();
   const palestinaPage=!medranoPage;
+  const orderHistoryPage=String(state.medranoView||'').startsWith('administracion-comandas-historial')||state.medranoView==='administracion-comandas-eliminadas'||state.medranoView==='dispensario-historial';
+  const laboratoryHistoryPage=state.medranoView==='laboratorio-historial';
+  const dispensaryHistoryPage=state.medranoView==='dispensario-historial';
   const qs=await Promise.all([
     palestinaPage?db.from('salas').select('*'):empty(),
     palestinaPage?db.from('camas').select('*'):empty(),
@@ -290,7 +293,7 @@ async function load(){
     medranoPage?db.from('medrano_dispensario_lotes').select('*').order('fecha_ingreso',{ascending:false}).order('created_at',{ascending:false}):empty(),
     loadMedranoCounterItems(medranoPage),
     medranoPage?db.from('medrano_pacientes').select('*').order('apellido').order('nombre'):empty(),
-    medranoPage?db.from('medrano_comandas').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
+    medranoPage?loadMedranoStockTable('medrano_comandas',orderHistoryPage?Infinity:1000):empty(),
     (stockAccess||canAccessMedrano())?db.from('stock_transferencias').select('*').order('created_at',{ascending:false}):empty(),
     (stockAccess||canAccessMedrano())?db.from('stock_transferencia_items').select('*').order('created_at'):empty(),
     palestinaPage?db.from('empleados').select('*').eq('activo',true).order('nombre'):empty(),
@@ -301,17 +304,17 @@ async function load(){
     palestinaPage?db.from('tareas_generales').select('*').order('created_at',{ascending:false}):empty(),
     palestinaPage?db.from('tarea_general_empleados').select('*'):empty(),
     medranoPage?loadMedranoStockTable('medrano_laboratorio_stock'):empty(),
-    medranoPage?loadMedranoStockTable('medrano_traslados_laboratorio'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_traslados_laboratorio',dispensaryHistoryPage?Infinity:1000):empty(),
     medranoPage?loadMedranoStockTable('medrano_stock_historial',state.medranoView==='stock-historial'?Infinity:500):empty(),
-    medranoPage?loadMedranoStockTable('medrano_dispensario_laboratorio_stock'):empty(),
-    medranoPage?loadMedranoStockTable('medrano_laboratorio_dispensario_movimientos'):empty(),
-    medranoPage?loadMedranoStockTable('medrano_laboratorio_trabajos'):empty(),
-    medranoPage?loadMedranoStockTable('medrano_laboratorio_trabajos_eventos'):empty(),
-    medranoPage?loadMedranoStockTable('medrano_comandas_multiproducto'):empty(),
-    medranoPage?loadMedranoStockTable('medrano_comandas_multiproducto_items'):empty(),
-    medranoPage?loadMedranoStockTable('medrano_laboratorio_trabajos_materiales'):empty(),
+    empty(),
+    medranoPage?loadMedranoStockTable('medrano_laboratorio_dispensario_movimientos',dispensaryHistoryPage?Infinity:1000):empty(),
+    medranoPage?loadMedranoStockTable('medrano_laboratorio_trabajos',laboratoryHistoryPage?Infinity:1000):empty(),
+    empty(),
+    medranoPage?loadMedranoStockTable('medrano_comandas_multiproducto',orderHistoryPage?Infinity:1000):empty(),
+    medranoPage?loadMedranoStockTable('medrano_comandas_multiproducto_items',orderHistoryPage?Infinity:4000):empty(),
+    medranoPage?loadMedranoStockTable('medrano_laboratorio_trabajos_materiales',laboratoryHistoryPage?Infinity:4000):empty(),
     medranoPage?loadMedranoStockTable('medrano_caja_movimientos'):empty(),
-    medranoPage?loadMedranoStockTable('medrano_tokens_movimientos'):empty(),
+    medranoPage&&state.medranoView==='administracion-caja'?loadMedranoStockTable('medrano_tokens_movimientos'):empty(),
     medranoPage?loadMedranoStockTable('medrano_precios_flores'):empty(),
     medranoPage?loadMedranoStockTable('medrano_precios_categorias'):empty(),
     medranoPage?loadMedranoStockTable('medrano_catalogo_productos'):empty()
@@ -1261,6 +1264,11 @@ function medranoLoadIssueHtml(tables){
   return `<section class="panel error-panel"><strong>No se pudieron leer datos de Medrano</strong><p>Las tablas están en la base, pero la aplicación recibió estos errores al consultarlas:</p><ul>${issues.map(issue=>`<li><code>${escapeHtml(issue.table)}</code> · ${escapeHtml(issue.code)}${issue.message?` · ${escapeHtml(issue.message)}`:''}</li>`).join('')}</ul><button type="button" class="secondary compact-button" data-retry-medrano>Reintentar carga</button></section>`;
 }
 function bindMedranoLoadRetry(){app.querySelectorAll('[data-retry-medrano]').forEach(button=>button.onclick=async()=>{button.disabled=true;await refresh()})}
+function openMedranoDataView(view){
+  state.medranoView=view;
+  app.innerHTML='<section class="panel"><p class="muted">Cargando historial…</p></section>';
+  refresh();
+}
 function bindMedranoStockHistoryButtons(){
   app.querySelectorAll('[data-stock-history-sector]').forEach(button=>button.onclick=async()=>{
     button.disabled=true;const original=button.textContent;button.textContent='Cargando…';
@@ -2027,7 +2035,7 @@ function renderMedranoOrders(medranoNav,bindModuleNav){
   bindMedranoLoadRetry();
   bindStockTableTools(app);
   $('medrano-orders-back').onclick=()=>{state.medranoView='administracion';render()};
-  $('medrano-orders-history').onclick=()=>{state.medranoOrderHistoryYear=null;state.medranoOrderHistoryMonth=null;state.medranoView='administracion-comandas-historial';render()};
+  $('medrano-orders-history').onclick=()=>{state.medranoOrderHistoryYear=null;state.medranoOrderHistoryMonth=null;openMedranoDataView('administracion-comandas-historial')};
   const add=$('medrano-add-order');if(add)add.onclick=()=>openMedranoOrderDialog();
   bindMedranoOrderActions();
 }
@@ -2056,7 +2064,7 @@ function renderMedranoDispensary(medranoNav,bindModuleNav){
     <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3 class="status-heading-completed">Comandas entregadas y movimientos de hoy</h3><p class="muted">${events.length} registro${events.length===1?'':'s'} · Mañana estarán en el historial.</p></div></div>${dispensaryEventsTable(events,true)}</section>
     ${!state.medranoStockReady?'<section class="panel"><p class="muted">No se pudieron cargar los datos necesarios para crear movimientos.</p></section>':''}${medranoLoadIssueHtml(['medrano_laboratorio_stock','medrano_traslados_laboratorio','medrano_stock_historial','medrano_comandas_multiproducto','medrano_comandas_multiproducto_items'])}`;
   bindModuleNav();bindMedranoOrderActions();bindMedranoLoadRetry();
-  $('dispensary-history').onclick=()=>{state.medranoView='dispensario-historial';render()};
+  $('dispensary-history').onclick=()=>openMedranoDataView('dispensario-historial');
   const move=$('dispensary-new-movement');if(move)move.onclick=openMedranoLabTransfer;
 }
 function renderMedranoDispensaryHistory(medranoNav,bindModuleNav){
@@ -2554,7 +2562,7 @@ function renderMedranoLaboratory(medranoNav,bindModuleNav,history=false){
     <section class="panel stock-detail-panel"><h3 class="status-heading-pending">Trabajos pendientes</h3>${medranoLabJobRows(active)}</section>
     <section class="panel stock-detail-panel"><h3 class="status-heading-completed">Finalizados y cancelados hoy</h3>${medranoLabJobRows(doneToday)}</section>`;
   bindModuleNav();bindMedranoLabJobActions();
-  $('lab-history').onclick=()=>{state.medranoView='laboratorio-historial';render()};
+  $('lab-history').onclick=()=>openMedranoDataView('laboratorio-historial');
   const production=$('lab-new-production');if(production)production.onclick=()=>openLabProduction();
 }
 function renderMedranoToday(medranoNav,bindModuleNav){
