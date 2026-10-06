@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.9';
+const APP_VERSION='3.26.10';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2288,7 +2288,7 @@ function refreshLabFinalOilDraft(){
   const draft=labFinalOilDraft();
   if(draft){
     const amounts=new Map(draft.materials.filter(x=>x.category==='aceites').map(x=>[x.id,x.cantidad]));
-    $('lab-production-materials').querySelectorAll('.lab-production-material').forEach(row=>{const input=row.querySelector('.lab-material-quantity'),id=row.querySelector('.lab-material-id').value;input.value=amounts.has(id)?amounts.get(id).toFixed(3):''});
+    $('lab-production-materials').querySelectorAll('.lab-production-material').forEach(row=>{const input=row.querySelector('.lab-material-quantity'),id=row.querySelector('.lab-material-id').value;input.value=amounts.has(id)?String(Number(amounts.get(id).toFixed(6))):''});
   }
   labProductionOutputOptions();
 }

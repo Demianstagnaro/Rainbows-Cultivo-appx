@@ -9,7 +9,13 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.9. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.10. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.10 — Cantidades calculadas sin ceros innecesarios
+
+- Las cantidades exactas se muestran como `25` en lugar de `25,000`.
+- Los decimales reales se conservan, hasta seis posiciones cuando el cálculo lo necesita.
+- Esta versión no requiere una migración nueva de Supabase.
 
 ## V3.26.9 — Receta visible de aceites finales
 
