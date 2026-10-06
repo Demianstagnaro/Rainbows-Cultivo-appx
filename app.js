@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.13';
+const APP_VERSION='3.26.14';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -275,44 +275,46 @@ async function load(){
   const admin=role==='administrador';
   const stockAccess=['administrador','medrano'].includes(role);
   const empty=()=>Promise.resolve({data:[],error:null});
+  const medranoPage=state.site==='medrano'&&canAccessMedrano();
+  const palestinaPage=!medranoPage;
   const qs=await Promise.all([
-    db.from('salas').select('*'),
-    db.from('camas').select('*'),
-    db.from('plantas').select('*'),
+    palestinaPage?db.from('salas').select('*'):empty(),
+    palestinaPage?db.from('camas').select('*'):empty(),
+    palestinaPage?db.from('plantas').select('*'):empty(),
     db.from('geneticas').select('*').order('nombre'),
-    admin?db.from('cosechas').select('*').order('fecha',{ascending:false}):empty(),
-    admin?db.from('cosecha_geneticas').select('*'):empty(),
-    stockAccess?db.from('stock_ciclos').select('*').order('sala').order('ciclo',{ascending:false}):empty(),
-    stockAccess?db.from('stock_existencias').select('*').order('orden'):empty(),
-    stockAccess?db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
-    canAccessMedrano()?db.from('medrano_dispensario_lotes').select('*').order('fecha_ingreso',{ascending:false}).order('created_at',{ascending:false}):empty(),
-    loadMedranoCounterItems(canAccessMedrano()),
-    canAccessMedrano()?db.from('medrano_pacientes').select('*').order('apellido').order('nombre'):empty(),
-    canAccessMedrano()?db.from('medrano_comandas').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
+    admin&&palestinaPage?db.from('cosechas').select('*').order('fecha',{ascending:false}):empty(),
+    admin&&palestinaPage?db.from('cosecha_geneticas').select('*'):empty(),
+    stockAccess&&palestinaPage?db.from('stock_ciclos').select('*').order('sala').order('ciclo',{ascending:false}):empty(),
+    stockAccess&&palestinaPage?db.from('stock_existencias').select('*').order('orden'):empty(),
+    stockAccess&&palestinaPage?db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
+    medranoPage?db.from('medrano_dispensario_lotes').select('*').order('fecha_ingreso',{ascending:false}).order('created_at',{ascending:false}):empty(),
+    loadMedranoCounterItems(medranoPage),
+    medranoPage?db.from('medrano_pacientes').select('*').order('apellido').order('nombre'):empty(),
+    medranoPage?db.from('medrano_comandas').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
     (stockAccess||canAccessMedrano())?db.from('stock_transferencias').select('*').order('created_at',{ascending:false}):empty(),
     (stockAccess||canAccessMedrano())?db.from('stock_transferencia_items').select('*').order('created_at'):empty(),
-    db.from('empleados').select('*').eq('activo',true).order('nombre'),
-    db.from('tareas').select('*'),
-    db.from('realizaciones_tarea').select('*'),
-    db.from('realizacion_empleados').select('*'),
+    palestinaPage?db.from('empleados').select('*').eq('activo',true).order('nombre'):empty(),
+    palestinaPage?db.from('tareas').select('*'):empty(),
+    palestinaPage?db.from('realizaciones_tarea').select('*'):empty(),
+    palestinaPage?db.from('realizacion_empleados').select('*'):empty(),
     admin?db.from('perfiles').select('*').order('nombre'):db.rpc('listar_perfiles_directorio'),
-    db.from('tareas_generales').select('*').order('created_at',{ascending:false}),
-    db.from('tarea_general_empleados').select('*'),
-    loadMedranoStockTable('medrano_laboratorio_stock'),
-    loadMedranoStockTable('medrano_traslados_laboratorio'),
-    loadMedranoStockTable('medrano_stock_historial',state.medranoView==='stock-historial'?Infinity:500),
-    loadMedranoStockTable('medrano_dispensario_laboratorio_stock'),
-    loadMedranoStockTable('medrano_laboratorio_dispensario_movimientos'),
-    loadMedranoStockTable('medrano_laboratorio_trabajos'),
-    loadMedranoStockTable('medrano_laboratorio_trabajos_eventos'),
-    loadMedranoStockTable('medrano_comandas_multiproducto'),
-    loadMedranoStockTable('medrano_comandas_multiproducto_items'),
-    loadMedranoStockTable('medrano_laboratorio_trabajos_materiales'),
-    loadMedranoStockTable('medrano_caja_movimientos'),
-    loadMedranoStockTable('medrano_tokens_movimientos'),
-    loadMedranoStockTable('medrano_precios_flores'),
-    loadMedranoStockTable('medrano_precios_categorias'),
-    loadMedranoStockTable('medrano_catalogo_productos')
+    palestinaPage?db.from('tareas_generales').select('*').order('created_at',{ascending:false}):empty(),
+    palestinaPage?db.from('tarea_general_empleados').select('*'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_laboratorio_stock'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_traslados_laboratorio'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_stock_historial',state.medranoView==='stock-historial'?Infinity:500):empty(),
+    medranoPage?loadMedranoStockTable('medrano_dispensario_laboratorio_stock'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_laboratorio_dispensario_movimientos'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_laboratorio_trabajos'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_laboratorio_trabajos_eventos'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_comandas_multiproducto'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_comandas_multiproducto_items'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_laboratorio_trabajos_materiales'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_caja_movimientos'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_tokens_movimientos'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_precios_flores'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_precios_categorias'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_catalogo_productos'):empty()
   ]);
   for(const q of qs)if(q.error)throw q.error;
   [state.salas,state.camas,state.plantas,state.geneticas,state.cosechas,state.cosechaDetalles,state.stockCycles,state.stockItems,state.stockMovements,state.medranoDispensarioLots,state.medranoCounterItems,state.medranoPatients,state.medranoOrders,state.stockTransfers,state.stockTransferItems,state.empleados,state.tareas,state.realizaciones,state.joins,state.perfiles]=qs.slice(0,20).map(q=>q.data||[]);
@@ -1085,7 +1087,10 @@ function setSite(site){
   if(next==='medrano'&&typeof stopVoiceRecognition==='function')stopVoiceRecognition({hidePanel:true,message:'Micrófono cerrado.'});
   state.site=next;
   localStorage.setItem('rainbows_site',next);
-  render();
+  renderSiteShell();
+  $('screen-title').textContent=next==='medrano'?'Medrano':'Palestina';
+  app.innerHTML='<section class="panel"><p class="muted">Cargando la sede…</p></section>';
+  refresh();
 }
 function renderSiteShell(){
   if(state.site==='medrano'&&!canAccessMedrano()){

@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.13. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.14. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.14 — Carga separada por sede
+
+- Palestina deja de descargar las tablas completas de Medrano en cada actualización.
+- Medrano deja de descargar tareas, salas, croquis, cosechas y movimientos históricos de Palestina que no utiliza.
+- Al cambiar de sede aparece un estado breve de carga y se consultan solamente los datos de la sede elegida.
+- Las transferencias entre sedes continúan disponibles en ambos lados.
+- Reduce consultas y datos transferidos tanto al ingresar como después de guardar movimientos.
+- No requiere cambios en Supabase.
 
 ## V3.26.13 — Hoy en Medrano
 
