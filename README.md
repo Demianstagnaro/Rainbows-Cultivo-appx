@@ -9,7 +9,17 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.3. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.4. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.4 — Comandas preparadas desde stock
+
+- Iniciar una comanda de Laboratorio ya no crea erróneamente una nueva producción.
+- La comanda usa y reserva el lote de producto terminado que Administración seleccionó del stock.
+- El avance `Pendiente`, `En preparación` y `Listo para entregar` registra la preparación del pedido, sin fabricar ni duplicar stock.
+- Una producción nueva continúa registrándose desde el botón `+ Producción`, porque consume materias primas y genera un lote nuevo.
+- Las Resinas y Cápsulas muestran su genética y número de lote al seleccionarlas y dentro de la comanda de Laboratorio.
+- Los trabajos genéricos creados por V3.26.3 quedan cancelados y desvinculados sin borrar su auditoría.
+- Requiere ejecutar `Rainbows_V3.26.4_comandas_desde_stock.sql` después de V3.26.2. Es acumulativa e incluye lo necesario de V3.26.3.
 
 ## V3.26.3 — Preparación de comandas en Laboratorio
 

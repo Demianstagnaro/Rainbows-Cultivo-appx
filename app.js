@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.3';
+const APP_VERSION='3.26.4';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1602,6 +1602,13 @@ function medranoLabOrderView(order,items){
   const labItems=items.filter(item=>item.comanda_id===order.id&&medranoLabOrderTypes.has(item.tipo));
   return labItems.length?{...order,items:labItems}:null;
 }
+function medranoLabOrderTrace(item){
+  if(!['resina','capsulas'].includes(item?.tipo))return '';
+  const stock=(typeof state==='undefined'?[]:state.medranoLabItems||[]).find(row=>String(row.id)===String(item.origen_id));
+  if(!stock)return '';
+  const genetic=medranoLabGeneticName(stock),lot=stock.lote||'';
+  return [genetic&&genetic!=='—'?`Genética: ${genetic}`:'',lot?`Lote: ${lot}`:''].filter(Boolean).join(' · ');
+}
 function medranoLabOrders(orders,items){
   return orders.map(order=>medranoLabOrderView(order,items)).filter(Boolean);
 }
@@ -1619,7 +1626,7 @@ function medranoPreparationActions(item,order){
   return `<div class="preparation-actions">${medranoPreparationBadge(item)}<button type="button" class="${status==='en_proceso'?'primary':'secondary'} compact-button" data-lab-preparation-item="${escapeHtml(item.id)}" data-lab-preparation-status="${next}">${label}</button></div>`;
 }
 function medranoLabOrderRows(orders){
-  return `<div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tokens</th><th>Paciente</th><th>Preparación</th></tr></thead><tbody>${orders.length?orders.map(order=>`<tr><td>${order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${order.items.map(item=>`<div class="lab-order-item"><strong>${escapeHtml(medranoOrderItemName(item))}</strong> · ${Number(item.cantidad).toLocaleString('es-AR')} ${escapeHtml(item.unidad)}</div>`).join('')}</td><td>${Number(order.items.reduce((sum,item)=>sum+Number(item.tokens_total||0),0)).toLocaleString('es-AR',{maximumFractionDigits:2})} Tokens</td><td>${escapeHtml(order.paciente_nombre||'—')}</td><td>${order.items.map(item=>medranoPreparationActions(item,order)).join('')}</td></tr>`).join(''):'<tr><td colspan="5" class="muted">No hay comandas con productos de Laboratorio.</td></tr>'}</tbody></table></div>`;
+  return `<div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tokens</th><th>Paciente</th><th>Preparación</th></tr></thead><tbody>${orders.length?orders.map(order=>`<tr><td>${order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${order.items.map(item=>{const trace=medranoLabOrderTrace(item);return `<div class="lab-order-item"><strong>${escapeHtml(medranoOrderItemName(item))}</strong> · ${Number(item.cantidad).toLocaleString('es-AR')} ${escapeHtml(item.unidad)}${trace?`<br><span class="muted">${escapeHtml(trace)}</span>`:''}</div>`}).join('')}</td><td>${Number(order.items.reduce((sum,item)=>sum+Number(item.tokens_total||0),0)).toLocaleString('es-AR',{maximumFractionDigits:2})} Tokens</td><td>${escapeHtml(order.paciente_nombre||'—')}</td><td>${order.items.map(item=>medranoPreparationActions(item,order)).join('')}</td></tr>`).join(''):'<tr><td colspan="5" class="muted">No hay comandas con productos de Laboratorio.</td></tr>'}</tbody></table></div>`;
 }
 function medranoMultiOrderView(order){
   const items=state.medranoMultiItems.filter(item=>item.comanda_id===order.id);
@@ -1656,7 +1663,7 @@ function medranoCatalog(tipo,editing=null){
   const include=id=>editing?.items.some(i=>i.tipo===tipo&&i.origen_id===id);
   if(tipo==='flores')return state.medranoDispensarioLots.map(x=>{const genetic=state.geneticas.find(g=>String(g.id)===String(x.genetica_id));return{id:x.id,name:`${genetic?.nombre||medranoLotGeneticName(x)} · ${x.codigo_lote} · ${stockLotSizes[x.tamano]||'Sin tamaño'}`,qty:Number(x.gramos_actual),unit:'g',tokens:medranoFlowerTokenPrice(x.tamano)}});
   if(tipo==='mostrador')return state.medranoCounterItems.filter(x=>x.activo!==false||include(x.id)).map(x=>({id:x.id,name:x.nombre,qty:Number(x.cantidad),unit:'unidades',tokens:Number(x.tokens_por_unidad)||0}));
-  return state.medranoLabItems.filter(x=>x.categoria===tipo&&(!x.es_aceite_base||include(x.id))&&(x.activo||include(x.id))).map(x=>({id:x.id,name:x.nombre,qty:Number(x.cantidad),unit:x.unidad,tokens:tipo==='resina'?medranoCategoryTokenPrice('resina'):Number(x.tokens_por_unidad)||0}));
+  return state.medranoLabItems.filter(x=>x.categoria===tipo&&(!x.es_aceite_base||include(x.id))&&(x.activo||include(x.id))).map(x=>{const trace=['resina','capsulas'].includes(tipo)?[medranoLabGeneticName(x)!=='—'?medranoLabGeneticName(x):'',x.lote?`Lote ${x.lote}`:''].filter(Boolean).join(' · '):'';return{id:x.id,name:`${x.nombre}${trace?` · ${trace}`:''}`,qty:Number(x.cantidad),unit:x.unidad,tokens:tipo==='resina'?medranoCategoryTokenPrice('resina'):Number(x.tokens_por_unidad)||0}});
 }
 function updateMedranoMultiProduct(row){
   const tipo=row.querySelector('[data-order-type]').value,product=row.querySelector('[data-order-product]');
@@ -2476,7 +2483,7 @@ function renderMedranoLaboratory(medranoNav,bindModuleNav,history=false){
     app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="lab-history-back" class="secondary compact-button" type="button">← Laboratorio</button><h2>Historial de Laboratorio</h2></div></section>${days.length?days.map(day=>`<section class="panel stock-detail-panel"><h3>${parse(day).toLocaleDateString('es-AR')}</h3>${medranoLabJobRows(older.filter(j=>medranoJobDay(j.finalizado_at||j.updated_at)===day))}</section>`).join(''):'<section class="panel"><p class="muted">Todavía no hay trabajos cerrados de días anteriores.</p></section>'}`;
     bindModuleNav();bindMedranoLabJobActions();$('lab-history-back').onclick=()=>{state.medranoView='laboratorio';render()};return;
   }
-  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><h2>Laboratorio</h2><p class="muted">Comandas para pacientes y trabajos de producción.</p></div><div class="dispensary-head-actions">${state.medranoProductionReady&&canManageMedrano()?'<button id="lab-new-production" class="primary compact-button" type="button">+ Producción</button>':''}<button id="lab-history" class="secondary compact-button" type="button">Historial</button></div></section>${!state.medranoLabJobsReady?'<section class="panel"><p class="muted">Para registrar trabajos falta aplicar la migración V3.21.0 en Supabase.</p></section>':!state.medranoProductionReady?'<section class="panel"><p class="muted">Para producir con stock falta aplicar la migración V3.23.2 en Supabase.</p></section>':''}
+  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><h2>Laboratorio</h2><p class="muted">Las comandas se preparan desde el lote reservado. Producción se usa solamente para elaborar un lote nuevo.</p></div><div class="dispensary-head-actions">${state.medranoProductionReady&&canManageMedrano()?'<button id="lab-new-production" class="primary compact-button" type="button">+ Producción</button>':''}<button id="lab-history" class="secondary compact-button" type="button">Historial</button></div></section>${!state.medranoLabJobsReady?'<section class="panel"><p class="muted">Para registrar trabajos falta aplicar la migración V3.21.0 en Supabase.</p></section>':!state.medranoProductionReady?'<section class="panel"><p class="muted">Para producir con stock falta aplicar la migración V3.23.2 en Supabase.</p></section>':''}
     <section class="panel stock-detail-panel"><h3 class="status-heading-pending">Comandas pendientes de Laboratorio</h3>${medranoLabOrderRows(labOrders)}</section>
     <section class="panel stock-detail-panel"><h3 class="status-heading-completed">Comandas dispensadas hoy</h3>${medranoLabOrderRows(labDispensedToday)}</section>
     <section class="panel stock-detail-panel"><h3 class="status-heading-pending">Trabajos pendientes</h3>${medranoLabJobRows(active)}</section>
