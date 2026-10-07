@@ -10,8 +10,9 @@ const sql=read('Rainbows_V3.24.0_caja_tokens.sql');
 test('Caja aparece dentro de Administración y separa efectivo de digital',()=>{
   assert.match(app,/id="medrano-open-caja"/);
   assert.match(app,/function renderMedranoCaja\(/);
-  assert.match(app,/medranoCashBalance\('efectivo'\)/);
-  assert.match(app,/medranoCashBalance\('digital'\)/);
+  assert.match(app,/medranoCashBalanceCard\('Efectivo'/);
+  assert.match(app,/medranoCashBalanceCard\('Digital'/);
+  assert.match(app,/medranoCashDaySummary\(todayKey\)/);
   assert.match(html,/id="medrano-cash-dialog"/);
 });
 
