@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.18. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.19. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.19 — Control de stock al crear comandas
+
+- Cada renglón de la comanda muestra el stock realmente disponible después de descontar comandas pendientes y producciones activas.
+- Si la cantidad solicitada supera ese saldo, el renglón se marca en rojo y se informa cuánto falta.
+- Crear o editar una comanda ya no permite dejar el stock disponible en negativo.
+- Al editar, la reserva de la propia comanda se excluye para que pueda conservarse o redistribuirse correctamente.
+- No requiere cambios en Supabase.
 
 ## V3.26.18 — Navegación rápida después de Hoy
 

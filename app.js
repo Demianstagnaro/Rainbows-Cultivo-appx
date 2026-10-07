@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.18';
+const APP_VERSION='3.26.19';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1786,6 +1786,11 @@ function medranoProductionReserved(id){
 function medranoTotalReserved(tipo,id,excludeId=null){
   return medranoReserved(tipo,id,excludeId)+medranoProductionReserved(id);
 }
+function medranoOrderAvailability(tipo,product,excludeId=null){
+  if(!product)return null;
+  const reserved=medranoTotalReserved(tipo,product.id,excludeId);
+  return {reserved,available:Number(product.qty)-reserved};
+}
 function medranoAvailabilityHtml(tipo,id,quantity,unit){
   const orderReserved=medranoReserved(tipo,id),productionReserved=medranoProductionReserved(id),reserved=orderReserved+productionReserved,available=Number(quantity)-reserved;
   const detail=[orderReserved?`${orderReserved.toLocaleString('es-AR',{maximumFractionDigits:2})} en comandas`:'',productionReserved?`${productionReserved.toLocaleString('es-AR',{maximumFractionDigits:2})} en producción`:''].filter(Boolean).join(' + ')||'sin reservas';
@@ -1813,10 +1818,18 @@ function updateMedranoMultiProduct(row){
   updateMedranoMultiUnit(row);
 }
 function updateMedranoMultiUnit(row){
-  const product=medranoCatalog(row.querySelector('[data-order-type]').value,state.editMedranoMultiOrder).find(p=>p.id===row.querySelector('[data-order-product]').value);
+  const tipo=row.querySelector('[data-order-type]').value;
+  const product=medranoCatalog(tipo,state.editMedranoMultiOrder).find(p=>p.id===row.querySelector('[data-order-product]').value);
   const input=row.querySelector('[data-order-quantity]'),quantity=Number(input.value)||0;
-  row.querySelector('[data-order-unit]').textContent=product?`${product.unit} · ${formatTokens(product.tokens*quantity)}`:'';
+  const balance=medranoOrderAvailability(tipo,product,state.editMedranoMultiOrder?.id);
+  const shortage=balance&&quantity>balance.available;
+  const missing=shortage?quantity-balance.available:0;
+  const status=product?`${product.unit} · ${formatTokens(product.tokens*quantity)} · Disponible ${balance.available.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}${shortage?` · Faltan ${missing.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}`:''}`:'';
+  const unit=row.querySelector('[data-order-unit]');unit.textContent=status;unit.classList.toggle('order-stock-warning',Boolean(shortage));
   configureWholeUnitInput(input,product?.unit||'',false);
+  input.classList.toggle('input-error',Boolean(shortage));
+  input.setAttribute('aria-invalid',shortage?'true':'false');
+  if(shortage)input.title=`Faltan ${missing.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit} de stock disponible.`;
   updateMedranoMultiTotal();
 }
 function updateMedranoMultiTotal(){
@@ -1857,7 +1870,13 @@ async function saveMedranoMultiOrder(){
   if(items.some(i=>!i.origen_id||!Number.isFinite(i.cantidad)||i.cantidad<=0))throw new Error('Seleccioná todos los productos y sus cantidades.');
   const keys=items.map(i=>`${i.tipo}:${i.origen_id}`);
   if(new Set(keys).size!==keys.length)throw new Error('El mismo producto está repetido: sumá las cantidades en una sola línea.');
-  for(const item of items){const product=medranoCatalog(item.tipo,state.editMedranoMultiOrder).find(p=>p.id===item.origen_id);if(!product?.tokens)throw new Error(`Configurá el valor en Tokens de “${product?.name||'este producto'}” desde Lista de precios.`);if(product.unit==='unidades'&&!Number.isInteger(item.cantidad))throw new Error('Las unidades deben ser enteras.')}
+  for(const item of items){
+    const product=medranoCatalog(item.tipo,state.editMedranoMultiOrder).find(p=>p.id===item.origen_id);
+    if(!product?.tokens)throw new Error(`Configurá el valor en Tokens de “${product?.name||'este producto'}” desde Lista de precios.`);
+    if(product.unit==='unidades'&&!Number.isInteger(item.cantidad))throw new Error('Las unidades deben ser enteras.');
+    const balance=medranoOrderAvailability(item.tipo,product,state.editMedranoMultiOrder?.id);
+    if(item.cantidad>balance.available)throw new Error(`Stock insuficiente de “${product.name}”. Disponible: ${balance.available.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}. Solicitado: ${item.cantidad.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}.`);
+  }
   const q=await db.rpc('guardar_comanda_multiproducto',{p_id:state.editMedranoMultiOrder?.id||null,p_paciente:patient,p_fecha:$('medrano-multi-date').value,p_items:items});
   if(q.error)throw q.error;
   state.editMedranoMultiOrder=null;closeDialog('medrano-multi-dialog');await refreshMedranoModules('orders');
