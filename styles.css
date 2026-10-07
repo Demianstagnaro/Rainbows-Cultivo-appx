@@ -973,3 +973,8 @@ body{
 @media(max-width:700px){.caja-day-group>summary{align-items:flex-start}.caja-day-group>summary span{text-align:right}}
 .cash-closing-grid{display:grid;grid-template-columns:1fr 1fr;gap:.8rem}.cash-closing-button{background:#16a34a;color:#fff}.cash-balanced{color:#86efac;font-weight:850}.caja-closing-card{border-color:rgba(34,197,94,.4);margin-bottom:1rem}.caja-closing-card h3{margin:0}.caja-closing-notes{margin:.9rem 0 0;padding-top:.8rem;border-top:1px solid var(--line)}
 @media(max-width:620px){.cash-closing-grid{grid-template-columns:1fr}}
+
+/* V3.26.24 — productos dispensados visibles en Caja */
+.caja-movements-table{min-width:1180px}
+.caja-comanda-detail{display:grid;gap:.3rem;min-width:260px;max-width:520px;line-height:1.35}
+.caja-comanda-detail>div+div{padding-top:.3rem;border-top:1px solid rgba(148,163,184,.18)}

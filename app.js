@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.22';
+const APP_VERSION='3.26.24';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2228,9 +2228,14 @@ function medranoCashBalanceMarkup(summary){
   const total={initial:summary.efectivo.initial+summary.digital.initial,income:summary.efectivo.income+summary.digital.income,expense:summary.efectivo.expense+summary.digital.expense,final:summary.efectivo.final+summary.digital.final};
   return `<section class="stock-kpis caja-kpis">${medranoCashBalanceCard('Efectivo',summary.efectivo)}${medranoCashBalanceCard('Digital',summary.digital)}${medranoCashBalanceCard('Total Caja',total)}</section>`;
 }
+function medranoCashMovementDetail(movement){
+  const lines=String(movement?.detalle||'').split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
+  if(!lines.length)return movement?.origen==='comanda'?'<span class="muted">Sin detalle histórico</span>':'—';
+  return `<div class="caja-comanda-detail">${lines.map(line=>`<div>${escapeHtml(formatMeasurementText(line))}</div>`).join('')}</div>`;
+}
 function medranoCashMovementTable(rows,dateColumn=false){
   const users=new Map((state.perfiles||[]).map(profile=>[String(profile.id),profile.nombre||profile.email||'Usuario']));
-  return `<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>${dateColumn?'Fecha y hora':'Hora'}</th><th>Tipo</th><th>Medio</th><th>Concepto</th><th>Tokens</th><th>Monto</th><th>Registrado por</th></tr></thead><tbody>${rows.length?rows.map(m=>`<tr><td>${new Date(m.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',...(dateColumn?{}:{hour:'2-digit',minute:'2-digit'})})}</td><td>${m.tipo==='ingreso'?'Ingreso':'Egreso'}</td><td>${m.medio==='efectivo'?'Efectivo':'Digital'}</td><td>${escapeHtml(m.concepto)}</td><td>${m.tokens?formatTokens(m.tokens):'—'}</td><td class="${m.tipo==='ingreso'?'cash-positive':'cash-negative'}">${m.tipo==='ingreso'?'+':'−'} ${formatMoney(m.monto)}</td><td>${escapeHtml(users.get(String(m.creado_por))||'Usuario')}</td></tr>`).join(''):'<tr><td colspan="7" class="muted">Todavía no hay movimientos en este día.</td></tr>'}</tbody></table></div>`;
+  return `<div class="stock-table-wrap"><table class="stock-table caja-movements-table"><thead><tr><th>${dateColumn?'Fecha y hora':'Hora'}</th><th>Tipo</th><th>Medio</th><th>Concepto</th><th>Detalle de la comanda</th><th>Tokens</th><th>Monto</th><th>Registrado por</th></tr></thead><tbody>${rows.length?rows.map(m=>`<tr><td>${new Date(m.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires',...(dateColumn?{}:{hour:'2-digit',minute:'2-digit'})})}</td><td>${m.tipo==='ingreso'?'Ingreso':'Egreso'}</td><td>${m.medio==='efectivo'?'Efectivo':'Digital'}</td><td>${escapeHtml(m.concepto)}</td><td>${medranoCashMovementDetail(m)}</td><td>${m.tokens?formatTokens(m.tokens):'—'}</td><td class="${m.tipo==='ingreso'?'cash-positive':'cash-negative'}">${m.tipo==='ingreso'?'+':'−'} ${formatMoney(m.monto)}</td><td>${escapeHtml(users.get(String(m.creado_por))||'Usuario')}</td></tr>`).join(''):'<tr><td colspan="8" class="muted">Todavía no hay movimientos en este día.</td></tr>'}</tbody></table></div>`;
 }
 function medranoCashClosingForDay(day){return (state.medranoCashClosings||[]).find(closing=>closing.fecha===day)||null}
 function medranoCashDifference(value){

@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.22. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.24. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.24 — Detalle de comandas en Caja
+
+- Los cobros de comandas muestran una columna propia con todos los productos entregados.
+- Cada producto conserva categoría, cantidad, unidad, nombre, genética y lote cuando corresponden.
+- La migración completa automáticamente el detalle de los cobros históricos vinculados a una comanda.
+- No modifica montos, Tokens ni saldos existentes.
+- Esta versión se instala directamente sobre V3.26.22 y no incluye ni requiere el Control de stock V3.26.23 que quedó en pausa.
+- Requiere ejecutar `Rainbows_V3.26.24_detalle_comandas_caja.sql`.
 
 ## V3.26.22 — Arqueo y cierre diario de Caja
 
