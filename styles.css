@@ -969,3 +969,5 @@ body{
 .preparation-listo{background:#dcfce7;color:#166534}
 .order-stock-warning{color:#b42318;font-weight:700}
 .text-input.input-error{border-color:#b42318;box-shadow:0 0 0 2px rgba(180,35,24,.12)}
+.caja-balance-card>span{display:block;color:var(--muted);font-weight:800;margin-bottom:.45rem}.caja-balance-card dl{margin:0}.caja-balance-card dl>div{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.35rem 0}.caja-balance-card dt{color:var(--muted)}.caja-balance-card dd{margin:0;font-weight:800;text-align:right}.caja-balance-card .caja-final-row{margin-top:.25rem;padding-top:.65rem;border-top:1px solid var(--line)}.caja-balance-card .caja-final-row dt,.caja-balance-card .caja-final-row dd{color:var(--text);font-size:1.05rem}.caja-history-level{display:grid;gap:.7rem}.caja-year-group>summary strong{font-size:1.05rem}.caja-month-group,.caja-day-group{margin:0}.caja-day-group .caja-kpis{margin:0 0 1rem}
+@media(max-width:700px){.caja-day-group>summary{align-items:flex-start}.caja-day-group>summary span{text-align:right}}

@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.20. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.21. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.21 — Caja diaria e historial por fecha
+
+- La Caja principal muestra solamente la jornada actual.
+- Efectivo y Digital separan saldo inicial, ingresos, egresos y saldo final.
+- El saldo final acumulado de un día pasa automáticamente a ser el saldo inicial del siguiente.
+- El Historial de Caja agrupa los movimientos por año, mes y día.
+- Cada jornada histórica conserva su resumen y detalla quién registró cada movimiento.
+- No requiere cambios en Supabase.
 
 ## V3.26.20 — Reservas atómicas entre comandas y producciones
 
