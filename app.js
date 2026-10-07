@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.24';
+const APP_VERSION='3.26.25';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -16,6 +16,7 @@ Object.assign(state,{medranoStockHistoryScope:null});
 Object.assign(state,{medranoLabJobs:[],medranoLabJobEvents:[],medranoLabMaterials:[],medranoLabJobsReady:false,medranoProductionReady:false,editMedranoLabJob:null});
 Object.assign(state,{medranoMultiOrders:[],medranoMultiItems:[],medranoMultiReady:false,editMedranoMultiOrder:null});
 Object.assign(state,{medranoCajaMovements:[],medranoTokenMovements:[],medranoCashClosings:[],medranoCajaBaseReady:false,medranoCashClosingReady:false,medranoCajaReady:false,pendingMedranoPayment:null});
+Object.assign(state,{medranoDateHistory:{}});
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
 function requiredRoomId(name){
@@ -1325,7 +1326,7 @@ async function confirmMedranoReception(){
   await refreshMedranoModules('inventory','transfers');
 }
 
-function medranoDailyHistory(sector,categoria,period="past"){
+function medranoStockHistoryRows(sector,categoria){
   const rows=state.medranoStockHistory.filter(row=>(!sector||row.sector===sector)&&(!categoria||row.categoria===categoria||(categoria==='productos-laboratorio'&&['resina','aceites','cremas','capsulas'].includes(row.categoria))));
   const matchedReceipts=new Set();
   if((!sector||sector==='laboratorio')&&(!categoria||categoria==='flores'))for(const transfer of state.medranoLabTransfers||[]){
@@ -1339,9 +1340,16 @@ function medranoDailyHistory(sector,categoria,period="past"){
     const receivedTime=receipt?new Date(receipt.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'}):null;
     rows.push({sector:'laboratorio',categoria:'flores',fecha:medranoTransferDate(transfer),created_at:transfer.created_at,producto:transfer.nombre,lote:transfer.codigo_lote,cantidad_anterior:receipt?.cantidad_anterior??0,cantidad_nueva:receipt?.cantidad_nueva??0,unidad:'g',accion:'Traslado Dispensario → Laboratorio',detalle:`${Number(transfer.gramos).toLocaleString('es-AR')} g de ${transfer.nombre} · Origen Dispensario · Destino Laboratorio${receivedTime?` · Recibido ${receivedTime}`:' · Pendiente de recepción'}`,cantidad_traslado:Number(transfer.gramos),usuario_nombre:receipt?`${sender} · Recibió: ${receipt.usuario_nombre}`:sender,transferencia:true,recepcion:!!receipt,operacion_id:transfer.id,operacion_tipo:'traslado'});
   }
-  const visibleRows=rows.filter(row=>!matchedReceipts.has(row.id));
-  const days=[...new Set(visibleRows.filter(row=>period==="today"?row.fecha===ymd(today()):row.fecha<ymd(today())).map(row=>row.fecha))].sort().reverse();
-  return `<section class="panel stock-detail-panel"><h3>${period==="today"?"Movimientos de hoy":"Historial diario de movimientos"}</h3>${!state.medranoStockReady?'<p class="muted">No se pudo cargar el historial del stock.</p>':days.length?`<div class="stock-day-list">${days.map(day=>{const movements=visibleRows.filter(row=>row.fecha===day).sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));return `<details class="stock-day-group" ${period==='today'?'open':''}><summary><strong>${parse(day).toLocaleDateString('es-AR')}</strong><span>${movements.length} movimiento${movements.length===1?'':'s'}</span></summary><div class="stock-day-detail stock-table-wrap"><table class="stock-table"><thead><tr><th>Hora</th><th>Producto / lote</th><th>Movimiento y detalle</th><th>Cambio</th><th>Stock anterior → nuevo</th><th>Realizado por</th></tr></thead><tbody>${movements.map(row=>{const delta=Number(row.cantidad_nueva)-Number(row.cantidad_anterior),detail=medranoMovementDetail(row),related=row.operacion_id?movements.filter(other=>other.operacion_id===row.operacion_id).length:0;return `<tr><td>${new Date(row.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'})}</td><td><strong>${escapeHtml(row.producto)}</strong>${row.lote?`<br>${escapeHtml(row.lote)}`:''}</td><td><strong>${escapeHtml(medranoMovementAction(row.accion))}</strong>${detail?`<br><span class="muted">${escapeHtml(detail)}</span>`:''}${row.operacion_tipo?`<br><span class="movement-operation-badge">${escapeHtml(medranoOperationLabel(row.operacion_tipo))}${related>1?` · ${related} movimientos relacionados`:''}</span>`:''}</td><td>${row.transferencia&&!row.recepcion?`${Number(row.cantidad_traslado).toLocaleString('es-AR')} ${escapeHtml(row.unidad)}`:`${delta>0?'+':''}${delta.toLocaleString('es-AR')} ${escapeHtml(row.unidad)}`}</td><td>${row.transferencia&&!row.recepcion?'Pendiente de recepción':`${Number(row.cantidad_anterior).toLocaleString('es-AR')} → ${Number(row.cantidad_nueva).toLocaleString('es-AR')} ${escapeHtml(row.unidad)}`}</td><td>${escapeHtml(row.usuario_nombre)}</td></tr>`}).join('')}</tbody></table></div></details>`}).join('')}</div>`:'<p class="muted">Todavía no hay movimientos registrados en este inventario.</p>'}</section>`;
+  return rows.filter(row=>!matchedReceipts.has(row.id));
+}
+function medranoStockMovementsTable(movements){
+  const sorted=[...movements].sort((a,b)=>String(b.created_at).localeCompare(String(a.created_at)));
+  return `<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Hora</th><th>Producto / lote</th><th>Movimiento y detalle</th><th>Cambio</th><th>Stock anterior → nuevo</th><th>Realizado por</th></tr></thead><tbody>${sorted.map(row=>{const delta=Number(row.cantidad_nueva)-Number(row.cantidad_anterior),detail=medranoMovementDetail(row),related=row.operacion_id?sorted.filter(other=>other.operacion_id===row.operacion_id).length:0;return `<tr><td>${new Date(row.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'})}</td><td><strong>${escapeHtml(row.producto)}</strong>${row.lote?`<br>${escapeHtml(row.lote)}`:''}</td><td><strong>${escapeHtml(medranoMovementAction(row.accion))}</strong>${detail?`<br><span class="muted">${escapeHtml(detail)}</span>`:''}${row.operacion_tipo?`<br><span class="movement-operation-badge">${escapeHtml(medranoOperationLabel(row.operacion_tipo))}${related>1?` · ${related} movimientos relacionados`:''}</span>`:''}</td><td>${row.transferencia&&!row.recepcion?`${Number(row.cantidad_traslado).toLocaleString('es-AR')} ${escapeHtml(row.unidad)}`:`${delta>0?'+':''}${delta.toLocaleString('es-AR')} ${escapeHtml(row.unidad)}`}</td><td>${row.transferencia&&!row.recepcion?'Pendiente de recepción':`${Number(row.cantidad_anterior).toLocaleString('es-AR')} → ${Number(row.cantidad_nueva).toLocaleString('es-AR')} ${escapeHtml(row.unidad)}`}</td><td>${escapeHtml(row.usuario_nombre)}</td></tr>`}).join('')}</tbody></table></div>`;
+}
+function medranoDailyHistory(sector,categoria,period="past"){
+  const rows=medranoStockHistoryRows(sector,categoria).filter(row=>period==="today"?row.fecha===ymd(today()):row.fecha<ymd(today()));
+  const days=[...new Set(rows.map(row=>row.fecha))].sort().reverse();
+  return `<section class="panel stock-detail-panel"><h3>${period==="today"?"Movimientos de hoy":"Historial diario de movimientos"}</h3>${!state.medranoStockReady?'<p class="muted">No se pudo cargar el historial del stock.</p>':days.length?`<div class="stock-day-list">${days.map(day=>`<details class="stock-day-group" ${period==='today'?'open':''}><summary><strong>${parse(day).toLocaleDateString('es-AR')}</strong><span>${rows.filter(row=>row.fecha===day).length} movimientos</span></summary><div class="stock-day-detail">${medranoStockMovementsTable(rows.filter(row=>row.fecha===day))}</div></details>`).join('')}</div>`:'<p class="muted">Todavía no hay movimientos registrados en este inventario.</p>'}</section>`;
 }
 function medranoOperationLabel(type){return({produccion:'Producción relacionada',traslado:'Traslado relacionado',dispensa:'Dispensa relacionada',pago:'Pago relacionado',ajuste:'Ajuste relacionado'}[type]||'Operación relacionada')}
 function medranoMovementAction(action){
@@ -1382,15 +1390,15 @@ function bindMedranoStockHistoryButtons(){
       state.medranoStockHistory=history.data||[];state.medranoStockHistoryComplete=true;
     }
     state.medranoStockHistoryScope={sector:button.dataset.stockHistorySector,category:button.dataset.stockHistoryCategory,view:state.medranoView};
+    resetMedranoDateHistory('stock');
     state.medranoView='stock-historial';render();
   });
 }
 function renderMedranoStockHistory(medranoNav,bindModuleNav){
   const scope=state.medranoStockHistoryScope||{sector:'',category:'',view:'stock'};
   $('screen-title').textContent='Historial de stock';
-  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="stock-history-back" class="secondary compact-button" type="button">← Volver al stock</button><h2>Historial de stock</h2><p class="muted">Movimientos de ${escapeHtml(scope.category||scope.sector||'Medrano')} agrupados por día.</p></div></section>${medranoDailyHistory(scope.sector,scope.category)}`;
-  bindModuleNav();
-  $('stock-history-back').onclick=()=>{state.medranoView=scope.view;render()};
+  const rows=medranoStockHistoryRows(scope.sector,scope.category).filter(row=>row.fecha<ymd(today()));
+  renderMedranoDateHistory({key:'stock',title:'Historial de stock',description:`Movimientos de ${scope.category||scope.sector||'Medrano'}.`,rows,dateOf:row=>row.fecha,countLabel:count=>`${count} movimiento${count===1?'':'s'}`,emptyText:'Todavía no hay movimientos registrados en este inventario.',backLabel:'Volver al stock',backAction:()=>{state.medranoView=scope.view;render()},dayContent:(day,dayRows)=>`<section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Movimientos del día</h3><p class="muted">${dayRows.length} movimiento${dayRows.length===1?'':'s'}</p></div></div>${medranoStockMovementsTable(dayRows)}</section>`,medranoNav,bindModuleNav});
 }
 function openMedranoLabTransfer(){
   if(!canManageMedrano()||!state.medranoStockReady)return;
@@ -2044,6 +2052,38 @@ function medranoOrderMonthName(month){
   const names=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   return names[Number(month)-1]||String(month);
 }
+function medranoDateHistoryState(key){
+  if(!state.medranoDateHistory[key])state.medranoDateHistory[key]={year:null,month:null,day:null};
+  return state.medranoDateHistory[key];
+}
+function resetMedranoDateHistory(key){state.medranoDateHistory[key]={year:null,month:null,day:null}}
+function medranoValidHistoryDate(value){return /^\d{4}-\d{2}-\d{2}$/.test(String(value||''))?String(value):''}
+function renderMedranoDateHistory({key,title,description='',rows,dateOf,countLabel,emptyText,backLabel,backAction,dayContent,medranoNav,bindModuleNav}){
+  const path=medranoDateHistoryState(key);
+  const dated=(rows||[]).map(row=>({row,date:medranoValidHistoryDate(dateOf(row))})).filter(item=>item.date).sort((a,b)=>b.date.localeCompare(a.date));
+  const label=count=>countLabel?countLabel(count):`${count} registro${count===1?'':'s'}`;
+  let heading=title,prompt='Elegí un año',cards=[],backText=backLabel||'Volver',onBack=backAction,dayRows=null;
+  if(!path.year){
+    const years=[...new Set(dated.map(item=>item.date.slice(0,4)))];
+    cards=years.map(year=>({value:year,strong:year,span:label(dated.filter(item=>item.date.startsWith(`${year}-`)).length),attribute:'year'}));
+  }else if(!path.month){
+    heading=`${title} · ${path.year}`;prompt='Elegí un mes';backText='Años';onBack=()=>{path.year=null;path.month=null;path.day=null;render()};
+    const months=[...new Set(dated.filter(item=>item.date.startsWith(`${path.year}-`)).map(item=>item.date.slice(5,7)))];
+    cards=months.map(month=>({value:month,strong:medranoOrderMonthName(month),span:label(dated.filter(item=>item.date.startsWith(`${path.year}-${month}-`)).length),attribute:'month'}));
+  }else if(!path.day){
+    heading=`${medranoOrderMonthName(path.month)} ${path.year}`;prompt='Elegí un día';backText='Meses';onBack=()=>{path.month=null;path.day=null;render()};
+    const prefix=`${path.year}-${path.month}-`,days=[...new Set(dated.filter(item=>item.date.startsWith(prefix)).map(item=>item.date.slice(8,10)))];
+    cards=days.map(day=>({value:day,strong:`${Number(day)} de ${medranoOrderMonthName(path.month).toLowerCase()}`,span:label(dated.filter(item=>item.date===`${prefix}${day}`).length),attribute:'day'}));
+  }else{
+    const dateKey=`${path.year}-${path.month}-${path.day}`;
+    heading=`${title} · ${parse(dateKey).toLocaleDateString('es-AR')}`;backText='Días';onBack=()=>{path.day=null;render()};dayRows=dated.filter(item=>item.date===dateKey).map(item=>item.row);
+  }
+  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-date-history-back" class="secondary compact-button" type="button">← ${escapeHtml(backText)}</button><h2>${escapeHtml(heading)}</h2>${description?`<p class="muted">${escapeHtml(description)}</p>`:''}</div></section>${dayRows===null?`<section class="panel medrano-stock-home"><div class="medrano-section-head"><div><h3>${prompt}</h3></div></div><div class="medrano-stock-grid">${cards.length?cards.map(card=>`<button class="medrano-stock-card" type="button" data-medrano-history-${card.attribute}="${card.value}"><strong>${escapeHtml(card.strong)}</strong><span>${escapeHtml(card.span)}</span></button>`).join(''):`<div class="medrano-empty-stock"><strong>Sin historial</strong><p class="muted">${escapeHtml(emptyText||'Todavía no hay registros históricos.')}</p></div>`}</div></section>`:dayContent(`${path.year}-${path.month}-${path.day}`,dayRows)}`;
+  bindModuleNav();$('medrano-date-history-back').onclick=onBack;
+  app.querySelectorAll('[data-medrano-history-year]').forEach(button=>button.onclick=()=>{path.year=button.dataset.medranoHistoryYear;path.month=null;path.day=null;render()});
+  app.querySelectorAll('[data-medrano-history-month]').forEach(button=>button.onclick=()=>{path.month=button.dataset.medranoHistoryMonth;path.day=null;render()});
+  app.querySelectorAll('[data-medrano-history-day]').forEach(button=>button.onclick=()=>{path.day=button.dataset.medranoHistoryDay;render()});
+}
 function renderMedranoOrderHistory(medranoNav,bindModuleNav){
   $('screen-title').textContent='Historial de comandas';
   const rows=state.medranoDispensedOrders||[];
@@ -2059,7 +2099,7 @@ function renderMedranoOrderHistory(medranoNav,bindModuleNav){
     </section>`;
     bindModuleNav();
     $('medrano-orders-history-back').onclick=()=>{state.medranoView='administracion-comandas';render()};
-    $('medrano-orders-deleted').onclick=()=>{state.medranoView='administracion-comandas-eliminadas';render()};
+    $('medrano-orders-deleted').onclick=()=>{resetMedranoDateHistory('comandas-eliminadas');state.medranoView='administracion-comandas-eliminadas';render()};
     app.querySelectorAll('[data-order-history-year]').forEach(b=>b.onclick=()=>{state.medranoOrderHistoryYear=b.dataset.orderHistoryYear;state.medranoOrderHistoryMonth=null;render()});
     return;
   }
@@ -2089,21 +2129,17 @@ function renderMedranoOrderHistory(medranoNav,bindModuleNav){
   $('medrano-orders-history-back').onclick=()=>{state.medranoOrderHistoryMonth=null;render()};
   app.querySelectorAll('[data-order-history-day]').forEach(b=>b.onclick=()=>{state.medranoView=`administracion-comandas-historial-dia:${y}-${m}-${b.dataset.orderHistoryDay}`;render()});
 }
+function medranoDeletedOrdersTable(rows){
+  return `<section class="panel stock-detail-panel" data-stock-table-tools><div class="stock-section-head"><div><h3>Auditoría del día</h3><p class="muted">${rows.length} registro${rows.length===1?'':'s'}</p></div></div>${stockTableToolbar('Buscar por producto, paciente, usuario o motivo...')}<div class="stock-table-wrap"><table class="stock-table medrano-deleted-orders-table">
+      <thead><tr><th data-sort-type="text">Producto</th><th data-sort-type="number">Tokens</th><th data-sort-type="text">Paciente</th><th data-sort-type="date">Fecha original</th><th data-sort-type="text">Eliminada por</th><th data-sort-type="date">Eliminada el</th><th data-sort-type="text">Motivo</th></tr></thead>
+      <tbody>${rows.length?rows.map(order=>`<tr><td>${medranoOrderProductCell(order)}</td><td data-sort-value="${Number(order.tokens_total)||0}">${medranoOrderTokensCell(order)}</td><td>${escapeHtml(order.nombre_paciente||'—')}</td><td data-sort-value="${escapeHtml(order.fecha||'')}">${order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${escapeHtml(order.eliminada_por_nombre||'—')}</td><td data-sort-value="${escapeHtml(order.eliminada_at||'')}">${order.eliminada_at?new Date(order.eliminada_at).toLocaleString('es-AR'):'—'}</td><td>${escapeHtml(order.motivo_eliminacion||'—')}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="7">No hay comandas eliminadas.</td></tr>'}</tbody>
+    </table></div></section>`;
+}
 function renderMedranoDeletedOrders(medranoNav,bindModuleNav){
   $('screen-title').textContent='Comandas eliminadas';
   const rows=[...(state.medranoDeletedOrders||[])].sort((a,b)=>new Date(b.eliminada_at)-new Date(a.eliminada_at));
-  app.innerHTML=`${medranoNav}
-  <section class="panel stock-page-head"><div><button id="medrano-deleted-orders-back" class="secondary compact-button" type="button">← Historial</button><h2>Comandas eliminadas</h2><p class="muted">Registro permanente de eliminaciones</p></div></section>
-  <section class="panel stock-detail-panel" data-stock-table-tools>
-    <div class="stock-section-head"><div><h3>Auditoría de comandas</h3><p class="muted">${rows.length} registro${rows.length===1?'':'s'}</p></div></div>
-    ${stockTableToolbar('Buscar por producto, paciente, usuario o motivo...')}
-    <div class="stock-table-wrap"><table class="stock-table medrano-deleted-orders-table">
-      <thead><tr><th data-sort-type="text">Producto</th><th data-sort-type="number">Tokens</th><th data-sort-type="text">Paciente</th><th data-sort-type="date">Fecha original</th><th data-sort-type="text">Eliminada por</th><th data-sort-type="date">Eliminada el</th><th data-sort-type="text">Motivo</th></tr></thead>
-      <tbody>${rows.length?rows.map(order=>`<tr><td>${medranoOrderProductCell(order)}</td><td data-sort-value="${Number(order.tokens_total)||0}">${medranoOrderTokensCell(order)}</td><td>${escapeHtml(order.nombre_paciente||'—')}</td><td data-sort-value="${escapeHtml(order.fecha||'')}">${order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${escapeHtml(order.eliminada_por_nombre||'—')}</td><td data-sort-value="${escapeHtml(order.eliminada_at||'')}">${order.eliminada_at?new Date(order.eliminada_at).toLocaleString('es-AR'):'—'}</td><td>${escapeHtml(order.motivo_eliminacion||'—')}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="7">No hay comandas eliminadas.</td></tr>'}</tbody>
-    </table></div>
-  </section>`;
-  bindModuleNav();bindStockTableTools(app);
-  $('medrano-deleted-orders-back').onclick=()=>{state.medranoView='administracion-comandas-historial';state.medranoOrderHistoryYear=null;state.medranoOrderHistoryMonth=null;render()};
+  renderMedranoDateHistory({key:'comandas-eliminadas',title:'Comandas eliminadas',description:'Registro permanente de eliminaciones.',rows,dateOf:order=>medranoJobDay(order.eliminada_at),countLabel:count=>`${count} comanda${count===1?'':'s'}`,emptyText:'No hay comandas eliminadas.',backLabel:'Historial',backAction:()=>{state.medranoView='administracion-comandas-historial';state.medranoOrderHistoryYear=null;state.medranoOrderHistoryMonth=null;render()},dayContent:(day,dayRows)=>medranoDeletedOrdersTable(dayRows),medranoNav,bindModuleNav});
+  bindStockTableTools(app);
 }
 function renderMedranoOrderHistoryDay(medranoNav,bindModuleNav,dateKey){
   $('screen-title').textContent='Historial de comandas';
@@ -2187,17 +2223,16 @@ function renderMedranoDispensary(medranoNav,bindModuleNav){
     <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3 class="status-heading-completed">Comandas entregadas y movimientos de hoy</h3><p class="muted">${events.length} registro${events.length===1?'':'s'} · Mañana estarán en el historial.</p></div></div>${dispensaryEventsTable(events,true)}</section>
     ${!state.medranoStockReady?'<section class="panel"><p class="muted">No se pudieron cargar los datos necesarios para crear movimientos.</p></section>':''}${medranoLoadIssueHtml(['medrano_laboratorio_stock','medrano_traslados_laboratorio','medrano_stock_historial','medrano_comandas_multiproducto','medrano_comandas_multiproducto_items'])}`;
   bindModuleNav();bindMedranoOrderActions();bindMedranoLoadRetry();
-  $('dispensary-history').onclick=()=>openMedranoDataView('dispensario-historial');
+  $('dispensary-history').onclick=()=>{resetMedranoDateHistory('dispensario');openMedranoDataView('dispensario-historial')};
   const move=$('dispensary-new-movement');if(move)move.onclick=openMedranoLabTransfer;
 }
 function renderMedranoDispensaryHistory(medranoNav,bindModuleNav){
   $('screen-title').textContent='Historial de Dispensario';
   const dateKey=ymd(today());
   const days=[...new Set([...(state.medranoDispensedOrders||[]).map(medranoOrderHistoryDate),...(state.medranoLabDispMovements||[]).map(m=>m.fecha),...(state.medranoLabTransfers||[]).map(medranoTransferDate)].filter(day=>day&&day<dateKey))].sort().reverse();
-  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="dispensary-history-back" class="secondary compact-button" type="button">← Dispensario</button><h2>Historial de Dispensario</h2><p class="muted">Comandas dispensadas y movimientos de Dispensario a Laboratorio, agrupados por día.</p></div></section>
-    <section class="panel stock-detail-panel"><div class="stock-day-list">${days.length?days.map(day=>{const rows=dispensaryEvents(day);return `<details class="stock-day-group"><summary><strong>${parse(day).toLocaleDateString('es-AR')}</strong><span>${rows.length} registro${rows.length===1?'':'s'}</span></summary><div class="stock-day-detail">${dispensaryEventsTable(rows,true)}</div></details>`}).join(''):'<p class="muted">Todavía no hay días cerrados en el historial.</p>'}</div></section>`;
-  bindModuleNav();bindMedranoOrderActions();
-  $('dispensary-history-back').onclick=()=>{state.medranoView='dispensario';render()};
+  const rows=days.flatMap(day=>dispensaryEvents(day).map(event=>({...event,history_date:day})));
+  renderMedranoDateHistory({key:'dispensario',title:'Historial de Dispensario',description:'Comandas dispensadas y movimientos de Dispensario a Laboratorio.',rows,dateOf:row=>row.history_date,countLabel:count=>`${count} registro${count===1?'':'s'}`,emptyText:'Todavía no hay días cerrados en el historial.',backLabel:'Dispensario',backAction:()=>{state.medranoView='dispensario';render()},dayContent:(day,dayRows)=>`<section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Actividad del día</h3><p class="muted">${dayRows.length} registro${dayRows.length===1?'':'s'}</p></div></div>${dispensaryEventsTable(dayRows,true)}</section>`,medranoNav,bindModuleNav});
+  bindMedranoOrderActions();
 }
 
 function medranoFlowerTokenPrice(size){return Number(state.medranoFlowerPrices.find(row=>row.tamano===size)?.tokens_por_gramo)||0}
@@ -2342,28 +2377,13 @@ function renderMedranoCaja(medranoNav,bindModuleNav){
   ${medranoCashClosingMarkup(closing)}
   <section class="panel stock-detail-panel"><h3 class="${summary.rows.length?'status-heading-pending':'status-heading-completed'}">Movimientos de hoy</h3>${medranoCashMovementTable(summary.rows)}</section>
   <section class="panel stock-detail-panel"><h3 class="status-heading-completed">Movimientos de Tokens</h3><div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Fecha</th><th>Paciente</th><th>Movimiento</th><th>Detalle</th><th>Saldo</th></tr></thead><tbody>${state.medranoTokenMovements.length?state.medranoTokenMovements.map(m=>`<tr><td>${new Date(m.created_at).toLocaleString('es-AR')}</td><td>${escapeHtml(patients.get(String(m.paciente_id))||'Paciente')}</td><td>${Number(m.tokens)>0?'+':''}${formatTokens(m.tokens)}</td><td>${escapeHtml(m.detalle)}</td><td>${formatTokens(m.saldo_nuevo)}</td></tr>`).join(''):'<tr><td colspan="5" class="muted">Todavía no hay movimientos.</td></tr>'}</tbody></table></div></section>`;
-  bindModuleNav();$('medrano-caja-back').onclick=()=>{state.medranoView='administracion';render()};$('medrano-cash-history').onclick=()=>{state.medranoView='administracion-caja-historial';render()};const credit=$('medrano-credit-open'),movement=$('medrano-cash-open'),close=$('medrano-cash-closing-open');if(credit)credit.onclick=openMedranoCreditDialog;if(movement)movement.onclick=openMedranoCashDialog;if(close)close.onclick=openMedranoCashClosingDialog;
+  bindModuleNav();$('medrano-caja-back').onclick=()=>{state.medranoView='administracion';render()};$('medrano-cash-history').onclick=()=>{resetMedranoDateHistory('caja');state.medranoView='administracion-caja-historial';render()};const credit=$('medrano-credit-open'),movement=$('medrano-cash-open'),close=$('medrano-cash-closing-open');if(credit)credit.onclick=openMedranoCreditDialog;if(movement)movement.onclick=openMedranoCashDialog;if(close)close.onclick=openMedranoCashClosingDialog;
 }
 function renderMedranoCajaHistory(medranoNav,bindModuleNav){
   $('screen-title').textContent='Historial de Caja';
   const days=[...new Set([...state.medranoCajaMovements.map(medranoCashMovementDay),...(state.medranoCashClosings||[]).map(closing=>closing.fecha)].filter(Boolean))].sort().reverse();
-  const years=[...new Set(days.map(day=>day.slice(0,4)))];
-  const history=years.map(year=>{
-    const yearDays=days.filter(day=>day.startsWith(`${year}-`));
-    const months=[...new Set(yearDays.map(day=>day.slice(0,7)))];
-    const monthMarkup=months.map(month=>{
-      const monthDays=yearDays.filter(day=>day.startsWith(`${month}-`));
-      const monthNumber=Number(month.slice(5,7));
-      const dayMarkup=monthDays.map(day=>{
-        const summary=medranoCashDaySummary(day),closing=medranoCashClosingForDay(day);
-        return `<details class="stock-day-group caja-day-group"><summary><strong>${parse(day).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})}</strong><span>${closing?'Cerrada':'Abierta'} · ${summary.rows.length} movimiento${summary.rows.length===1?'':'s'} · Saldo ${formatMoney(summary.efectivo.final+summary.digital.final)}</span></summary><div class="stock-day-detail">${medranoCashBalanceMarkup(summary)}${medranoCashClosingMarkup(closing)}${medranoCashMovementTable(summary.rows)}</div></details>`;
-      }).join('');
-      return `<details class="stock-day-group caja-month-group"><summary><strong>${escapeHtml(medranoOrderMonthName(monthNumber))}</strong><span>${monthDays.length} día${monthDays.length===1?'':'s'} con movimientos</span></summary><div class="stock-day-detail caja-history-level">${dayMarkup}</div></details>`;
-    }).join('');
-    return `<details class="stock-day-group caja-year-group"><summary><strong>${year}</strong><span>${yearDays.length} día${yearDays.length===1?'':'s'} con movimientos</span></summary><div class="stock-day-detail caja-history-level">${monthMarkup}</div></details>`;
-  }).join('');
-  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-caja-history-back" class="secondary compact-button" type="button">← Caja</button><h2>Historial de Caja</h2><p class="muted">Movimientos y saldos agrupados por año, mes y día. Cada apertura continúa el cierre del día anterior.</p></div></section><section class="panel stock-detail-panel"><div class="stock-day-list">${history||'<p class="muted">Todavía no hay movimientos registrados.</p>'}</div></section>`;
-  bindModuleNav();$('medrano-caja-history-back').onclick=()=>{state.medranoView='administracion-caja';app.innerHTML='<section class="panel"><p class="muted">Cargando Caja…</p></section>';refreshMedranoModules('cash')};
+  const rows=days.map(fecha=>({fecha}));
+  renderMedranoDateHistory({key:'caja',title:'Historial de Caja',description:'Movimientos, arqueos y saldos. Cada apertura continúa el cierre del día anterior.',rows,dateOf:row=>row.fecha,countLabel:count=>`${count} día${count===1?'':'s'} con movimientos`,emptyText:'Todavía no hay movimientos registrados.',backLabel:'Caja',backAction:()=>{state.medranoView='administracion-caja';app.innerHTML='<section class="panel"><p class="muted">Cargando Caja…</p></section>';refreshMedranoModules('cash')},dayContent:day=>{const summary=medranoCashDaySummary(day),closing=medranoCashClosingForDay(day);return `${medranoCashBalanceMarkup(summary)}${medranoCashClosingMarkup(closing)}<section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Movimientos del día</h3><p class="muted">${summary.rows.length} movimiento${summary.rows.length===1?'':'s'}</p></div></div>${medranoCashMovementTable(summary.rows)}</section>`},medranoNav,bindModuleNav});
 }
 
 const medranoLaboratoryCategories=[
@@ -2759,9 +2779,8 @@ function renderMedranoLaboratory(medranoNav,bindModuleNav,history=false){
   const labOrders=medranoLabOrders((state.medranoMultiOrders||[]).filter(o=>o.estado==='pendiente'),state.medranoMultiItems||[]);
   const labDispensedToday=medranoLabOrders((state.medranoMultiOrders||[]).filter(o=>o.estado==='dispensada'&&medranoJobDay(o.dispensada_at)===todayKey),state.medranoMultiItems||[]);
   if(history){
-    const days=[...new Set(older.map(j=>medranoJobDay(j.finalizado_at||j.updated_at)))].sort().reverse();
-    app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="lab-history-back" class="secondary compact-button" type="button">← Laboratorio</button><h2>Historial de Laboratorio</h2></div></section>${days.length?days.map(day=>`<section class="panel stock-detail-panel"><h3>${parse(day).toLocaleDateString('es-AR')}</h3>${medranoLabJobRows(older.filter(j=>medranoJobDay(j.finalizado_at||j.updated_at)===day))}</section>`).join(''):'<section class="panel"><p class="muted">Todavía no hay trabajos cerrados de días anteriores.</p></section>'}`;
-    bindModuleNav();bindMedranoLabJobActions();$('lab-history-back').onclick=()=>{state.medranoView='laboratorio';render()};return;
+    renderMedranoDateHistory({key:'laboratorio',title:'Historial de Laboratorio',description:'Producciones finalizadas y trabajos cancelados.',rows:older,dateOf:job=>medranoJobDay(job.finalizado_at||job.updated_at),countLabel:count=>`${count} trabajo${count===1?'':'s'}`,emptyText:'Todavía no hay trabajos cerrados de días anteriores.',backLabel:'Laboratorio',backAction:()=>{state.medranoView='laboratorio';render()},dayContent:(day,dayRows)=>`<section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Trabajos del día</h3><p class="muted">${dayRows.length} trabajo${dayRows.length===1?'':'s'}</p></div></div>${medranoLabJobRows(dayRows)}</section>`,medranoNav,bindModuleNav});
+    bindMedranoLabJobActions();return;
   }
   app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><h2>Laboratorio</h2><p class="muted">Las comandas se preparan desde el lote reservado. Producción se usa solamente para elaborar un lote nuevo.</p></div><div class="dispensary-head-actions">${state.medranoProductionReady&&canManageMedrano()?'<button id="lab-new-production" class="primary compact-button" type="button">+ Producción</button>':''}<button id="lab-history" class="secondary compact-button" type="button">Historial</button></div></section>${!state.medranoLabJobsReady?'<section class="panel"><p class="muted">Para registrar trabajos falta aplicar la migración V3.21.0 en Supabase.</p></section>':!state.medranoProductionReady?'<section class="panel"><p class="muted">Para producir con stock falta aplicar la migración V3.23.2 en Supabase.</p></section>':''}
     <section class="panel stock-detail-panel"><h3 class="status-heading-pending">Comandas pendientes de Laboratorio</h3>${medranoLabOrderRows(labOrders)}</section>
@@ -2769,7 +2788,7 @@ function renderMedranoLaboratory(medranoNav,bindModuleNav,history=false){
     <section class="panel stock-detail-panel"><h3 class="status-heading-pending">Trabajos pendientes</h3>${medranoLabJobRows(active)}</section>
     <section class="panel stock-detail-panel"><h3 class="status-heading-completed">Finalizados y cancelados hoy</h3>${medranoLabJobRows(doneToday)}</section>`;
   bindModuleNav();bindMedranoLabJobActions();
-  $('lab-history').onclick=()=>openMedranoDataView('laboratorio-historial');
+  $('lab-history').onclick=()=>{resetMedranoDateHistory('laboratorio');openMedranoDataView('laboratorio-historial')};
   const production=$('lab-new-production');if(production)production.onclick=()=>openLabProduction();
 }
 function renderMedranoToday(medranoNav,bindModuleNav){
