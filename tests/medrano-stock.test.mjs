@@ -5,10 +5,10 @@ import test from 'node:test';
 const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const sql=fs.readFileSync(new URL('../Rainbows_V3.19.0_stock_medrano.sql',import.meta.url),'utf8');
 test('historial diario separa los inventarios y escapa productos y usuarios',()=>{
-  const code=app.slice(app.indexOf('function medranoDailyHistory('),app.indexOf('function openMedranoLabTransfer('));
+  const code=app.slice(app.indexOf('function medranoStockHistoryRows('),app.indexOf('function medranoStockHistoryButton('));
   const escape=app.slice(app.indexOf('function escapeHtml(value){'),app.indexOf('function formatGenotype('));
   const row={sector:'laboratorio',categoria:'flores',fecha:'2026-09-15',created_at:'2026-09-15T15:00:00Z',producto:'<img src=x>',usuario_nombre:'<svg>',cantidad_anterior:0,cantidad_nueva:40,unidad:'g',accion:'Recepción',lote:'TEST'};
-  const context={state:{medranoStockReady:true,medranoStockHistory:[row,{...row,sector:'dispensario',producto:'No mostrar'}]},parse:s=>new Date(s+'T12:00:00Z'),Date,ymd:()=>'2026-09-18',today:()=>new Date('2026-09-18T12:00:00Z')};
+  const context={state:{medranoStockReady:true,medranoStockHistory:[row,{...row,sector:'dispensario',producto:'No mostrar'}],medranoLabTransfers:[],perfiles:[],medranoLabItems:[]},parse:s=>new Date(s+'T12:00:00Z'),Date,ymd:()=>'2026-09-18',today:()=>new Date('2026-09-18T12:00:00Z')};
   vm.runInNewContext(`${escape}\n${code}\nglobalThis.history=medranoDailyHistory;`,context);
   const html=context.history('laboratorio','flores');
   assert.match(html,/stock-day-group/);
@@ -17,12 +17,12 @@ test('historial diario separa los inventarios y escapa productos y usuarios',()=
   assert.doesNotMatch(html,/<img|<svg|No mostrar/);
 });
 test('envío y recepción de flores se muestran como un único traslado',()=>{
-  const code=app.slice(app.indexOf('function medranoDailyHistory('),app.indexOf('function medranoStockHistoryButton('));
+  const code=app.slice(app.indexOf('function medranoStockHistoryRows('),app.indexOf('function medranoStockHistoryButton('));
   const state={medranoStockReady:true,perfiles:[{id:'sender',nombre:'Ana'}],medranoStockHistory:[
     {id:'receipt',sector:'laboratorio',categoria:'flores',fecha:'2026-09-18',created_at:'2026-09-18T15:01:00Z',producto:'Flores',lote:'F1',cantidad_anterior:10,cantidad_nueva:15,unidad:'g',accion:'Recepción confirmada · Dispensario → Laboratorio',usuario_nombre:'Luis'},
     {id:'unrelated',sector:'laboratorio',categoria:'resina',fecha:'2026-09-18',created_at:'2026-09-18T12:00:00Z',producto:'Resina',cantidad_anterior:1,cantidad_nueva:2,unidad:'g',accion:'Ajuste',usuario_nombre:'Luis'},
   ],medranoLabTransfers:[{created_at:'2026-09-18T14:00:00Z',recibido_at:'2026-09-18T15:01:01Z',nombre:'Flores',codigo_lote:'F1',gramos:5,estado:'recibido',enviado_por:'sender'}]};
-  const context={state,ymd:()=> '2026-09-18',today:()=>new Date('2026-09-18T12:00:00Z'),medranoTransferDate:()=> '2026-09-18',formatGrams:n=>`${n} g`,parse:s=>new Date(s+'T12:00:00Z'),escapeHtml:s=>String(s),Date};
+  const context={state:{...state,medranoLabItems:[]},ymd:()=> '2026-09-18',today:()=>new Date('2026-09-18T12:00:00Z'),medranoTransferDate:()=> '2026-09-18',formatGrams:n=>`${n} g`,parse:s=>new Date(s+'T12:00:00Z'),escapeHtml:s=>String(s),Date};
   vm.runInNewContext(`${code}\nglobalThis.history=medranoDailyHistory;`,context);
   const html=context.history('laboratorio','flores','today');
   assert.equal((html.match(/<tr>/g)||[]).length,2); // Encabezado y un solo traslado.
@@ -33,9 +33,9 @@ test('envío y recepción de flores se muestran como un único traslado',()=>{
   assert.match(html,/10 → 15 g/);
   assert.doesNotMatch(html,/Recepción confirmada · Dispensario/);
   assert.doesNotMatch(html,/Resina/);
-  state.medranoLabTransfers[0].estado='en_viaje';
-  state.medranoLabTransfers[0].recibido_at=null;
-  state.medranoStockHistory=state.medranoStockHistory.filter(row=>row.id!=='receipt');
+  context.state.medranoLabTransfers[0].estado='en_viaje';
+  context.state.medranoLabTransfers[0].recibido_at=null;
+  context.state.medranoStockHistory=context.state.medranoStockHistory.filter(row=>row.id!=='receipt');
   const pending=context.history('laboratorio','flores','today');
   assert.match(pending,/<strong>Traslado Dispensario → Laboratorio<\/strong>/);
   assert.match(pending,/Pendiente de recepción<\/span>[\s\S]*?<td>5 g<\/td><td>Pendiente de recepción<\/td>/);

@@ -46,8 +46,10 @@ test('la pantalla principal muestra sólo los movimientos del día actual',()=>{
 test('el historial agrupa por año, mes y día y conserva el responsable',()=>{
   assert.match(app,/function renderMedranoCajaHistory\(/);
   assert.match(app,/administracion-caja-historial/);
-  assert.match(app,/const years=\[\.\.\.new Set\(days\.map\(day=>day\.slice\(0,4\)\)\)\]/);
-  assert.match(app,/const months=\[\.\.\.new Set\(yearDays\.map\(day=>day\.slice\(0,7\)\)\)\]/);
+  assert.match(app,/renderMedranoDateHistory\(\{key:'caja'/);
+  assert.match(app,/data-medrano-history-year/);
+  assert.match(app,/data-medrano-history-month/);
+  assert.match(app,/data-medrano-history-day/);
   assert.match(app,/Registrado por/);
   assert.match(app,/m\.creado_por/);
   assert.match(styles,/\.caja-balance-card/);

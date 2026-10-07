@@ -25,7 +25,7 @@ test('la vista separa trabajos activos, cerrados del día e historial anterior',
     {id:'old',tipo:'resina',producto:'Resina',estado:'finalizado',finalizado_at:'2026-09-16T12:00:00Z'},
   ]};
   const screen={innerHTML:'',querySelectorAll:()=>[]};
-  const context={state,app:screen,ymd:()=> '2026-09-18',today:()=>new Date('2026-09-18T12:00:00Z'),parse:s=>new Date(`${s}T12:00:00Z`),escapeHtml:s=>String(s).replaceAll('<','&lt;').replaceAll('>','&gt;'),medranoOrderItemName:item=>item.nombre,canManageMedrano:()=>false,bindMedranoLabJobActions:()=>{},$:()=>({onclick:null}),Date};
+  const context={state,app:screen,ymd:()=> '2026-09-18',today:()=>new Date('2026-09-18T12:00:00Z'),parse:s=>new Date(`${s}T12:00:00Z`),escapeHtml:s=>String(s).replaceAll('<','&lt;').replaceAll('>','&gt;'),medranoOrderItemName:item=>item.nombre,canManageMedrano:()=>false,bindMedranoLabJobActions:()=>{},renderMedranoDateHistory:options=>{screen.innerHTML=options.dayContent('2026-09-16',options.rows)},$:()=>({onclick:null}),Date};
   vm.runInNewContext(`${orderHelpers}\n${code}\nglobalThis.view=renderMedranoLaboratory;`,context);
   context.view('',()=>{});
   assert.match(screen.innerHTML,/Aceite/);
