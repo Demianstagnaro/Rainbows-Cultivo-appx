@@ -9,7 +9,17 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.21. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.22. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.22 — Arqueo y cierre diario de Caja
+
+- Administración puede declarar los montos reales de Efectivo y Digital al finalizar la jornada.
+- El arqueo compara saldo esperado y real, y conserva ambas diferencias.
+- Toda diferencia genera un ajuste de Caja visible y trazable.
+- El saldo real cerrado se convierte en la apertura del día siguiente.
+- Después del cierre se bloquean nuevos movimientos, cobros y acreditaciones durante esa jornada.
+- El historial muestra observaciones, fecha, hora y administrador responsable del arqueo.
+- Requiere ejecutar `Rainbows_V3.26.22_arqueo_caja.sql`.
 
 ## V3.26.21 — Caja diaria e historial por fecha
 
