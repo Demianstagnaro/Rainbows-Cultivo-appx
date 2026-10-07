@@ -1,6 +1,6 @@
 {
   "name": "rainbows-app",
-  "version": "3.26.17",
+  "version": "3.26.18",
   "private": true,
   "type": "module",
   "scripts": {

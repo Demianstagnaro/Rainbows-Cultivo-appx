@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.17. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.18. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.18 — Navegación rápida después de Hoy
+
+- Corrige la demora introducida al abrir cualquier pestaña después de Hoy en Medrano.
+- Medrano vuelve a precargar sus datos operativos al ingresar para que Administración, Dispensario, Laboratorio y Stock abran inmediatamente.
+- Se mantienen los historiales completos bajo demanda y las actualizaciones parciales después de guardar movimientos.
+- La función de resumen instalada con V3.26.17 puede permanecer en Supabase, pero esta versión deja de utilizarla.
+- No requiere ejecutar SQL.
 
 ## V3.26.17 — Resumen liviano de Hoy en Medrano
 
