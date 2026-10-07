@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.19. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.20. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.20 — Reservas atómicas entre comandas y producciones
+
+- Supabase impide que dos comandas simultáneas reserven el mismo saldo disponible.
+- Una comanda contempla también los insumos comprometidos por producciones activas.
+- Una producción contempla también el stock reservado por comandas pendientes.
+- La validación bloquea el lote durante el cálculo para evitar cruces entre usuarios.
+- Requiere ejecutar `Rainbows_V3.26.20_reservas_atomicas.sql`.
 
 ## V3.26.19 — Control de stock al crear comandas
 
