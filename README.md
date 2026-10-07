@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.16. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.17. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.17 — Resumen liviano de Hoy en Medrano
+
+- Hoy en Medrano obtiene sus nueve indicadores mediante un único resumen protegido de Supabase.
+- Al abrir Hoy ya no descarga comandas, productos, stock, producciones, movimientos de Caja y transferencias completas para contar pendientes.
+- Las tablas operativas se cargan recién al entrar en Administración, Dispensario, Laboratorio o Stock.
+- El resumen continúa siendo exclusivo para Administradores.
+- Si la función nueva todavía no está instalada, la app conserva automáticamente la carga anterior como respaldo.
+- Requiere ejecutar `Rainbows_V3.26.17_resumen_hoy_medrano.sql` en Supabase.
 
 ## V3.26.16 — Actualizaciones parciales en Medrano
 
