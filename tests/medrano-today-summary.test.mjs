@@ -4,37 +4,16 @@ import test from 'node:test';
 
 const read=name=>fs.readFileSync(new URL(`../${name}`,import.meta.url),'utf8');
 const app=read('app.js');
-const sql=read('Rainbows_V3.26.17_resumen_hoy_medrano.sql');
-
-test('Hoy consulta un único resumen y omite las tablas operativas',()=>{
-  assert.match(app,/db\.rpc\('resumen_medrano_hoy'\)/);
-  assert.match(app,/const medranoDataPage=medranoPage&&!todaySummaryOnly/);
-  assert.match(app,/state\.medranoTodaySummaryOnly=todaySummaryOnly/);
-  assert.match(app,/medranoDataPage\?loadMedranoStockTable\('medrano_comandas_multiproducto'/);
-  assert.match(app,/todaySummaryOnly\?empty\(\):db\.from\('geneticas'\)/);
+test('Medrano precarga sus datos operativos para que las pestañas abran sin espera',()=>{
+  assert.doesNotMatch(app,/db\.rpc\('resumen_medrano_hoy'\)/);
+  assert.doesNotMatch(app,/medranoTodaySummaryOnly|todaySummaryOnly|medranoDataPage/);
+  assert.match(app,/medranoPage\?loadMedranoStockTable\('medrano_comandas_multiproducto'/);
+  assert.match(app,/medranoPage\?loadMedranoStockTable\('medrano_laboratorio_stock'\)/);
+  assert.match(app,/medranoPage\?loadMedranoStockTable\('medrano_laboratorio_trabajos'/);
 });
 
-test('el resumen conserva los nueve indicadores de Hoy',()=>{
-  for(const key of [
-    'comandas_pendientes_cobro','productos_preparacion','comandas_listas',
-    'producciones_activas','recepciones_palestina','recepciones_laboratorio',
-    'comandas_entregadas_hoy','producciones_cerradas_hoy','movimientos_caja_hoy'
-  ]){
-    assert.match(app,new RegExp(`summary\\.${key}`));
-    assert.match(sql,new RegExp(`'${key}'`));
-  }
-});
-
-test('el resumen está protegido para Administración y tiene fallback compatible',()=>{
-  assert.match(sql,/if not public\.usuario_rainbows_admin\(\)/);
-  assert.match(sql,/security definer/);
-  assert.match(sql,/revoke all on function public\.resumen_medrano_hoy\(\) from public,anon,authenticated/);
-  assert.match(sql,/grant execute on function public\.resumen_medrano_hoy\(\) to authenticated/);
-  assert.match(app,/\['42883','PGRST202'\]\.includes\(summaryQuery\.error\.code\)/);
-});
-
-test('al salir de Hoy se carga recién el módulo solicitado',()=>{
-  assert.match(app,/function openMedranoView\(view,section=null,message='Cargando sección…'\)/);
-  assert.match(app,/if\(target==='today'\|\|state\.medranoTodaySummaryOnly\)openMedranoView\(target\)/);
-  assert.match(app,/if\(state\.medranoTodaySummaryOnly\)openMedranoView\(target,section\)/);
+test('cambiar entre pestañas usa los datos ya cargados',()=>{
+  assert.match(app,/state\.medranoView=b\.dataset\.medranoModule;state\.medranoDispensarioSection=null;state\.medranoDispensarioRoom=null;render\(\)/);
+  assert.match(app,/state\.medranoView=button\.dataset\.medranoTodayTarget/);
+  assert.doesNotMatch(app,/Cargando sección…/);
 });

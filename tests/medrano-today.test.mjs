@@ -35,8 +35,7 @@ test('Hoy reúne cobros, preparación, entregas, producción y recepciones',()=>
 
 test('las tarjetas llevan al módulo correspondiente sin ejecutar acciones sensibles',()=>{
   assert.match(app,/data-medrano-today-target/);
-  assert.match(app,/const target=button\.dataset\.medranoTodayTarget/);
-  assert.match(app,/state\.medranoTodaySummaryOnly\)openMedranoView\(target,section\)/);
+  assert.match(app,/state\.medranoView=button\.dataset\.medranoTodayTarget/);
   assert.doesNotMatch(app.slice(app.indexOf('function renderMedranoToday('),app.indexOf('function renderMedrano(){')),/\.rpc\(|\.insert\(|\.update\(|\.delete\(/);
 });
 
