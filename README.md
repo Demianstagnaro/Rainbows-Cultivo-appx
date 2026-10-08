@@ -9,7 +9,18 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.28. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.29. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.29 — Tablero de control Medrano
+
+- Incorpora la sección `Medrano`, visible solamente para Administradores.
+- Permite consultar Hoy, este mes, este año o todo el historial.
+- Muestra asociados distintos, comandas dispensadas, Tokens entregados e ingresos acumulados de Caja.
+- Separa los ingresos de Caja entre efectivo y digital y excluye los ajustes de arqueo.
+- Resume las cantidades y Tokens por Flores, Resina, Cremas, Aceites, Cápsulas y Mostrador.
+- Agrupa todas las flores sin distinguir genética o lote y detalla los demás productos por nombre.
+- El historial completo se carga únicamente al abrir el tablero para no demorar las otras secciones.
+- No requiere cambios en Supabase.
 
 ## V3.26.28 — Hora de pago y comandas ordenables
 
