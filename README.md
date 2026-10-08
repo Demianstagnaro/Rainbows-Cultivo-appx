@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.27. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.28. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.28 — Hora de pago y comandas ordenables
+
+- Las comandas muestran la fecha y hora exactas en que se confirmó el pago.
+- Las comandas históricas anteriores al registro de pagos se identifican sin inventar una hora.
+- La lista de comandas dispensadas hoy de Administración permite buscar y ordenar por producto, Tokens, paciente, fecha y pago.
+- La actividad de hoy de Dispensario permite ordenar por hora, tipo, producto, cantidad, paciente, pago y responsable.
+- El historial diario de Administración y Dispensario conserva la fecha de pago y el mismo ordenamiento.
+- No requiere cambios en Supabase porque utiliza el campo `pagada_at` ya existente.
 
 ## V3.26.27 — Importes de Caja con separadores
 
