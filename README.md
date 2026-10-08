@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.30. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.31. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.31 — Botón visible para elegir mes
+
+- El selector mensual incorpora un botón claro `📅 Elegir mes`.
+- El botón abre directamente el calendario nativo del dispositivo.
+- En pantallas pequeñas se acomoda junto al mes sin quedar oculto.
+- No requiere cambios en Supabase.
 
 ## V3.26.30 — Meses anteriores en el tablero
 
