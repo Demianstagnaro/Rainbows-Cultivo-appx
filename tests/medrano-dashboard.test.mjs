@@ -72,6 +72,9 @@ test('Medrano es un tablero exclusivo para administradores y se carga bajo deman
   assert.match(app,/orderHistoryPage=dashboardPage\|\|/);
   assert.match(app,/openMedranoDataView\('dashboard'\)/);
   assert.match(app,/id="medrano-dashboard-month"[^>]*type="month"/);
+  assert.match(app,/id="medrano-dashboard-month-open"[\s\S]*?Elegir mes/);
+  assert.match(app,/typeof monthInput\.showPicker==='function'/);
   assert.match(styles,/\.medrano-dashboard-kpis/);
   assert.match(styles,/\.medrano-dashboard-categories/);
+  assert.match(styles,/\.medrano-dashboard-month-control/);
 });
