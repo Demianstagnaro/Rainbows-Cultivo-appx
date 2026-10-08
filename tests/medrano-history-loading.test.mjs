@@ -26,5 +26,5 @@ test('los historiales completos se cargan solamente al abrirlos',()=>{
 test('las cargas sin consumidor dejan de ejecutarse y Tokens se abre con Caja',()=>{
   assert.doesNotMatch(load,/loadMedranoStockTable\('medrano_dispensario_laboratorio_stock'/);
   assert.doesNotMatch(load,/loadMedranoStockTable\('medrano_laboratorio_trabajos_eventos'/);
-  assert.match(load,/state\.medranoView==='administracion-caja'\?loadMedranoStockTable\('medrano_tokens_movimientos'\):empty\(\)/);
+  assert.match(load,/medranoPage&&cashPage\?loadMedranoStockTable\('medrano_tokens_movimientos'\):empty\(\)/);
 });
