@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.25. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.26. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.26 — Movimientos de Tokens diarios
+
+- Caja de hoy muestra solamente los movimientos de Tokens de la jornada actual.
+- El Historial de Caja incorpora los movimientos de Tokens dentro del día correspondiente.
+- Los días con movimientos únicamente de Tokens también aparecen en la navegación por año, mes y día.
+- Se conserva completo el historial anterior, sin modificar saldos, dinero ni Tokens.
+- No requiere cambios en Supabase.
 
 ## V3.26.25 — Historiales de Medrano por fecha
 
