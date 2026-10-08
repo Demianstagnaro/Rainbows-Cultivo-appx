@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.26. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.27. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.27 — Importes de Caja con separadores
+
+- Los montos de los movimientos de Caja se separan con puntos mientras se escriben.
+- El efectivo y el saldo digital del arqueo usan el mismo formato.
+- Un millón se muestra como `1.000.000`, reduciendo errores de lectura al cargar importes.
+- Se admiten centavos con coma, por ejemplo `1.000.000,50`.
+- El formato visual se convierte al valor numérico correcto antes de guardar o calcular diferencias.
+- No requiere cambios en Supabase.
 
 ## V3.26.26 — Movimientos de Tokens diarios
 

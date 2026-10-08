@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.26';
+const APP_VERSION='3.26.27';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2245,6 +2245,18 @@ function medranoTokenPriceRows(){
   const catalog=state.medranoProductCatalog.map(product=>({type:product.categoria,id:product.id,category:medranoCatalogCategoryLabels[product.categoria]||product.categoria,name:formatMeasurementText(product.nombre),unit:product.unidad==='unidades'?'unidad':product.unidad,tokens:product.categoria==='resina'?medranoCategoryTokenPrice('resina'):Number(product.tokens_por_unidad)||0,active:product.activo!==false}));
   return [...flowers,...catalog].sort((a,b)=>a.category.localeCompare(b.category,'es')||a.name.localeCompare(b.name,'es'));
 }
+function medranoMoneyInputFormat(value){
+  const text=String(value??'').replace(/[^\d,]/g,''),hasComma=text.includes(','),parts=text.split(','),integer=(parts.shift()||'').replace(/^0+(?=\d)/,'')||'0',decimals=parts.join('').slice(0,2);
+  const formatted=integer.replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+  return text?`${formatted}${hasComma?`,${decimals}`:''}`:'';
+}
+function medranoMoneyInputNumber(value){
+  const text=String(value??'').trim();
+  if(!text)return NaN;
+  return Number(text.replace(/\./g,'').replace(',','.'));
+}
+function formatMedranoMoneyInput(input){input.value=medranoMoneyInputFormat(input.value)}
+function setMedranoMoneyInput(input,value){input.value=Number(value||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:2})}
 function medranoCashMovementDay(movement){return medranoJobDay(movement?.created_at)}
 function medranoTokenMovementDay(movement){return medranoJobDay(movement?.created_at)}
 function medranoTokenMovementsForDay(day){return (state.medranoTokenMovements||[]).filter(movement=>medranoTokenMovementDay(movement)===day)}
@@ -2296,7 +2308,7 @@ function openMedranoCashDialog(){
 }
 function updateMedranoCashClosingDifference(){
   const expected=medranoCashDaySummary(ymd(today()));
-  const cash=Number($('medrano-cash-closing-cash').value),digital=Number($('medrano-cash-closing-digital').value);
+  const cash=medranoMoneyInputNumber($('medrano-cash-closing-cash').value),digital=medranoMoneyInputNumber($('medrano-cash-closing-digital').value);
   const cashDifference=Number.isFinite(cash)?cash-expected.efectivo.final:0;
   const digitalDifference=Number.isFinite(digital)?digital-expected.digital.final:0;
   $('medrano-cash-closing-difference').innerHTML=`Diferencia de Efectivo: <strong>${medranoCashDifference(cashDifference)}</strong><br>Diferencia Digital: <strong>${medranoCashDifference(digitalDifference)}</strong>`;
@@ -2306,19 +2318,19 @@ function openMedranoCashClosingDialog(){
   const todayKey=ymd(today()),summary=medranoCashDaySummary(todayKey);
   if(medranoCashClosingForDay(todayKey)){alert('La Caja de hoy ya fue cerrada.');return}
   $('medrano-cash-closing-expected').innerHTML=`Esperado en Efectivo: <strong>${formatMoney(summary.efectivo.final)}</strong><br>Esperado en Digital: <strong>${formatMoney(summary.digital.final)}</strong>`;
-  $('medrano-cash-closing-cash').value=String(Math.max(summary.efectivo.final,0));
-  $('medrano-cash-closing-digital').value=String(Math.max(summary.digital.final,0));
+  setMedranoMoneyInput($('medrano-cash-closing-cash'),Math.max(summary.efectivo.final,0));
+  setMedranoMoneyInput($('medrano-cash-closing-digital'),Math.max(summary.digital.final,0));
   $('medrano-cash-closing-notes').value='';updateMedranoCashClosingDifference();$('medrano-cash-closing-dialog').showModal();
 }
 async function saveMedranoCashClosing(){
-  const cash=Number($('medrano-cash-closing-cash').value),digital=Number($('medrano-cash-closing-digital').value);
+  const cash=medranoMoneyInputNumber($('medrano-cash-closing-cash').value),digital=medranoMoneyInputNumber($('medrano-cash-closing-digital').value);
   if(!Number.isFinite(cash)||cash<0||!Number.isFinite(digital)||digital<0)throw new Error('Ingresá los montos reales de Efectivo y Digital.');
   if(!confirm('¿Confirmar el arqueo y cerrar la Caja de hoy? Después no podrán registrarse más movimientos durante esta jornada.'))return;
   const q=await db.rpc('cerrar_caja_medrano',{p_efectivo_real:cash,p_digital_real:digital,p_observaciones:$('medrano-cash-closing-notes').value.trim()||null});
   if(q.error)throw q.error;closeDialog('medrano-cash-closing-dialog');await refreshMedranoModules('cash');
 }
 async function saveMedranoCashMovement(){
-  const amount=Number($('medrano-cash-amount').value),concept=$('medrano-cash-concept').value.trim();
+  const amount=medranoMoneyInputNumber($('medrano-cash-amount').value),concept=$('medrano-cash-concept').value.trim();
   if(!Number.isFinite(amount)||amount<=0||!concept)throw new Error('Completá un monto válido y el concepto.');
   const q=await db.rpc('registrar_movimiento_caja',{p_tipo:$('medrano-cash-type').value,p_medio:$('medrano-cash-method').value,p_monto:amount,p_concepto:concept});
   if(q.error)throw q.error;closeDialog('medrano-cash-dialog');await refreshMedranoModules('cash');
@@ -2931,10 +2943,11 @@ function bindMedranoDialogActions(){
   $('medrano-payment-cancel').onclick=()=>{state.pendingMedranoPayment=null;closeDialog('medrano-payment-dialog');render()};
   $('medrano-payment-confirm').onclick=async()=>{const b=$('medrano-payment-confirm');b.disabled=true;try{await confirmMedranoPayment()}catch(e){console.error(e);alert(e.message||'No se pudo cobrar la comanda.')}finally{b.disabled=false}};
   $('medrano-cash-cancel').onclick=()=>closeDialog('medrano-cash-dialog');
+  $('medrano-cash-amount').oninput=()=>formatMedranoMoneyInput($('medrano-cash-amount'));
   $('medrano-cash-save').onclick=async()=>{const b=$('medrano-cash-save');b.disabled=true;try{await saveMedranoCashMovement()}catch(e){console.error(e);alert(e.message||'No se pudo guardar el movimiento.')}finally{b.disabled=false}};
   $('medrano-cash-closing-cancel').onclick=()=>closeDialog('medrano-cash-closing-dialog');
-  $('medrano-cash-closing-cash').oninput=updateMedranoCashClosingDifference;
-  $('medrano-cash-closing-digital').oninput=updateMedranoCashClosingDifference;
+  $('medrano-cash-closing-cash').oninput=()=>{formatMedranoMoneyInput($('medrano-cash-closing-cash'));updateMedranoCashClosingDifference()};
+  $('medrano-cash-closing-digital').oninput=()=>{formatMedranoMoneyInput($('medrano-cash-closing-digital'));updateMedranoCashClosingDifference()};
   $('medrano-cash-closing-save').onclick=async()=>{const b=$('medrano-cash-closing-save');b.disabled=true;try{await saveMedranoCashClosing()}catch(e){console.error(e);alert(e.message||'No se pudo cerrar la Caja.')}finally{b.disabled=false}};
   $('medrano-credit-cancel').onclick=()=>closeDialog('medrano-credit-dialog');
   $('medrano-credit-tokens').oninput=updateMedranoCreditTotal;
