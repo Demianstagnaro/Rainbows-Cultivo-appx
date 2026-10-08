@@ -13,7 +13,8 @@ test('Medrano precarga sus datos operativos para que las pestañas abran sin esp
 });
 
 test('cambiar entre pestañas usa los datos ya cargados',()=>{
-  assert.match(app,/state\.medranoView=b\.dataset\.medranoModule;state\.medranoDispensarioSection=null;state\.medranoDispensarioRoom=null;render\(\)/);
+  assert.match(app,/if\(b\.dataset\.medranoModule==='dashboard'\)\{openMedranoDataView\('dashboard'\);return\}state\.medranoView=b\.dataset\.medranoModule;render\(\)/);
+  assert.match(app,/const dashboardPage=state\.medranoView==='dashboard'&&admin/);
   assert.match(app,/state\.medranoView=button\.dataset\.medranoTodayTarget/);
   assert.doesNotMatch(app,/Cargando sección…/);
 });

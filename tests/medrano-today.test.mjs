@@ -14,10 +14,10 @@ test('Medrano abre con una vista Hoy propia',()=>{
 });
 
 test('Hoy en Medrano está reservado a administradores',()=>{
-  assert.match(app,/const canViewToday=currentRole\(\)==='administrador'/);
-  assert.match(app,/if\(mv==='today'&&!canViewToday\)mv='stock'/);
-  assert.match(app,/\$\{canViewToday\?`<button type="button" data-medrano-module="today"/);
-  assert.match(app,/medrano-top-nav \$\{canViewToday\?'':'without-today'\}/);
+  assert.match(app,/const isAdmin=currentRole\(\)==='administrador'/);
+  assert.match(app,/if\(\['today','dashboard'\]\.includes\(mv\)&&!isAdmin\)mv='stock'/);
+  assert.match(app,/\$\{isAdmin\?`<button type="button" data-medrano-module="dashboard"[\s\S]*data-medrano-module="today"/);
+  assert.match(app,/medrano-top-nav \$\{isAdmin\?'':'without-today'\}/);
 });
 
 test('Hoy reúne cobros, preparación, entregas, producción y recepciones',()=>{
