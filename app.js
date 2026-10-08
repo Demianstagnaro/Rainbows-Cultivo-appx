@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.29';
+const APP_VERSION='3.26.30';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -17,7 +17,7 @@ Object.assign(state,{medranoLabJobs:[],medranoLabJobEvents:[],medranoLabMaterial
 Object.assign(state,{medranoMultiOrders:[],medranoMultiItems:[],medranoMultiReady:false,editMedranoMultiOrder:null});
 Object.assign(state,{medranoCajaMovements:[],medranoTokenMovements:[],medranoCashClosings:[],medranoCajaBaseReady:false,medranoCashClosingReady:false,medranoCajaReady:false,pendingMedranoPayment:null});
 Object.assign(state,{medranoDateHistory:{}});
-Object.assign(state,{medranoDashboardPeriod:'month'});
+Object.assign(state,{medranoDashboardPeriod:'month',medranoDashboardMonth:''});
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
 function requiredRoomId(name){
@@ -2825,7 +2825,10 @@ function medranoDashboardPeriodRange(period){
   if(period==='today')return {start:end,end,label:'Hoy'};
   if(period==='year')return {start:`${now.getFullYear()}-01-01`,end,label:`Año ${now.getFullYear()}`};
   if(period==='all')return {start:'',end:'',label:'Todo el historial'};
-  return {start:`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-01`,end,label:now.toLocaleDateString('es-AR',{month:'long',year:'numeric'})};
+  const currentMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const selected=/^\d{4}-(0[1-9]|1[0-2])$/.test(state.medranoDashboardMonth)&&state.medranoDashboardMonth<=currentMonth?state.medranoDashboardMonth:currentMonth;
+  const [year,month]=selected.split('-').map(Number),lastDay=new Date(year,month,0).getDate();
+  return {start:`${selected}-01`,end:`${selected}-${String(lastDay).padStart(2,'0')}`,label:new Date(year,month-1,1).toLocaleDateString('es-AR',{month:'long',year:'numeric'}),month:selected,currentMonth};
 }
 function medranoDashboardInRange(value,range){
   const day=medranoJobDay(value);
@@ -2866,12 +2869,14 @@ function renderMedranoDashboard(medranoNav,bindModuleNav){
   if(currentRole()!=='administrador'){state.medranoView='stock';render();return}
   $('screen-title').textContent='Medrano';
   const summary=medranoDashboardSummary();
-  app.innerHTML=`${medranoNav}<section class="panel stock-page-head medrano-dashboard-head"><div><h2>Medrano</h2><p class="muted">Tablero de control · ${escapeHtml(summary.range.label)}</p></div><label class="field-label">Período<select id="medrano-dashboard-period" class="text-input"><option value="today" ${summary.period==='today'?'selected':''}>Hoy</option><option value="month" ${summary.period==='month'?'selected':''}>Este mes</option><option value="year" ${summary.period==='year'?'selected':''}>Este año</option><option value="all" ${summary.period==='all'?'selected':''}>Todo el historial</option></select></label></section>
+  const monthRange=medranoDashboardPeriodRange('month');
+  app.innerHTML=`${medranoNav}<section class="panel stock-page-head medrano-dashboard-head"><div><h2>Medrano</h2><p class="muted">Tablero de control · ${escapeHtml(summary.range.label)}</p></div><div class="medrano-dashboard-period-controls"><label class="field-label">Período<select id="medrano-dashboard-period" class="text-input"><option value="today" ${summary.period==='today'?'selected':''}>Hoy</option><option value="month" ${summary.period==='month'?'selected':''}>Por mes</option><option value="year" ${summary.period==='year'?'selected':''}>Este año</option><option value="all" ${summary.period==='all'?'selected':''}>Todo el historial</option></select></label><label class="field-label" ${summary.period==='month'?'':'hidden'}>Mes<input id="medrano-dashboard-month" class="text-input" type="month" value="${monthRange.month}" max="${monthRange.currentMonth}"></label></div></section>
   <section class="medrano-dashboard-kpis"><div class="panel"><span>Asociados distintos</span><strong>${summary.associates.toLocaleString('es-AR')}</strong><small>Con al menos una comanda dispensada</small></div><div class="panel"><span>Comandas dispensadas</span><strong>${summary.orders.length.toLocaleString('es-AR')}</strong><small>Entregas confirmadas</small></div><div class="panel"><span>Ingresos de Caja</span><strong>${formatMoney(summary.income)}</strong><small>Efectivo ${formatMoney(summary.efectivo)} · Digital ${formatMoney(summary.digital)} · Sin ajustes de arqueo</small></div><div class="panel"><span>Tokens dispensados</span><strong>${formatTokens(summary.tokens)}</strong><small>Valor de los productos entregados</small></div></section>
   <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Dispensas por categoría</h3><p class="muted">Las genéticas y los lotes se agrupan dentro de su producto.</p></div></div><div class="medrano-dashboard-categories">${summary.categoryRows.map(row=>`<article class="medrano-dashboard-category"><span>${escapeHtml(row.label)}</span><strong>${escapeHtml(row.quantityText)}</strong><small>${formatTokens(row.tokens)} · ${row.orderCount} comanda${row.orderCount===1?'':'s'}</small></article>`).join('')}</div></section>
   <section class="panel stock-detail-panel" data-stock-table-tools><div class="stock-section-head"><div><h3>Detalle por producto</h3><p class="muted">Flores se unifica sin distinguir genética. Los demás productos y artículos de Mostrador se agrupan por nombre.</p></div></div>${stockTableToolbar('Buscar por categoría o producto...')}<div class="stock-table-wrap"><table class="stock-table medrano-dashboard-products"><thead><tr><th data-sort-type="text">Categoría</th><th data-sort-type="text">Producto</th><th data-sort-type="number">Cantidad</th><th data-sort-type="text">Unidad</th><th data-sort-type="number">Tokens</th><th data-sort-type="number">Comandas</th></tr></thead><tbody>${summary.productRows.length?summary.productRows.map(row=>`<tr><td>${escapeHtml(row.categoryLabel)}</td><td><strong>${escapeHtml(row.name)}</strong></td><td data-sort-value="${row.quantity}">${Number(row.quantity).toLocaleString('es-AR',{maximumFractionDigits:2})}</td><td>${escapeHtml(row.unit==='unidades'?'unidades':row.unit)}</td><td data-sort-value="${row.tokens}">${formatTokens(row.tokens)}</td><td data-sort-value="${row.orderCount}">${row.orderCount}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="6" class="muted">No hay comandas dispensadas en este período.</td></tr>'}</tbody></table></div></section>`;
   bindModuleNav();bindStockTableTools(app);
   $('medrano-dashboard-period').onchange=event=>{state.medranoDashboardPeriod=event.target.value;render()};
+  $('medrano-dashboard-month').onchange=event=>{if(!event.target.value)return;state.medranoDashboardMonth=event.target.value;state.medranoDashboardPeriod='month';render()};
 }
 function renderMedranoToday(medranoNav,bindModuleNav){
   $('screen-title').textContent='Hoy en Medrano';

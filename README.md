@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.29. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.30. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.30 — Meses anteriores en el tablero
+
+- El filtro `Por mes` permite elegir cualquier mes anterior desde un selector mensual.
+- Todos los indicadores, categorías y productos se recalculan para el mes elegido.
+- El selector no permite elegir meses posteriores al actual.
+- No requiere cambios en Supabase.
 
 ## V3.26.29 — Tablero de control Medrano
 
