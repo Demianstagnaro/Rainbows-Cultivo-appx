@@ -9,7 +9,7 @@ const styles=fs.readFileSync(new URL('../styles.css',import.meta.url),'utf8');
 function dashboardContext(){
   const start=app.indexOf('const medranoDashboardCategoryOrder=');
   const end=app.indexOf('function renderMedranoDashboard(',start);
-  const state={medranoDashboardPeriod:'month',medranoMultiOrders:[
+  const state={medranoDashboardPeriod:'month',medranoDashboardMonth:'',medranoMultiOrders:[
     {id:'o1',paciente_id:'p1',estado:'dispensada',dispensada_at:'2026-10-02T12:00:00Z'},
     {id:'o2',paciente_id:'p1',estado:'dispensada',dispensada_at:'2026-10-07T12:00:00Z'},
     {id:'o3',paciente_id:'p2',estado:'dispensada',dispensada_at:'2026-09-20T12:00:00Z'},
@@ -52,6 +52,18 @@ test('flores ignora genética y los demás productos se agrupan por nombre',()=>
   assert.equal(summary.productRows.find(row=>row.category==='mostrador').name,'Armador');
 });
 
+test('el selector permite consultar un mes anterior completo',()=>{
+  const context=dashboardContext();
+  context.state.medranoDashboardMonth='2026-09';
+  const summary=context.summary('month');
+  assert.equal(summary.range.start,'2026-09-01');
+  assert.equal(summary.range.end,'2026-09-30');
+  assert.equal(summary.associates,1);
+  assert.equal(summary.income,9000);
+  assert.equal(summary.tokens,6);
+  assert.equal(summary.productRows[0].name,'Crema 50 g');
+});
+
 test('Medrano es un tablero exclusivo para administradores y se carga bajo demanda',()=>{
   assert.match(app,/data-medrano-module="dashboard"[^>]*>Medrano</);
   assert.match(app,/\['today','dashboard'\]\.includes\(mv\)&&!isAdmin/);
@@ -59,6 +71,7 @@ test('Medrano es un tablero exclusivo para administradores y se carga bajo deman
   assert.match(app,/const dashboardPage=state\.medranoView==='dashboard'&&admin/);
   assert.match(app,/orderHistoryPage=dashboardPage\|\|/);
   assert.match(app,/openMedranoDataView\('dashboard'\)/);
+  assert.match(app,/id="medrano-dashboard-month"[^>]*type="month"/);
   assert.match(styles,/\.medrano-dashboard-kpis/);
   assert.match(styles,/\.medrano-dashboard-categories/);
 });
