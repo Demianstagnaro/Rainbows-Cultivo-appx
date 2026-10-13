@@ -17,6 +17,21 @@ test('una sola comanda elige paciente primero y múltiples productos del stock',
   assert.match(app,/guardar_comanda_multiproducto/);
 });
 
+test('pacientes y genéticas se muestran alfabéticamente al crear una comanda',()=>{
+  const helpers=app.slice(app.indexOf('function medranoPatientName('),app.indexOf('function medranoReserved('));
+  const state={medranoPatients:[
+    {id:'3',nombre:'Érica',apellido:'Paz'},
+    {id:'1',nombre:'Ana',apellido:'Zuluaga'},
+    {id:'2',nombre:'Bruno',apellido:'Álvarez'},
+  ]};
+  const context={state};
+  vm.runInNewContext(`${helpers}\nglobalThis.sortedPatients=medranoSortedPatients;globalThis.compare=medranoAlphabeticalCompare;`,context);
+  assert.deepEqual(Array.from(context.sortedPatients(),patient=>patient.nombre),['Ana','Bruno','Érica']);
+  assert.deepEqual(['Zkittlez','Ámbar','Banana 10','Banana 2'].sort(context.compare),['Ámbar','Banana 2','Banana 10','Zkittlez']);
+  assert.match(app,/if\(tipo==='flores'\)products\.sort\(\(a,b\)=>medranoAlphabeticalCompare\(a\.name,b\.name\)\)/);
+  assert.match(app,/medranoSortedPatients\(\)\.map\(p=>/);
+});
+
 test('las reservas reducen el saldo libre sin modificar el stock físico al guardar',()=>{
   const code=app.slice(app.indexOf('function medranoReserved('),app.indexOf('function medranoCatalog('));
   const state={medranoMultiOrders:[{id:'a',estado:'pendiente'},{id:'b',estado:'dispensada'},{id:'c',estado:'pendiente'}],medranoMultiItems:[
