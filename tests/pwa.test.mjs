@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const read=name=>fs.readFileSync(new URL(`../${name}`,import.meta.url),'utf8');
+const readBinary=name=>fs.readFileSync(new URL(`../${name}`,import.meta.url));
 const app=read('app.js');
 const html=read('index.html');
 const manifest=JSON.parse(read('manifest.json'));
@@ -10,20 +11,44 @@ const overrides=read('rainbows-overrides.js');
 const styles=read('styles.css');
 const sw=read('sw.js');
 
-test('todos los componentes declaran la versión 3.26.32',()=>{
-  assert.match(app,/const APP_VERSION='3\.26\.32'/);
-  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.26\.32'/);
-  assert.match(sw,/const VERSION='3\.26\.32'/);
-  assert.equal(manifest.start_url,'./?v=3.26.32');
+test('todos los componentes declaran la versión 3.26.33',()=>{
+  assert.match(app,/const APP_VERSION='3\.26\.33'/);
+  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.26\.33'/);
+  assert.match(sw,/const VERSION='3\.26\.33'/);
+  assert.equal(manifest.start_url,'./?v=3.26.33');
   for(const asset of ['styles.css','app.js','rainbows-overrides.js','manifest.json']){
-    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.26\\.32`));
+    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.26\\.33`));
   }
 });
 
 test('las mejoras se cargan en la primera visita sin reescribir respuestas',()=>{
-  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.26\.32"><\/script>/);
+  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.26\.33"><\/script>/);
   assert.doesNotMatch(sw,/optimizeAppJs|html\.replace|new Response\(out/);
   assert.match(app,/RAINBOWS_PERF_CACHE_V2/);
+});
+
+test('el logo de Rainbows se entrega en todos los tamaños de icono',()=>{
+  const expected={
+    'favicon-48.png':[48,48],
+    'apple-touch-icon.png':[180,180],
+    'icon-192.png':[192,192],
+    'icon-512.png':[512,512],
+    'icon-maskable-512.png':[512,512],
+  };
+  for(const [name,[width,height]] of Object.entries(expected)){
+    const png=readBinary(name);
+    assert.equal(png.subarray(1,4).toString(),'PNG');
+    assert.equal(png.readUInt32BE(16),width);
+    assert.equal(png.readUInt32BE(20),height);
+    assert.match(sw,new RegExp(`\\./${name.replace('.','\\.')}`));
+  }
+  assert.match(html,/rel="icon"[^>]*href="favicon-48\.png\?v=3\.26\.33"/);
+  assert.match(html,/rel="apple-touch-icon"[^>]*href="apple-touch-icon\.png\?v=3\.26\.33"/);
+  assert.deepEqual(manifest.icons.map(icon=>[icon.src,icon.sizes,icon.purpose]),[
+    ['icon-192.png','192x192','any'],
+    ['icon-512.png','512x512','any'],
+    ['icon-maskable-512.png','512x512','maskable'],
+  ]);
 });
 
 test('Info cultivo agrupa Enmiendas, Genéticas, Croquis, Salas y Parámetros',()=>{
