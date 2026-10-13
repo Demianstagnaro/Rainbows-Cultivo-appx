@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.31. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.32. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.32 — Listas alfabéticas en comandas
+
+- La selección de pacientes se ordena alfabéticamente por el nombre visible.
+- La selección de flores se ordena alfabéticamente por genética y luego por lote.
+- El orden ignora diferencias entre mayúsculas, minúsculas y acentos.
+- Los números se ordenan naturalmente, por ejemplo `Genética 2` antes de `Genética 10`.
+- No requiere cambios en Supabase.
 
 ## V3.26.31 — Botón visible para elegir mes
 

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.31';
+const APP_VERSION='3.26.32';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1797,6 +1797,8 @@ function medranoOrderPaidAt(order){
   return order?.pagada_at?new Date(order.pagada_at).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Argentina/Buenos_Aires'}):'—';
 }
 function medranoPatientName(patient){return `${patient?.nombre||''} ${patient?.apellido||''}`.trim()||'Paciente'}
+function medranoAlphabeticalCompare(left,right){return String(left||'').localeCompare(String(right||''),'es-AR',{sensitivity:'base',numeric:true})}
+function medranoSortedPatients(){return [...(state.medranoPatients||[])].sort((a,b)=>medranoAlphabeticalCompare(medranoPatientName(a),medranoPatientName(b)))}
 function medranoReserved(tipo,id,excludeId=null){
   const pending=new Set(state.medranoMultiOrders.filter(o=>o.estado==='pendiente'&&o.id!==excludeId).map(o=>o.id));
   return state.medranoMultiItems.filter(i=>pending.has(i.comanda_id)&&i.tipo===tipo&&i.origen_id===id).reduce((sum,i)=>sum+Number(i.cantidad),0);
@@ -1835,7 +1837,9 @@ function medranoCatalog(tipo,editing=null){
 function updateMedranoMultiProduct(row){
   const tipo=row.querySelector('[data-order-type]').value,product=row.querySelector('[data-order-product]');
   const selected=product.value;
-  product.innerHTML='<option value="">Seleccionar producto</option>'+medranoCatalog(tipo,state.editMedranoMultiOrder).map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} · ${p.tokens>0?`${formatTokens(p.tokens)}/${escapeHtml(p.unit)}`:'sin valor'} · disponible ${Number(p.qty-medranoTotalReserved(tipo,p.id,state.editMedranoMultiOrder?.id)).toLocaleString('es-AR')} ${escapeHtml(p.unit)}</option>`).join('');
+  const products=medranoCatalog(tipo,state.editMedranoMultiOrder);
+  if(tipo==='flores')products.sort((a,b)=>medranoAlphabeticalCompare(a.name,b.name));
+  product.innerHTML='<option value="">Seleccionar producto</option>'+products.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} · ${p.tokens>0?`${formatTokens(p.tokens)}/${escapeHtml(p.unit)}`:'sin valor'} · disponible ${Number(p.qty-medranoTotalReserved(tipo,p.id,state.editMedranoMultiOrder?.id)).toLocaleString('es-AR')} ${escapeHtml(p.unit)}</option>`).join('');
   if([...product.options].some(option=>option.value===selected))product.value=selected;
   updateMedranoMultiUnit(row);
 }
@@ -1875,7 +1879,7 @@ function openMedranoMultiDialog(order=null){
   if(order?.pago_estado==='pagada'){alert('Una comanda pagada no se puede editar. Si necesitás cancelarla, eliminála y los Tokens volverán al saldo del paciente.');return}
   state.editMedranoMultiOrder=order;
   $('medrano-multi-title').textContent=order?'Editar comanda':'Nueva comanda';
-  $('medrano-multi-patient').innerHTML='<option value="">Seleccionar paciente</option>'+state.medranoPatients.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(`${p.nombre||''} ${p.apellido||''}`.trim())}</option>`).join('');
+  $('medrano-multi-patient').innerHTML='<option value="">Seleccionar paciente</option>'+medranoSortedPatients().map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(medranoPatientName(p))}</option>`).join('');
   $('medrano-multi-patient').value=order?.paciente_id||'';
   $('medrano-multi-date').value=order?.fecha||ymd(today());
   $('medrano-multi-lines').innerHTML='';
