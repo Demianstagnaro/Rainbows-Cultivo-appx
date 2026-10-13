@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.32. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.33. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.33 — Logo de Rainbows como ícono
+
+- Reemplaza el ícono anterior por el logo oficial que ya utiliza la app.
+- Genera versiones específicas para navegador, acceso directo, iPhone/iPad y PWA instalada.
+- Incluye un ícono seguro para el recorte automático de Android.
+- Conserva exactamente el diseño y los colores del archivo original, sin regenerar el logo.
+- No requiere cambios en Supabase.
 
 ## V3.26.32 — Listas alfabéticas en comandas
 
