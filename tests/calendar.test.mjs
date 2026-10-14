@@ -12,7 +12,7 @@ function loadCalendar(){
     document:{getElementById:()=>({})},
     localStorage:{getItem:()=>null,setItem:()=>{}}
   };
-  vm.runInNewContext(`${prefix}\nglobalThis.calendar={rules,parse,ymd,add,diff,cycle,cycleNumber,harvest,harvestCycleNumber,routine,cloneTransfer,vegesOccupied};`,context);
+  vm.runInNewContext(`${prefix}\nglobalThis.calendar={rules,parse,ymd,add,diff,cycle,cycleNumber,roomStatus,compactCycleLabel,harvest,harvestCycleNumber,upcomingHarvestDates,routine,cloneTransfer,vegesOccupied};`,context);
   return context.calendar;
 }
 
@@ -40,6 +40,24 @@ test('las cosechas mantienen una separación de 77 días',()=>{
     assert.equal(calendar.harvest(room(name),calendar.parse(second)),true);
     assert.equal(calendar.diff(calendar.parse(second),calendar.parse(first)),77);
   }
+});
+
+test('Info cultivo calcula las próximas 10 cosechas de cada sala',()=>{
+  const from=calendar.parse('2026-10-14');
+  const expectedFirst={'Flora 1':'2026-12-16','Flora 2':'2026-11-11','Flora 3':'2026-12-16'};
+  for(const name of ['Flora 1','Flora 2','Flora 3']){
+    const dates=calendar.upcomingHarvestDates(room(name),from,10);
+    assert.equal(dates.length,10);
+    assert.equal(calendar.ymd(dates[0]),expectedFirst[name]);
+    assert.ok(dates.every(date=>calendar.harvest(room(name),date)));
+    for(let index=1;index<dates.length;index++)assert.equal(calendar.diff(dates[index],dates[index-1]),77);
+  }
+});
+
+test('el calendario abrevia la etapa y Hoy la muestra completa',()=>{
+  const flora1=room('Flora 1'),date=calendar.parse('2026-10-14');
+  assert.equal(calendar.compactCycleLabel(flora1,date),'V S3');
+  assert.equal(calendar.roomStatus(flora1,date),'Ciclo 11 · Vege S3');
 });
 
 test('el día de cosecha incluye cosecha, trasplante y enmienda',()=>{

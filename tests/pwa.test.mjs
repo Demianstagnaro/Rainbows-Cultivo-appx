@@ -11,18 +11,18 @@ const overrides=read('rainbows-overrides.js');
 const styles=read('styles.css');
 const sw=read('sw.js');
 
-test('todos los componentes declaran la versión 3.26.33',()=>{
-  assert.match(app,/const APP_VERSION='3\.26\.33'/);
-  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.26\.33'/);
-  assert.match(sw,/const VERSION='3\.26\.33'/);
-  assert.equal(manifest.start_url,'./?v=3.26.33');
+test('todos los componentes declaran la versión 3.26.34',()=>{
+  assert.match(app,/const APP_VERSION='3\.26\.34'/);
+  assert.match(overrides,/RAINBOWS_OVERRIDES_VERSION='3\.26\.34'/);
+  assert.match(sw,/const VERSION='3\.26\.34'/);
+  assert.equal(manifest.start_url,'./?v=3.26.34');
   for(const asset of ['styles.css','app.js','rainbows-overrides.js','manifest.json']){
-    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.26\\.33`));
+    assert.match(html,new RegExp(`${asset.replace('.','\\.')}\\?v=3\\.26\\.34`));
   }
 });
 
 test('las mejoras se cargan en la primera visita sin reescribir respuestas',()=>{
-  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.26\.33"><\/script>/);
+  assert.match(html,/<script defer src="rainbows-overrides\.js\?v=3\.26\.34"><\/script>/);
   assert.doesNotMatch(sw,/optimizeAppJs|html\.replace|new Response\(out/);
   assert.match(app,/RAINBOWS_PERF_CACHE_V2/);
 });
@@ -42,8 +42,8 @@ test('el logo de Rainbows se entrega en todos los tamaños de icono',()=>{
     assert.equal(png.readUInt32BE(20),height);
     assert.match(sw,new RegExp(`\\./${name.replace('.','\\.')}`));
   }
-  assert.match(html,/rel="icon"[^>]*href="favicon-48\.png\?v=3\.26\.33"/);
-  assert.match(html,/rel="apple-touch-icon"[^>]*href="apple-touch-icon\.png\?v=3\.26\.33"/);
+  assert.match(html,/rel="icon"[^>]*href="favicon-48\.png\?v=3\.26\.34"/);
+  assert.match(html,/rel="apple-touch-icon"[^>]*href="apple-touch-icon\.png\?v=3\.26\.34"/);
   assert.deepEqual(manifest.icons.map(icon=>[icon.src,icon.sizes,icon.purpose]),[
     ['icon-192.png','192x192','any'],
     ['icon-512.png','512x512','any'],
@@ -54,11 +54,12 @@ test('el logo de Rainbows se entrega en todos los tamaños de icono',()=>{
 test('Info cultivo agrupa Enmiendas, Genéticas, Croquis, Salas y Parámetros',()=>{
   assert.match(html,/<button data-view="cultivo-info">Info cultivo<\/button>/);
   assert.doesNotMatch(html,/<button data-view="(?:rooms|genetics|amendments)">/);
-  for(const view of ['amendments','genetics','croquis','rooms','parameters']){
+  for(const view of ['next-harvests','amendments','genetics','croquis','rooms','parameters']){
     assert.match(app,new RegExp(`data-cultivo-info-view="${view}"`));
   }
   assert.match(app,/function renderParameters\(\)/);
   assert.match(app,/function renderCroquisView\(\)/);
+  assert.match(app,/function renderNextHarvests\(\)/);
   assert.match(app,/data-croquis-room=/);
   assert.match(app,/state\.view==='croquis'\)renderCroquisView\(\)/);
   assert.match(overrides,/window\.renderAmendments=renderAmendments/);
