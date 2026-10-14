@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.33. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.34. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.34 — Próximas cosechas y etapas claras
+
+- Agrega `Próxima cosecha` dentro de Info cultivo.
+- Muestra las próximas 10 fechas de cosecha para Flora 1, Flora 2 y Flora 3, junto con su ciclo.
+- El calendario abrevia las etapas como `V S3` y `F S5` para mejorar la lectura en celular.
+- Hoy y las pantallas de salas aclaran la etapa completa, por ejemplo `Ciclo 11 · Vege S3` o `Ciclo 10 · Flora S5`.
+- Todas las fechas utilizan el mismo ciclo de 77 días del calendario operativo.
+- No requiere cambios en Supabase.
 
 ## V3.26.33 — Logo de Rainbows como ícono
 

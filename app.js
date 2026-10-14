@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.33';
+const APP_VERSION='3.26.34';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -76,8 +76,14 @@ function cycleNumber(r,d){
   const referenceDate=synchronized?parse('2026-07-15'):parse('2026-06-10');
   const referenceCycle=synchronized?10:9;
   return referenceCycle+Math.floor(diff(d,referenceDate)/77);
-}function roomStatus(r,d){const n=cycleNumber(r,d);return n?`Ciclo ${n} · ${stage(r,d)}`:stage(r,d)}
+}function roomStatus(r,d){const n=cycleNumber(r,d),label=r.type==='flora'?cycle(r,d).label:stage(r,d);return n?`Ciclo ${n} · ${label}`:label}
 function stage(r,d){if(r.type==='trabajo')return'Área operativa';return r.type==='esquejes'?cut(d).label:(cycle(r,d).week?`Semana ${cycle(r,d).week}`:cycle(r,d).label)}function startWeek(r,d,w){const c=cycle(r,d);return c.stage==='flora'&&c.week===w&&diff(d,c.fl)%7===0}function transplant(r,d){const c=cycle(r,d);return r.type==='flora'&&diff(d,c.tr)===0}function harvest(r,d){if(r.type!=='flora')return false;const base=parse(r.floraStart),days=diff(d,base);return days>=56&&(days-56)%77===0}function harvestCycleNumber(r,d){return cycleNumber(r,add(d,-1))}
+function compactCycleLabel(r,d){const c=cycle(r,d);return c.stage==='vege'?`V S${c.week}`:c.stage==='flora'?`F S${c.week}`:c.label}
+function upcomingHarvestDates(r,from=today(),count=10){
+  if(r?.type!=='flora'||count<=0)return[];
+  const base=add(parse(r.floraStart),56),periods=Math.max(0,Math.ceil(diff(from,base)/77)),first=add(base,periods*77);
+  return Array.from({length:count},(_,index)=>add(first,index*77));
+}
 function routine(date){const out=[],day=dow(date),push=(room,name,detail,keyName=name)=>{const keyRoom=room==='Vege 1'?'Veges':room;out.push({id:`${ymd(date)}|${keyRoom}|${keyName}`,key:`${ymd(date)}|${keyRoom}|${keyName}`,date:ymd(date),room,task:name,detail,type:'rutina',custom:false})};for(const r of rules){const c=r.type==='esquejes'?{cut:cut(date)}:cycle(r,date);if(r.type==='vege'&&!vegesOccupied(date))continue;if(!['esquejes','trabajo'].includes(r.type)&&!(r.name==='Flora 1'&&r.automaticIrrigation))push(r.name,'Riego','');if(r.type==='esquejes'&&c.cut.active)push(r.name,'Mantenimiento',c.cut.label);if(r.name==='Flora 1'){if(transplant(r,date))push(r.name,'Calibrar riego','');if(startWeek(r,date,1))push(r.name,'Calibrar riego','');if(startWeek(r,date,7))push(r.name,'Calibrar riego','')}if(['lunes','miercoles','viernes'].includes(day)){if(['vege','madres'].includes(r.type))push(r.name,'Fumigacion',day==='miercoles'?'ABA + OIL + Nissorun':'ABA + OIL');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=3)))push(r.name,'Fumigacion',day==='miercoles'?'ABA + OIL + Nissorun':'ABA + OIL')}if(day==='jueves'){if(['vege','madres'].includes(r.type))push(r.name,'KNF','');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=6)))push(r.name,'KNF','')}if(r.type==='flora'){if(transplant(r,date)){push(r.name,'Enmienda','');push(r.name,'Trasplante','')}if(startWeek(r,date,1)){push(r.name,'Enmienda','');push(r.name,'Inicio flora','')}if(startWeek(r,date,4))push(r.name,'Enmienda','');if(same(date,add(c.fl,-1))){push(r.name,'Esquejes','');push(r.name,'Poda bajos','')}if(startWeek(r,date,4))push(r.name,'Schwazzing','');if(same(date,add(c.tr,1)))push(r.name,'Redes','');if(harvest(r,date))push(r.name,'Cosecha','')}
 if(r.type==='vege'){
   if(cloneTransfer(date))push(r.name,'Trasplante',`Esquejes → ${r.name}`);
@@ -2982,7 +2988,7 @@ function renderMedrano(){
   }
   state.medranoView='stock';render();
 }
-const cultivoInfoViews=new Set(['cultivo-info','amendments','genetics','croquis','rooms','parameters']);
+const cultivoInfoViews=new Set(['cultivo-info','next-harvests','amendments','genetics','croquis','rooms','parameters']);
 function openCultivoInfo(){state.view='cultivo-info';state.room=null;state.roomDay=null;state.tab='summary';render()}
 function renderCultivoInfo(){
   $('screen-title').textContent='Info cultivo';
@@ -2992,6 +2998,7 @@ function renderCultivoInfo(){
       <p class="muted">Información de referencia y configuración del cultivo.</p>
     </section>
     <section class="cultivo-info-grid" aria-label="Secciones de información de cultivo">
+      <button class="cultivo-info-card" type="button" data-cultivo-info-view="next-harvests"><strong>Próxima cosecha</strong><span>Fechas de las próximas 10 cosechas de cada sala de flora.</span></button>
       <button class="cultivo-info-card" type="button" data-cultivo-info-view="amendments"><strong>Enmiendas</strong><span>Composición y dosis por etapa.</span></button>
       <button class="cultivo-info-card" type="button" data-cultivo-info-view="genetics"><strong>Genéticas</strong><span>Variedades, nomenclaturas y características.</span></button>
       <button class="cultivo-info-card" type="button" data-cultivo-info-view="croquis"><strong>Croquis</strong><span>Distribución de camas, plantas y genéticas de las salas de flora.</span></button>
@@ -2999,6 +3006,12 @@ function renderCultivoInfo(){
       <button class="cultivo-info-card" type="button" data-cultivo-info-view="parameters"><strong>Parámetros</strong><span>Sección preparada para luz, riego, CO₂ y otros parámetros.</span></button>
     </section>`;
   app.querySelectorAll('[data-cultivo-info-view]').forEach(button=>button.onclick=()=>{state.view=button.dataset.cultivoInfoView;state.room=null;state.roomDay=null;state.tab='summary';render()});
+}
+function renderNextHarvests(){
+  $('screen-title').textContent='Próxima cosecha';
+  const floraRooms=rules.filter(room=>room.type==='flora');
+  app.innerHTML=`<button id="back-cultivo-info" class="secondary cultivo-info-back" type="button">← Info cultivo</button><section class="panel cultivo-info-head"><h2>Próxima cosecha</h2><p class="muted">Próximas 10 fechas programadas para cada sala de flora.</p></section><section class="next-harvest-grid">${floraRooms.map(room=>`<article class="panel next-harvest-card"><h3>${escapeHtml(room.name)}</h3><ol>${upcomingHarvestDates(room).map((date,index)=>`<li class="${index===0?'is-next':''}"><span>${date.toLocaleDateString('es-AR',{weekday:'short',day:'2-digit',month:'2-digit',year:'numeric'})}</span><strong>Ciclo ${harvestCycleNumber(room,date)}</strong></li>`).join('')}</ol></article>`).join('')}</section>`;
+  $('back-cultivo-info').onclick=openCultivoInfo;
 }
 function renderParameters(){
   $('screen-title').textContent='Parámetros';
@@ -3095,7 +3108,7 @@ $('harvest-total').oninput=updateHarvestLineTotal;
 $('save-harvest').onclick=async()=>{try{await saveHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la cosecha.')}};
 $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
 
-document.querySelectorAll('.top-nav button').forEach(b=>{const view=b.dataset.view;const allowed=canViewOperations()&&(view==='harvests'?canViewHarvests():view==='stock'?canViewStock():true);b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',view==='cultivo-info'?cultivoInfoViews.has(state.view):view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='harvests'&&!canViewHarvests()){state.view='today';state.selectedHarvest=null;}if(state.view==='stock'&&!canViewStock()){state.view='today';state.stockRoom=null;state.stockCycle=null;}if(state.view==='settings'&&currentRole()!=='administrador')state.view='today';if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='cultivo-info')renderCultivoInfo();if(state.view==='amendments')renderAmendmentsView();if(state.view==='parameters')renderParameters();if(state.view==='croquis')renderCroquisView();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
+document.querySelectorAll('.top-nav button').forEach(b=>{const view=b.dataset.view;const allowed=canViewOperations()&&(view==='harvests'?canViewHarvests():view==='stock'?canViewStock():true);b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',view==='cultivo-info'?cultivoInfoViews.has(state.view):view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='harvests'&&!canViewHarvests()){state.view='today';state.selectedHarvest=null;}if(state.view==='stock'&&!canViewStock()){state.view='today';state.stockRoom=null;state.stockCycle=null;}if(state.view==='settings'&&currentRole()!=='administrador')state.view='today';if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='cultivo-info')renderCultivoInfo();if(state.view==='next-harvests')renderNextHarvests();if(state.view==='amendments')renderAmendmentsView();if(state.view==='parameters')renderParameters();if(state.view==='croquis')renderCroquisView();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
 function renderHelp(){
   $('screen-title').textContent='Ayuda';
   app.innerHTML=`
@@ -3205,7 +3218,7 @@ function renderToday(){
   bind(d);
   bindGeneralTasks();
 }
-function renderCalendar(){ $('screen-title').textContent='Calendario';if(state.day){renderDay(state.day);return}const m=state.month,now=today(),currentMonth=m.getFullYear()===now.getFullYear()&&m.getMonth()===now.getMonth(),first=new Date(m.getFullYear(),m.getMonth(),1),start=add(first,-((first.getDay()+6)%7)),days=Array.from({length:42},(_,i)=>add(start,i));app.innerHTML=`<div class="calendar-today-action"><button id="back-today" class="secondary" ${currentMonth?'disabled':''}>Volver a hoy</button></div><div class="toolbar"><button id="prev">‹</button><strong>${monthName(m)}</strong><button id="next">›</button></div><div class="calendar">${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(x=>`<div class="dow">${x}</div>`).join('')}${days.map(d=>{const x=tasks(d),n=x.filter(done).length,hasPastPending=diff(d,now)<0&&x.some(t=>!done(t)),hasHarvest=x.some(t=>t.task==='Cosecha');return`<div class="day-cell ${same(d,now)?'today':''} ${hasPastPending?'past-pending':''} ${hasHarvest?'harvest-day':''} ${d.getMonth()===m.getMonth()?'':'dim'}" data-date="${ymd(d)}"><div class="day-num">${d.getDate()}</div>${hasHarvest?'<div class="calendar-harvest-badge">COSECHA</div>':''}<div class="day-state">${rules.filter(r=>r.type==='flora').map(r=>`${r.name.replace('Flora ','F')}: C${cycleNumber(r,d)} · ${cycle(r,d).label}`).join('<br>')}</div><div class="day-done">${taskCounter(n,x.length)}</div></div>`}).join('')}</div>`;$('back-today').onclick=()=>{state.day=null;state.month=new Date(now.getFullYear(),now.getMonth(),1);render()};$('prev').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()-1,1);render()};$('next').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()+1,1);render()};app.querySelectorAll('[data-date]').forEach(x=>x.onclick=()=>{state.day=parse(x.dataset.date);render()})}
+function renderCalendar(){ $('screen-title').textContent='Calendario';if(state.day){renderDay(state.day);return}const m=state.month,now=today(),currentMonth=m.getFullYear()===now.getFullYear()&&m.getMonth()===now.getMonth(),first=new Date(m.getFullYear(),m.getMonth(),1),start=add(first,-((first.getDay()+6)%7)),days=Array.from({length:42},(_,i)=>add(start,i));app.innerHTML=`<div class="calendar-today-action"><button id="back-today" class="secondary" ${currentMonth?'disabled':''}>Volver a hoy</button></div><div class="toolbar"><button id="prev">‹</button><strong>${monthName(m)}</strong><button id="next">›</button></div><div class="calendar">${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(x=>`<div class="dow">${x}</div>`).join('')}${days.map(d=>{const x=tasks(d),n=x.filter(done).length,hasPastPending=diff(d,now)<0&&x.some(t=>!done(t)),hasHarvest=x.some(t=>t.task==='Cosecha');return`<div class="day-cell ${same(d,now)?'today':''} ${hasPastPending?'past-pending':''} ${hasHarvest?'harvest-day':''} ${d.getMonth()===m.getMonth()?'':'dim'}" data-date="${ymd(d)}"><div class="day-num">${d.getDate()}</div>${hasHarvest?'<div class="calendar-harvest-badge">COSECHA</div>':''}<div class="day-state">${rules.filter(r=>r.type==='flora').map(r=>`${r.name.replace('Flora ','F')}: C${cycleNumber(r,d)} · ${compactCycleLabel(r,d)}`).join('<br>')}</div><div class="day-done">${taskCounter(n,x.length)}</div></div>`}).join('')}</div>`;$('back-today').onclick=()=>{state.day=null;state.month=new Date(now.getFullYear(),now.getMonth(),1);render()};$('prev').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()-1,1);render()};$('next').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()+1,1);render()};app.querySelectorAll('[data-date]').forEach(x=>x.onclick=()=>{state.day=parse(x.dataset.date);render()})}
 function renderDay(d){
   const ts=tasks(d),n=ts.filter(done).length;
   const completedGeneral=generalTasksForDate(d);
