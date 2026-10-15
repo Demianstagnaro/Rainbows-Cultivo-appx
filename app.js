@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.34';
+const APP_VERSION='3.26.35';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -3087,13 +3087,95 @@ function bindMedranoDialogActions(){
     try{await deleteMedranoOrder(order.id,reason)}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la comanda.')}finally{b.disabled=false}
   };
 }
+function appNavigationSnapshot(){
+  return {
+    site:state.site,
+    view:state.view,
+    medranoView:state.medranoView,
+    month:state.month instanceof Date?ymd(state.month).slice(0,7):null,
+    day:state.day?ymd(state.day):null,
+    room:state.room||null,
+    roomDay:state.roomDay?ymd(state.roomDay):null,
+    tab:state.tab||'summary',
+    todayDay:state.todayDay?ymd(state.todayDay):null,
+    selectedHarvest:state.selectedHarvest||null,
+    harvestYear:state.harvestYear,
+    harvestRoom:state.harvestRoom,
+    stockRoom:state.stockRoom||null,
+    stockCycle:state.stockCycle||null,
+    medranoDispensarioSection:state.medranoDispensarioSection||null,
+    medranoDispensarioRoom:state.medranoDispensarioRoom||null,
+    medranoOrderHistoryYear:state.medranoOrderHistoryYear||null,
+    medranoOrderHistoryMonth:state.medranoOrderHistoryMonth||null,
+    medranoDashboardPeriod:state.medranoDashboardPeriod||'month',
+    medranoDashboardMonth:state.medranoDashboardMonth||'',
+    medranoDateHistory:JSON.parse(JSON.stringify(state.medranoDateHistory||{})),
+    medranoStockHistoryScope:state.medranoStockHistoryScope?{...state.medranoStockHistoryScope}:null
+  };
+}
+function appNavigationKey(snapshot=appNavigationSnapshot()){return JSON.stringify(snapshot)}
+let appNavigationRestoring=false;
+function restoreAppNavigation(snapshot){
+  if(!snapshot)return;
+  state.site=snapshot.site==='medrano'?'medrano':'palestina';
+  localStorage.setItem('rainbows_site',state.site);
+  state.view=snapshot.view||'today';
+  state.medranoView=snapshot.medranoView||'today';
+  state.month=snapshot.month?parse(`${snapshot.month}-01`):new Date(today().getFullYear(),today().getMonth(),1);
+  state.day=snapshot.day?parse(snapshot.day):null;
+  state.room=snapshot.room||null;
+  state.roomDay=snapshot.roomDay?parse(snapshot.roomDay):null;
+  state.tab=snapshot.tab||'summary';
+  state.todayDay=snapshot.todayDay?parse(snapshot.todayDay):null;
+  state.selectedHarvest=snapshot.selectedHarvest||null;
+  state.harvestYear=snapshot.harvestYear??'todos';
+  state.harvestRoom=snapshot.harvestRoom??'todas';
+  state.stockRoom=snapshot.stockRoom||null;
+  state.stockCycle=snapshot.stockCycle||null;
+  state.medranoDispensarioSection=snapshot.medranoDispensarioSection||null;
+  state.medranoDispensarioRoom=snapshot.medranoDispensarioRoom||null;
+  state.medranoOrderHistoryYear=snapshot.medranoOrderHistoryYear||null;
+  state.medranoOrderHistoryMonth=snapshot.medranoOrderHistoryMonth||null;
+  state.medranoDashboardPeriod=snapshot.medranoDashboardPeriod||'month';
+  state.medranoDashboardMonth=snapshot.medranoDashboardMonth||'';
+  state.medranoDateHistory=JSON.parse(JSON.stringify(snapshot.medranoDateHistory||{}));
+  state.medranoStockHistoryScope=snapshot.medranoStockHistoryScope?{...snapshot.medranoStockHistoryScope}:null;
+}
+function syncAppNavigationHistory(){
+  if(!state.session||typeof history==='undefined'||appNavigationRestoring)return;
+  const snapshot=appNavigationSnapshot(),key=appNavigationKey(snapshot),current=history.state;
+  if(!current?.rainbowsApp&&!current?.rainbowsBoundary){
+    history.replaceState({rainbowsBoundary:true},'');
+    history.pushState({rainbowsApp:true,key,snapshot},'');
+    return;
+  }
+  if(current?.rainbowsBoundary){history.pushState({rainbowsApp:true,key,snapshot},'');return}
+  if(current.key!==key)history.pushState({rainbowsApp:true,key,snapshot},'');
+  else history.replaceState({rainbowsApp:true,key,snapshot},'');
+}
+if(typeof window!=='undefined')window.addEventListener('popstate',event=>{
+  if(!state.session)return;
+  if(event.state?.rainbowsApp){
+    appNavigationRestoring=true;
+    restoreAppNavigation(event.state.snapshot);
+    try{render()}finally{appNavigationRestoring=false}
+    return;
+  }
+  if(event.state?.rainbowsBoundary){
+    if(confirm('¿Querés salir de Rainbows?'))history.back();
+    else{
+      const snapshot=appNavigationSnapshot();
+      history.pushState({rainbowsApp:true,key:appNavigationKey(snapshot),snapshot},'');
+    }
+  }
+});
 function scheduleDayChangeRefresh(){
   if(state.dayChangeTimer)clearTimeout(state.dayChangeTimer);
   const now=new Date();
   const next=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,1);
   state.dayChangeTimer=setTimeout(()=>{state.dayChangeTimer=null;if(state.session)refresh()},next-now);
 }
-function render(){scheduleDayChangeRefresh();const isPalestina=renderSiteShell();bindMedranoDialogActions();const cb=$('header-config');if(cb&&isPalestina){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';state.room=null;state.roomDay=null;state.day=null;render()}}const hb=$('header-help');if(hb&&isPalestina){hb.onclick=()=>{state.view='help';state.room=null;state.roomDay=null;state.day=null;render()}}if(!isPalestina){renderMedrano();return} $('today-label').textContent=nice(today());
+function render(){scheduleDayChangeRefresh();const isPalestina=renderSiteShell();syncAppNavigationHistory();bindMedranoDialogActions();const cb=$('header-config');if(cb&&isPalestina){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';state.room=null;state.roomDay=null;state.day=null;render()}}const hb=$('header-help');if(hb&&isPalestina){hb.onclick=()=>{state.view='help';state.room=null;state.roomDay=null;state.day=null;render()}}if(!isPalestina){renderMedrano();return} $('today-label').textContent=nice(today());
 $('cancel-stock-movement').onclick=()=>closeDialog('stock-movement-dialog');
 $('stock-movement-cycle').onchange=updateStockMovementItems;
 $('stock-movement-type').onchange=updateStockMovementItems;
@@ -3393,6 +3475,7 @@ function groupedHarvestDetails(id){
   return grouped;
 }
 function renderHarvests(){
+  syncAppNavigationHistory();
   $('screen-title').textContent='Cosechas';
   const canManage=canEditTasks();
   const rooms=['Flora 1','Flora 2','Flora 3'];
@@ -3720,6 +3803,7 @@ function renderMedranoMovementDays(){
 }
 
 function renderStock(){
+  syncAppNavigationHistory();
   $('screen-title').textContent='Stock Palestina';
   const canManage=canEditTasks();
   const rooms=['Flora 1','Flora 2','Flora 3'];

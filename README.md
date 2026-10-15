@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.34. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.35. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.35 — Botón Atrás en celular
+
+- El botón Atrás del teléfono recorre las pantallas internas visitadas en vez de cerrar la aplicación inmediatamente.
+- Conserva niveles como el día seleccionado del calendario, una sala, un lote o una fecha del historial.
+- Al llegar al inicio pregunta si realmente se quiere salir de Rainbows.
+- Los refrescos de datos no agregan pasos falsos al historial de navegación.
+- No requiere cambios en Supabase.
 
 ## V3.26.34 — Próximas cosechas y etapas claras
 
