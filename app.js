@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.37';
+const APP_VERSION='3.26.38';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -14,6 +14,7 @@ Object.assign(state,{medranoLabItems:[],medranoLabTransfers:[],medranoStockHisto
 Object.assign(state,{medranoDispensaryProducts:[],medranoLabDispMovements:[],medranoDispensaryTransfersReady:false});
 Object.assign(state,{medranoStockHistoryScope:null});
 Object.assign(state,{medranoLabJobs:[],medranoLabJobEvents:[],medranoLabMaterials:[],medranoLabJobsReady:false,medranoProductionReady:false,editMedranoLabJob:null});
+Object.assign(state,{pendingLabOrderItem:null});
 Object.assign(state,{medranoMultiOrders:[],medranoMultiItems:[],medranoMultiReady:false,editMedranoMultiOrder:null});
 Object.assign(state,{medranoCajaMovements:[],medranoTokenMovements:[],medranoCashClosings:[],medranoCajaBaseReady:false,medranoCashClosingReady:false,medranoCajaReady:false,pendingMedranoPayment:null});
 Object.assign(state,{medranoDateHistory:{}});
@@ -1768,14 +1769,31 @@ function medranoPreparationBadge(item){
   return status?`<span class="preparation-badge preparation-${status}">${escapeHtml(medranoPreparationLabels[status]||status)}</span>`:'—';
 }
 function medranoOrderLabReady(order){return !order?.multiple||(order.items||[]).filter(item=>medranoLabOrderTypes.has(item.tipo)).every(item=>medranoPreparationState(item)==='listo')}
+function medranoOrderHasPhysicalStock(order){return !order?.multiple||(order.items||[]).every(item=>Boolean(item.origen_id))}
+function medranoCustomOilRecipe(item){
+  if(!item?.pedido_laboratorio)return null;
+  const recipe=item.receta&&typeof item.receta==='object'?item.receta:{};
+  return {
+    perfil:String(recipe.perfil||''),proporcion:String(recipe.proporcion||''),concentracion:Number(recipe.concentracion)||0,
+    presentacion_ml:Number(recipe.presentacion_ml)||0,base:String(recipe.base||''),unidades:Number(item.cantidad)||0
+  };
+}
+function medranoCustomOilRecipeText(item){
+  const recipe=medranoCustomOilRecipe(item);if(!recipe)return '';
+  return [recipe.perfil,recipe.proporcion?`Ratio ${recipe.proporcion}`:'',recipe.concentracion?`1:${recipe.concentracion}`:'',recipe.presentacion_ml?`${recipe.presentacion_ml} ml`:'',recipe.base?`Base ${recipe.base}`:''].filter(Boolean).join(' · ');
+}
 function medranoPreparationActions(item,order){
   if(typeof canManageMedrano!=='function'||!canManageMedrano()||order.estado!=='pendiente')return medranoPreparationBadge(item);
+  if(item.pedido_laboratorio&&!item.origen_id){
+    const linked=item.preparacion_trabajo_id;
+    return `<div class="preparation-actions">${medranoPreparationBadge(item)}${linked?'<span class="muted">Producción vinculada</span>':`<button type="button" class="primary compact-button" data-prepare-custom-oil="${escapeHtml(item.id)}">Preparar aceite</button>`}</div>`;
+  }
   const status=medranoPreparationState(item),next=status==='listo'?'en_proceso':'listo';
   const label=status==='listo'?'Reabrir':'Marcar listo';
   return `<div class="preparation-actions">${medranoPreparationBadge(item)}<button type="button" class="${status==='en_proceso'?'primary':'secondary'} compact-button" data-lab-preparation-item="${escapeHtml(item.id)}" data-lab-preparation-status="${next}">${label}</button></div>`;
 }
 function medranoLabOrderRows(orders){
-  return `<div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tokens</th><th>Paciente</th><th>Preparación</th></tr></thead><tbody>${orders.length?orders.map(order=>`<tr><td>${order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${order.items.map(item=>{const trace=medranoOrderItemTrace(item);return `<div class="lab-order-item"><strong>${escapeHtml(medranoOrderItemName(item))}</strong> · ${Number(item.cantidad).toLocaleString('es-AR')} ${escapeHtml(item.unidad)}${trace?`<br><span class="muted">${escapeHtml(trace)}</span>`:''}</div>`}).join('')}</td><td>${Number(order.items.reduce((sum,item)=>sum+Number(item.tokens_total||0),0)).toLocaleString('es-AR',{maximumFractionDigits:2})} Tokens</td><td>${escapeHtml(order.paciente_nombre||'—')}</td><td>${order.items.map(item=>medranoPreparationActions(item,order)).join('')}</td></tr>`).join(''):'<tr><td colspan="5" class="muted">No hay comandas con productos de Laboratorio.</td></tr>'}</tbody></table></div>`;
+  return `<div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tokens</th><th>Paciente</th><th>Preparación</th></tr></thead><tbody>${orders.length?orders.map(order=>`<tr><td>${order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${order.items.map(item=>{const trace=medranoOrderItemTrace(item),recipe=medranoCustomOilRecipeText(item);return `<div class="lab-order-item"><strong>${escapeHtml(medranoOrderItemName(item))}</strong> · ${Number(item.cantidad).toLocaleString('es-AR')} ${escapeHtml(item.unidad)}${recipe?`<br><span class="custom-order-recipe">A pedido · ${escapeHtml(recipe)}</span>`:''}${trace?`<br><span class="muted">${escapeHtml(trace)}</span>`:''}</div>`}).join('')}</td><td>${Number(order.items.reduce((sum,item)=>sum+Number(item.tokens_total||0),0)).toLocaleString('es-AR',{maximumFractionDigits:2})} Tokens</td><td>${escapeHtml(order.paciente_nombre||'—')}</td><td>${order.items.map(item=>medranoPreparationActions(item,order)).join('')}</td></tr>`).join(''):'<tr><td colspan="5" class="muted">No hay comandas con productos de Laboratorio.</td></tr>'}</tbody></table></div>`;
 }
 function medranoMultiOrderView(order){
   const items=state.medranoMultiItems.filter(item=>item.comanda_id===order.id);
@@ -1790,7 +1808,7 @@ function medranoOrderItemName(item){
   return lot?state.geneticas.find(g=>String(g.id)===String(lot.genetica_id))?.nombre||lot.nombre_historico||item.nombre.split(' · ')[0]:String(item.nombre||'').split(' · ')[0];
 }
 function medranoOrderItemTable(order){
-  return `<div class="stock-table-wrap"><table class="stock-table medrano-order-items-table"><thead><tr><th>Tipo</th><th>Producto / trazabilidad</th><th>Cantidad</th><th>Tokens</th><th>Preparación</th></tr></thead><tbody>${order.items.map(item=>{const trace=medranoOrderItemTrace(item);return `<tr><td>${escapeHtml(medranoOrderCategories[item.tipo]||item.tipo)}</td><td><strong>${escapeHtml(medranoOrderItemName(item))}</strong>${trace?`<br><span class="muted">${escapeHtml(trace)}</span>`:''}</td><td>${Number(item.cantidad).toLocaleString('es-AR')} ${escapeHtml(item.unidad)}</td><td>${formatTokens(item.tokens_total)}</td><td>${medranoPreparationBadge(item)}</td></tr>`}).join('')}</tbody></table></div>`;
+  return `<div class="stock-table-wrap"><table class="stock-table medrano-order-items-table"><thead><tr><th>Tipo</th><th>Producto / trazabilidad</th><th>Cantidad</th><th>Tokens</th><th>Preparación</th></tr></thead><tbody>${order.items.map(item=>{const trace=medranoOrderItemTrace(item),recipe=medranoCustomOilRecipeText(item);return `<tr><td>${escapeHtml(medranoOrderCategories[item.tipo]||item.tipo)}</td><td><strong>${escapeHtml(medranoOrderItemName(item))}</strong>${recipe?`<br><span class="custom-order-recipe">A pedido · ${escapeHtml(recipe)}</span>`:''}${trace?`<br><span class="muted">${escapeHtml(trace)}</span>`:''}</td><td>${Number(item.cantidad).toLocaleString('es-AR')} ${escapeHtml(item.unidad)}</td><td>${formatTokens(item.tokens_total)}</td><td>${medranoPreparationBadge(item)}</td></tr>`}).join('')}</tbody></table></div>`;
 }
 function medranoOrderProductCell(order){
   return order.multiple?`<details class="medrano-order-details"><summary>Ver productos</summary>${medranoOrderItemTable(order)}</details>`:`<strong>${escapeHtml(order.producto||'—')}</strong>`;
@@ -1907,18 +1925,36 @@ function configureWholeUnitInput(input,unit,allowZero=false){
   input.inputMode=whole?'numeric':'decimal';
   input.title=whole?'Ingresá una cantidad entera':'';
 }
+function parseMedranoOilRecipeName(name){
+  const parts=String(name||'').split('·').map(part=>part.trim()).filter(Boolean);
+  if(parts.length<6||!/^aceite$/i.test(parts[0]))return null;
+  const ratio=parts.find(part=>/^ratio\s+/i.test(part));
+  const concentration=parts.find(part=>/^1\s*:\s*[0-9]+(?:[.,][0-9]+)?$/i.test(part));
+  const presentation=parts.find(part=>/^[0-9]+(?:[.,][0-9]+)?\s*ml$/i.test(part));
+  const profile=parts.find(part=>/^(?:THC|CBD|CBN)(?:-(?:THC|CBD|CBN))*$/i.test(part));
+  const baseIndex=profile?parts.indexOf(profile)-1:-1;
+  if(!ratio||!concentration||!presentation||!profile||baseIndex<1)return null;
+  return {base:parts[baseIndex],perfil:profile.toUpperCase(),proporcion:ratio.replace(/^ratio\s+/i,'').replaceAll('-',':'),concentracion:Number(concentration.split(':')[1].replace(',','.')),presentacion_ml:Number(presentation.replace(/\s*ml$/i,'').replace(',','.'))};
+}
+function medranoCustomOilCatalog(){
+  return (state.medranoProductCatalog||[]).filter(product=>product.activo!==false&&product.categoria==='aceites'&&product.unidad==='unidades'&&Number(product.tokens_por_unidad)>0).map(product=>{
+    const recipe=parseMedranoOilRecipeName(product.nombre);
+    return recipe?{id:`catalog:${product.id}`,catalogId:product.id,name:`${product.nombre} · Preparar a pedido`,qty:null,unit:'unidades',tokens:Number(product.tokens_por_unidad),custom:true,recipe}:null;
+  }).filter(Boolean);
+}
 function medranoCatalog(tipo,editing=null){
-  const include=id=>editing?.items.some(i=>i.tipo===tipo&&i.origen_id===id);
+  const include=id=>editing?.items.some(i=>i.tipo===tipo&&(i.origen_id===id||`catalog:${i.catalogo_producto_id}`===id));
   if(tipo==='flores')return state.medranoDispensarioLots.map(x=>{const genetic=state.geneticas.find(g=>String(g.id)===String(x.genetica_id));return{id:x.id,name:`${genetic?.nombre||medranoLotGeneticName(x)} · ${x.codigo_lote} · ${stockLotSizes[x.tamano]||'Sin tamaño'}`,qty:Number(x.gramos_actual),unit:'g',tokens:medranoFlowerTokenPrice(x.tamano)}});
   if(tipo==='mostrador')return state.medranoCounterItems.filter(x=>x.activo!==false||include(x.id)).map(x=>({id:x.id,name:x.nombre,qty:Number(x.cantidad),unit:'unidades',tokens:Number(x.tokens_por_unidad)||0}));
-  return state.medranoLabItems.filter(x=>x.categoria===tipo&&(!x.es_aceite_base||include(x.id))&&(x.activo||include(x.id))).map(x=>{const genetic=medranoLabGeneticName(x),trace=[genetic!=='—'?genetic:'',x.lote?`Lote ${x.lote}`:''].filter(Boolean).join(' · ');return{id:x.id,name:`${x.nombre}${trace?` · ${trace}`:''}`,qty:Number(x.cantidad),unit:x.unidad,tokens:tipo==='resina'?medranoCategoryTokenPrice('resina'):Number(x.tokens_por_unidad)||0}});
+  const stocked=state.medranoLabItems.filter(x=>x.categoria===tipo&&(!x.es_aceite_base||include(x.id))&&(x.activo||include(x.id))).map(x=>{const genetic=medranoLabGeneticName(x),trace=[genetic!=='—'?genetic:'',x.lote?`Lote ${x.lote}`:''].filter(Boolean).join(' · ');return{id:x.id,name:`${x.nombre}${trace?` · ${trace}`:''}`,qty:Number(x.cantidad),unit:x.unidad,tokens:tipo==='resina'?medranoCategoryTokenPrice('resina'):Number(x.tokens_por_unidad)||0}});
+  return tipo==='aceites'?[...stocked,...medranoCustomOilCatalog()]:stocked;
 }
 function updateMedranoMultiProduct(row){
   const tipo=row.querySelector('[data-order-type]').value,product=row.querySelector('[data-order-product]');
   const selected=product.value;
   const products=medranoCatalog(tipo,state.editMedranoMultiOrder);
   if(tipo==='flores')products.sort((a,b)=>medranoAlphabeticalCompare(a.name,b.name));
-  product.innerHTML='<option value="">Seleccionar producto</option>'+products.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} · ${p.tokens>0?`${formatTokens(p.tokens)}/${escapeHtml(p.unit)}`:'sin valor'} · disponible ${Number(p.qty-medranoTotalReserved(tipo,p.id,state.editMedranoMultiOrder?.id)).toLocaleString('es-AR')} ${escapeHtml(p.unit)}</option>`).join('');
+  product.innerHTML='<option value="">Seleccionar producto</option>'+products.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} · ${p.tokens>0?`${formatTokens(p.tokens)}/${escapeHtml(p.unit)}`:'sin valor'}${p.custom?'':` · disponible ${Number(p.qty-medranoTotalReserved(tipo,p.id,state.editMedranoMultiOrder?.id)).toLocaleString('es-AR')} ${escapeHtml(p.unit)}`}</option>`).join('');
   if([...product.options].some(option=>option.value===selected))product.value=selected;
   updateMedranoMultiUnit(row);
 }
@@ -1926,10 +1962,10 @@ function updateMedranoMultiUnit(row){
   const tipo=row.querySelector('[data-order-type]').value;
   const product=medranoCatalog(tipo,state.editMedranoMultiOrder).find(p=>p.id===row.querySelector('[data-order-product]').value);
   const input=row.querySelector('[data-order-quantity]'),quantity=Number(input.value)||0;
-  const balance=medranoOrderAvailability(tipo,product,state.editMedranoMultiOrder?.id);
+  const balance=product?.custom?null:medranoOrderAvailability(tipo,product,state.editMedranoMultiOrder?.id);
   const shortage=balance&&quantity>balance.available;
   const missing=shortage?quantity-balance.available:0;
-  const status=product?`${product.unit} · ${formatTokens(product.tokens*quantity)} · Disponible ${balance.available.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}${shortage?` · Faltan ${missing.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}`:''}`:'';
+  const status=product?`${product.unit} · ${formatTokens(product.tokens*quantity)}${product.custom?' · Se prepara a pedido':` · Disponible ${balance.available.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}${shortage?` · Faltan ${missing.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}`:''}`}`:'';
   const unit=row.querySelector('[data-order-unit]');unit.textContent=status;unit.classList.toggle('order-stock-warning',Boolean(shortage));
   configureWholeUnitInput(input,product?.unit||'',false);
   input.classList.toggle('input-error',Boolean(shortage));
@@ -1950,7 +1986,7 @@ function addMedranoMultiLine(item=null){
   row.querySelector('[data-order-quantity]').oninput=()=>updateMedranoMultiUnit(row);
   row.querySelector('[data-remove-order-line]').onclick=()=>{row.remove();updateMedranoMultiTotal()};
   updateMedranoMultiProduct(row);
-  if(item){row.querySelector('[data-order-product]').value=item.origen_id;row.querySelector('[data-order-quantity]').value=item.cantidad;updateMedranoMultiUnit(row)}
+  if(item){row.querySelector('[data-order-product]').value=item.pedido_laboratorio?`catalog:${item.catalogo_producto_id}`:item.origen_id;row.querySelector('[data-order-quantity]').value=item.cantidad;updateMedranoMultiUnit(row)}
 }
 function openMedranoMultiDialog(order=null){
   if(!canManageMedrano()||!state.medranoMultiReady)return;
@@ -1971,16 +2007,16 @@ async function saveMedranoMultiOrder(){
   if(!patient)throw new Error('Seleccioná un paciente.');
   const rows=[...$('medrano-multi-lines').querySelectorAll('.medrano-multi-line')];
   if(!rows.length)throw new Error('Agregá al menos un producto.');
-  const items=rows.map(row=>({tipo:row.querySelector('[data-order-type]').value,origen_id:row.querySelector('[data-order-product]').value,cantidad:Number(row.querySelector('[data-order-quantity]').value)}));
-  if(items.some(i=>!i.origen_id||!Number.isFinite(i.cantidad)||i.cantidad<=0))throw new Error('Seleccioná todos los productos y sus cantidades.');
-  const keys=items.map(i=>`${i.tipo}:${i.origen_id}`);
+  const items=rows.map(row=>{const tipo=row.querySelector('[data-order-type]').value,selected=row.querySelector('[data-order-product]').value,product=medranoCatalog(tipo,state.editMedranoMultiOrder).find(p=>p.id===selected);return {tipo,origen_id:product?.custom?null:selected,catalogo_producto_id:product?.custom?product.catalogId:null,pedido_laboratorio:Boolean(product?.custom),receta:product?.custom?product.recipe:null,cantidad:Number(row.querySelector('[data-order-quantity]').value)} });
+  if(items.some(i=>(!i.origen_id&&!i.pedido_laboratorio)||!Number.isFinite(i.cantidad)||i.cantidad<=0))throw new Error('Seleccioná todos los productos y sus cantidades.');
+  const keys=items.map(i=>`${i.tipo}:${i.origen_id||`catalog:${i.catalogo_producto_id}`}`);
   if(new Set(keys).size!==keys.length)throw new Error('El mismo producto está repetido: sumá las cantidades en una sola línea.');
   for(const item of items){
-    const product=medranoCatalog(item.tipo,state.editMedranoMultiOrder).find(p=>p.id===item.origen_id);
+    const product=medranoCatalog(item.tipo,state.editMedranoMultiOrder).find(p=>p.id===(item.pedido_laboratorio?`catalog:${item.catalogo_producto_id}`:item.origen_id));
     if(!product?.tokens)throw new Error(`Configurá el valor en Tokens de “${product?.name||'este producto'}” desde Lista de precios.`);
     if(product.unit==='unidades'&&!Number.isInteger(item.cantidad))throw new Error('Las unidades deben ser enteras.');
-    const balance=medranoOrderAvailability(item.tipo,product,state.editMedranoMultiOrder?.id);
-    if(item.cantidad>balance.available)throw new Error(`Stock insuficiente de “${product.name}”. Disponible: ${balance.available.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}. Solicitado: ${item.cantidad.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}.`);
+    const balance=product.custom?null:medranoOrderAvailability(item.tipo,product,state.editMedranoMultiOrder?.id);
+    if(balance&&item.cantidad>balance.available)throw new Error(`Stock insuficiente de “${product.name}”. Disponible: ${balance.available.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}. Solicitado: ${item.cantidad.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}.`);
   }
   const q=await db.rpc('guardar_comanda_multiproducto',{p_id:state.editMedranoMultiOrder?.id||null,p_paciente:patient,p_fecha:$('medrano-multi-date').value,p_items:items});
   if(q.error)throw q.error;
@@ -2055,7 +2091,8 @@ async function markMedranoOrderDispensed(orderId){
   const order=(state.medranoOrders||[]).find(item=>String(item.id)===String(orderId));
   if(!order)throw new Error('No se encontró la comanda.');
   if(order.dispensada_at)return;
-  if(!medranoOrderLabReady(order))throw new Error('Laboratorio todavía tiene productos pendientes de preparación.');
+  if(!medranoOrderHasPhysicalStock(order))throw new Error('El aceite a pedido todavía no fue producido. Laboratorio debe elaborarlo antes de la entrega.');
+  if(!medranoOrderLabReady(order)&&!confirm('Laboratorio todavía no marcó todos los productos como listos. ¿Querés dispensar igualmente usando el stock reservado?'))return;
   if(order.multiple&&order.pago_estado!=='pagada')throw new Error('Administración debe confirmar primero el cobro de la comanda.');
   const q=order.multiple?await db.rpc('cerrar_comanda_multiproducto',{p_id:order.id,p_medio:null}):await db.rpc('marcar_comanda_dispensada',{objetivo_id:order.id});
   if(q.error)throw q.error;
@@ -2093,12 +2130,13 @@ function medranoOrderActionsHtml(order,area='administracion'){
   const paid=order.multiple&&order.pago_estado==='pagada';
   const historical=order.multiple&&order.pago_estado==='historica';
   const labReady=medranoOrderLabReady(order);
+  const physicalStock=medranoOrderHasPhysicalStock(order);
   const canCharge=area==='administracion',canDispense=['administracion','dispensario'].includes(area);
   const payment=order.multiple?`<span class="payment-badge ${paid||historical?'paid':'pending'}">${historical?'Histórica':paid?'Pagada':'Pago pendiente'}</span>${canCharge&&!paid&&!historical&&!dispensed?`<button type="button" class="secondary compact-button" data-pay-medrano-order="${safeId}">Cobrar</button>`:''}`:'';
   const paymentPending=order.multiple&&!paid&&!historical;
-  const disabledReason=!labReady?'Esperando productos de Laboratorio':paymentPending?'Administración debe confirmar el cobro':!canDispense?'La dispensa se confirma desde Administración o Dispensario':'';
+  const disabledReason=!physicalStock?'Aceite a pedido pendiente de producción':paymentPending?'Administración debe confirmar el cobro':!canDispense?'La dispensa se confirma desde Administración o Dispensario':'';
   const dispenseDisabled=dispensed||Boolean(disabledReason);
-  return `<div class="medrano-order-actions">${payment}${!labReady&&!dispensed?'<span class="preparation-badge preparation-pendiente">Esperando Laboratorio</span>':''}${paymentPending&&area==='dispensario'?'<span class="preparation-badge preparation-pendiente">Esperando cobro de Administración</span>':''}<label class="medrano-order-dispensed"><input type="checkbox" data-dispense-medrano-order="${safeId}" ${dispensed?'checked ':''}${dispenseDisabled?`disabled${disabledReason?` title="${escapeHtml(disabledReason)}"`:''}`:''}><span>Dispensada</span></label>${medranoOrderOptionsHtml(order)}</div>`;
+  return `<div class="medrano-order-actions">${payment}${!physicalStock&&!dispensed?'<span class="preparation-badge preparation-pendiente">Pendiente de producción</span>':!labReady&&!dispensed?'<span class="preparation-badge preparation-pendiente">Laboratorio sin confirmar · entrega habilitada</span>':''}${paymentPending&&area==='dispensario'?'<span class="preparation-badge preparation-pendiente">Esperando cobro de Administración</span>':''}<label class="medrano-order-dispensed"><input type="checkbox" data-dispense-medrano-order="${safeId}" ${dispensed?'checked ':''}${dispenseDisabled?`disabled${disabledReason?` title="${escapeHtml(disabledReason)}"`:''}`:''}><span>Dispensada</span></label>${medranoOrderOptionsHtml(order)}</div>`;
 }
 
 function findEditableMedranoOrder(orderId){
@@ -2747,12 +2785,16 @@ function addLabProductionMaterial(category){
   row.querySelector('.lab-material-quantity').oninput=()=>{if(['aceite_base','crema','capsulas'].includes($('lab-production-type').value))labProductionOutputOptions()};
   if(['aceite_base','crema','capsulas'].includes($('lab-production-type').value))labProductionOutputOptions();
 }
-function openLabProduction(job=null){
+function openLabProduction(job=null,orderItem=null){
   if(!canManageMedrano()||!state.medranoProductionReady)return;
+  state.pendingLabOrderItem=orderItem||null;
   state.editMedranoLabJob=job;
-  $('lab-production-title').textContent=job?'Editar producción':'Nueva producción';
-  $('lab-production-type').value=job?.tipo||'resina';
-  const metadata=job?.resultado_metadata||{};
+  $('lab-production-title').textContent=orderItem?'Preparar aceite de comanda':job?'Editar producción':'Nueva producción';
+  $('lab-production-type').value=orderItem?'aceite_final':job?.tipo||'resina';
+  const recipe=medranoCustomOilRecipe(orderItem);
+  const pure=recipe?(state.medranoLabItems||[]).find(item=>item.activo&&item.categoria==='insumos'&&item.tipo_insumo!=='envase'&&item.unidad==='ml'&&item.nombre.localeCompare(recipe.base,'es-AR',{sensitivity:'base'})===0):null;
+  const container=recipe?(state.medranoLabItems||[]).find(item=>item.activo&&item.categoria==='insumos'&&item.tipo_insumo==='envase'&&item.unidad_capacidad==='ml'&&Number(item.capacidad_envase)===recipe.presentacion_ml):null;
+  const metadata=orderItem?{perfil:recipe?.perfil||'',proporcion:recipe?.proporcion||'',concentracion:recipe?.concentracion||'',unidades_previstas:recipe?.unidades||'',base:recipe?.base||'',presentacion_ml:recipe?.presentacion_ml||'',aceite_puro_id:pure?.id||'',envase_id:container?.id||''}:job?.resultado_metadata||{};
   $('lab-production-final-oil-fields').hidden=$('lab-production-type').value!=='aceite_final';
   setupLabFinalOilFields(metadata);
   labProductionMaterialDefaults(job);
@@ -2760,8 +2802,10 @@ function openLabProduction(job=null){
   $('lab-production-unit').value=job?.resultado_unidad||({resina:'g',aceite_base:'ml',aceite_final:'unidades',crema:'unidades',capsulas:'unidades'}[$('lab-production-type').value]);
   $('lab-production-resin-profile').value=metadata.perfil||'';
   $('lab-production-resin-ratio').value=metadata.proporcion||'';
-  $('lab-production-detail').value=job?.detalle||'';
+  $('lab-production-detail').value=orderItem?`Aceite a pedido · Comanda ${orderItem.comanda_id}`:job?.detalle||'';
   labProductionOutputOptions(job?.resultado_stock_id||'',job?.producto||'');
+  if(orderItem)$('lab-production-type').disabled=true;
+  else $('lab-production-type').disabled=false;
   $('lab-production-dialog').showModal();
 }
 async function saveLabProduction(){
@@ -2781,7 +2825,11 @@ async function saveLabProduction(){
   const payload=materials.map(({id,cantidad})=>({id,cantidad}));
   const q=type==='aceite_final'?await db.rpc('guardar_produccion_aceite_final',{p_id:state.editMedranoLabJob?.id||null,p_aceites:materials.filter(x=>x.category==='aceites').map(x=>x.id),p_aceite_puro_id:finalOilDraft.pure.id,p_envase_id:finalOilDraft.container.id,p_perfil:finalOilDraft.profile,p_proporcion:finalOilDraft.ratio,p_concentracion:finalOilDraft.concentration,p_unidades:finalOilDraft.count,p_detalle:$('lab-production-detail').value.trim()}):type==='crema'?await db.rpc('guardar_produccion_crema',{p_id:state.editMedranoLabJob?.id||null,p_insumos:payload,p_detalle:$('lab-production-detail').value.trim()}):await db.rpc('guardar_produccion_laboratorio',{p_id:state.editMedranoLabJob?.id||null,p_tipo:type,p_insumos:payload,p_producto:name,p_producto_id:['resina','aceite_base','capsulas'].includes(type)?null:output||null,p_unidad:unit,p_detalle:$('lab-production-detail').value.trim(),p_metadata:metadata});
   if(q.error)throw q.error;
-  closeDialog('lab-production-dialog');state.editMedranoLabJob=null;await refreshMedranoModules('laboratory');
+  if(state.pendingLabOrderItem){
+    const link=await db.rpc('vincular_produccion_aceite_comanda',{p_item:state.pendingLabOrderItem.id,p_trabajo:q.data});
+    if(link.error)throw link.error;
+  }
+  closeDialog('lab-production-dialog');state.editMedranoLabJob=null;state.pendingLabOrderItem=null;await refreshMedranoModules('laboratory','orders');
 }
 function openLabProductionFinish(job){
   state.finishMedranoLabJob=job;
@@ -2795,7 +2843,7 @@ async function finishLabProduction(){
   if(!job||!raw||!Number.isFinite(value)||value<=0||job.resultado_unidad==='unidades'&&!Number.isInteger(value))throw new Error('Ingresá el rendimiento real.');
   const q=await db.rpc('finalizar_produccion_laboratorio',{p_id:job.id,p_retorno:value});
   if(q.error)throw q.error;
-  closeDialog('lab-production-finish-dialog');state.finishMedranoLabJob=null;await refreshMedranoModules('laboratory','inventory','catalog');
+  closeDialog('lab-production-finish-dialog');state.finishMedranoLabJob=null;await refreshMedranoModules('laboratory','inventory','catalog','orders');
 }
 function medranoJobDay(value){return value?new Date(value).toLocaleDateString('en-CA',{timeZone:'America/Argentina/Buenos_Aires'}):''}
 function openMedranoLabJobDialog(type='aceite_base',job=null){
@@ -2880,6 +2928,7 @@ function bindMedranoLabJobActions(){
   app.querySelectorAll('[data-lab-job-finish]').forEach(button=>button.onclick=()=>{const job=state.medranoLabJobs.find(j=>j.id===button.dataset.labJobFinish);if(job)openLabProductionFinish(job)});
   app.querySelectorAll('[data-lab-job-state]').forEach(button=>button.onclick=async()=>{const job=state.medranoLabJobs.find(j=>j.id===button.dataset.labJobState);if(!job)return;button.disabled=true;try{await changeMedranoLabJobStatus(job,button.dataset.jobStatus)}catch(e){console.error(e);alert(e.message||'No se pudo actualizar el trabajo.')}finally{button.disabled=false}});
   app.querySelectorAll('[data-lab-preparation-item]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await changeMedranoPreparationState(button.dataset.labPreparationItem,button.dataset.labPreparationStatus)}catch(e){console.error(e);alert(e.message||'No se pudo actualizar la preparación.')}finally{button.disabled=false}});
+  app.querySelectorAll('[data-prepare-custom-oil]').forEach(button=>button.onclick=()=>{const item=(state.medranoMultiItems||[]).find(row=>String(row.id)===String(button.dataset.prepareCustomOil));if(item)openLabProduction(null,item)});
 }
 function renderMedranoLaboratory(medranoNav,bindModuleNav,history=false){
   $('screen-title').textContent=history?'Historial de Laboratorio':'Laboratorio';
@@ -2969,7 +3018,7 @@ function renderMedranoToday(medranoNav,bindModuleNav){
   const pendingOrders=(state.medranoMultiOrders||[]).filter(order=>order.estado==='pendiente'&&!order.eliminada_at);
   const orderViews=pendingOrders.map(medranoMultiOrderView);
   const unpaid=orderViews.filter(order=>order.pago_estado!=='pagada');
-  const deliverable=orderViews.filter(order=>order.pago_estado==='pagada'&&medranoOrderLabReady(order));
+  const deliverable=orderViews.filter(order=>order.pago_estado==='pagada'&&medranoOrderHasPhysicalStock(order));
   const labItems=orderViews.flatMap(order=>order.items||[]).filter(item=>medranoLabOrderTypes.has(item.tipo));
   const preparing=labItems.filter(item=>medranoPreparationState(item)==='en_proceso');
   const activeJobs=(state.medranoLabJobs||[]).filter(job=>['pendiente','en_proceso'].includes(job.estado));
@@ -3121,7 +3170,7 @@ function bindMedranoDialogActions(){
   $('lab-final-oil-profile').onchange=()=>syncLabFinalOilSourceRows();
   for(const id of ['lab-final-oil-ratio','lab-final-oil-concentration','lab-final-oil-count'])$(id).oninput=refreshLabFinalOilDraft;
   for(const id of ['lab-final-oil-pure','lab-final-oil-container'])$(id).onchange=refreshLabFinalOilDraft;
-  $('lab-production-cancel').onclick=()=>{state.editMedranoLabJob=null;closeDialog('lab-production-dialog')};
+  $('lab-production-cancel').onclick=()=>{state.editMedranoLabJob=null;state.pendingLabOrderItem=null;$('lab-production-type').disabled=false;closeDialog('lab-production-dialog')};
   $('lab-production-save').onclick=async()=>{const b=$('lab-production-save');b.disabled=true;try{await saveLabProduction()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la producción.')}finally{b.disabled=false}};
   $('lab-production-finish-cancel').onclick=()=>{state.finishMedranoLabJob=null;closeDialog('lab-production-finish-dialog')};
   $('lab-production-finish-confirm').onclick=async()=>{const b=$('lab-production-finish-confirm');b.disabled=true;try{await finishLabProduction()}catch(e){console.error(e);alert(e.message||'No se pudo finalizar la producción.')}finally{b.disabled=false}};
