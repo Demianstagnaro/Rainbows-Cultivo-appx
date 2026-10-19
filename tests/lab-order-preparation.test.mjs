@@ -38,12 +38,12 @@ test('todos los productos trazables muestran genética y lote',()=>{
   assert.match(sqlTrace,/where i\.tipo in \('resina','aceites','cremas','capsulas'\)/i);
 });
 
-test('la comanda no se dispensa hasta que Laboratorio termina',()=>{
-  assert.match(sql,/tipo in \('resina','aceites','cremas','capsulas'\)[\s\S]*?preparacion_estado is distinct from 'listo'/i);
-  assert.match(sql,/Laboratorio todavía tiene productos pendientes de preparación/);
+test('la confirmación de Laboratorio informa sin bloquear una entrega con stock físico',()=>{
   assert.match(app,/function medranoOrderLabReady/);
-  assert.match(app,/Esperando Laboratorio/);
-  assert.match(app,/disabledReason=!labReady\?'Esperando productos de Laboratorio'/i);
+  assert.match(app,/Laboratorio sin confirmar · entrega habilitada/);
+  assert.match(app,/Laboratorio todavía no marcó todos los productos como listos/);
+  assert.match(app,/function medranoOrderHasPhysicalStock/);
+  assert.doesNotMatch(app,/disabledReason=!labReady\?'Esperando productos de Laboratorio'/i);
   assert.match(app,/data-dispense-medrano-order[\s\S]*?dispenseDisabled/i);
 });
 

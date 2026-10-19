@@ -16,7 +16,7 @@ test('las operaciones recargan solamente sus dependencias',()=>{
   assert.match(app,/guardar_comanda_multiproducto[\s\S]*?refreshMedranoModules\('orders'\)/);
   assert.match(app,/pagar_comanda_multiproducto[\s\S]*?refreshMedranoModules\('orders','cash','patients'\)/);
   assert.match(app,/cerrar_comanda_multiproducto[\s\S]*?refreshMedranoModules\('orders','inventory','cash','patients'\)/);
-  assert.match(app,/finalizar_produccion_laboratorio[\s\S]*?refreshMedranoModules\('laboratory','inventory','catalog'\)/);
+  assert.match(app,/finalizar_produccion_laboratorio[\s\S]*?refreshMedranoModules\('laboratory','inventory','catalog','orders'\)/);
   assert.match(app,/cambiar_preparacion_item_comanda[\s\S]*?refreshMedranoModules\('orders'\)/);
 });
 
