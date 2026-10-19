@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.38';
+const APP_VERSION='3.26.39';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1936,14 +1936,51 @@ function parseMedranoOilRecipeName(name){
   if(!ratio||!concentration||!presentation||!profile||baseIndex<1)return null;
   return {base:parts[baseIndex],perfil:profile.toUpperCase(),proporcion:ratio.replace(/^ratio\s+/i,'').replaceAll('-',':'),concentracion:Number(concentration.split(':')[1].replace(',','.')),presentacion_ml:Number(presentation.replace(/\s*ml$/i,'').replace(',','.'))};
 }
-function medranoCustomOilCatalog(){
+function medranoOilPriceDimensions(name){
+  const concentration=String(name||'').match(/(?:^|·|\s)1\s*:\s*([0-9]+(?:[.,][0-9]+)?)(?:\s|·|$)/i);
+  const presentation=String(name||'').match(/(?:^|·|\s)([0-9]+(?:[.,][0-9]+)?)\s*ml(?:\s|·|$)/i);
+  return concentration&&presentation?{concentracion:Number(concentration[1].replace(',','.')),presentacion_ml:Number(presentation[1].replace(',','.'))}:null;
+}
+function medranoOilPriceRules(){
   return (state.medranoProductCatalog||[]).filter(product=>product.activo!==false&&product.categoria==='aceites'&&product.unidad==='unidades'&&Number(product.tokens_por_unidad)>0).map(product=>{
-    const recipe=parseMedranoOilRecipeName(product.nombre);
-    return recipe?{id:`catalog:${product.id}`,catalogId:product.id,name:`${product.nombre} · Preparar a pedido`,qty:null,unit:'unidades',tokens:Number(product.tokens_por_unidad),custom:true,recipe}:null;
+    const dimensions=medranoOilPriceDimensions(product.nombre);
+    return dimensions?{...dimensions,catalogId:product.id,tokens:Number(product.tokens_por_unidad),name:product.nombre}:null;
   }).filter(Boolean);
 }
+function medranoCustomOilCatalog(){
+  return medranoOilPriceRules().length?[{id:'custom:oil',name:'Aceite · Preparar a pedido',qty:null,unit:'unidades',tokens:0,custom:true}]:[];
+}
+function medranoCustomOilRecipeFromRow(row){
+  const custom=row?.querySelector('[data-custom-oil-fields]');if(!custom||custom.hidden)return null;
+  return {perfil:row.querySelector('[data-custom-oil-profile]').value,proporcion:row.querySelector('[data-custom-oil-ratio]').value.trim().replaceAll('-',':'),concentracion:Number(row.querySelector('[data-custom-oil-concentration]').value),presentacion_ml:Number(row.querySelector('[data-custom-oil-presentation]').value),base:row.querySelector('[data-custom-oil-base]').value};
+}
+function medranoCustomOilPrice(recipe){
+  if(!recipe)return null;
+  const matches=medranoOilPriceRules().filter(rule=>rule.concentracion===recipe.concentracion&&rule.presentacion_ml===recipe.presentacion_ml);
+  const prices=[...new Set(matches.map(rule=>rule.tokens))];
+  return matches.length&&prices.length===1?matches[0]:null;
+}
+function medranoCustomOilRecipeValid(recipe){
+  if(!recipe||!fullSpectrumProfiles.filter(profile=>profile!=='Otro').includes(recipe.perfil)||!recipe.base||recipe.concentracion<=1||recipe.presentacion_ml<=0)return false;
+  const parts=recipe.perfil.split('-').length,ratios=recipe.proporcion.split(':').map(Number);
+  return ratios.length===parts&&ratios.every(value=>Number.isFinite(value)&&value>0);
+}
+function syncMedranoCustomOilFields(row,resetRatio=false){
+  const custom=row.querySelector('[data-custom-oil-fields]'),selected=row.querySelector('[data-order-product]').value==='custom:oil';
+  custom.hidden=!selected;if(!selected)return;
+  const profile=row.querySelector('[data-custom-oil-profile]').value,ratio=row.querySelector('[data-custom-oil-ratio]');
+  if(resetRatio||!ratio.value)ratio.value=profile?profile.split('-').map(()=>1).join(':'):'';
+  const concentration=row.querySelector('[data-custom-oil-concentration]'),presentation=row.querySelector('[data-custom-oil-presentation]');
+  const rules=medranoOilPriceRules(),concentrations=[...new Set([5,10,20,30,...rules.map(rule=>rule.concentracion)])].sort((a,b)=>a-b);
+  const selectedConcentration=Number(concentration.value)||concentrations[0]||0;
+  concentration.innerHTML='<option value="">Seleccionar</option>'+concentrations.map(value=>`<option value="${value}">1:${value}</option>`).join('');
+  concentration.value=String(selectedConcentration);
+  const presentations=[...new Set([10,20,30,...rules.filter(rule=>rule.concentracion===Number(concentration.value)).map(rule=>rule.presentacion_ml)])].sort((a,b)=>a-b),selectedPresentation=Number(presentation.value)||presentations[0]||0;
+  presentation.innerHTML='<option value="">Seleccionar</option>'+presentations.map(value=>`<option value="${value}">${value} ml</option>`).join('');
+  presentation.value=presentations.includes(selectedPresentation)?String(selectedPresentation):String(presentations[0]||'');
+}
 function medranoCatalog(tipo,editing=null){
-  const include=id=>editing?.items.some(i=>i.tipo===tipo&&(i.origen_id===id||`catalog:${i.catalogo_producto_id}`===id));
+  const include=id=>editing?.items.some(i=>i.tipo===tipo&&i.origen_id===id);
   if(tipo==='flores')return state.medranoDispensarioLots.map(x=>{const genetic=state.geneticas.find(g=>String(g.id)===String(x.genetica_id));return{id:x.id,name:`${genetic?.nombre||medranoLotGeneticName(x)} · ${x.codigo_lote} · ${stockLotSizes[x.tamano]||'Sin tamaño'}`,qty:Number(x.gramos_actual),unit:'g',tokens:medranoFlowerTokenPrice(x.tamano)}});
   if(tipo==='mostrador')return state.medranoCounterItems.filter(x=>x.activo!==false||include(x.id)).map(x=>({id:x.id,name:x.nombre,qty:Number(x.cantidad),unit:'unidades',tokens:Number(x.tokens_por_unidad)||0}));
   const stocked=state.medranoLabItems.filter(x=>x.categoria===tipo&&(!x.es_aceite_base||include(x.id))&&(x.activo||include(x.id))).map(x=>{const genetic=medranoLabGeneticName(x),trace=[genetic!=='—'?genetic:'',x.lote?`Lote ${x.lote}`:''].filter(Boolean).join(' · ');return{id:x.id,name:`${x.nombre}${trace?` · ${trace}`:''}`,qty:Number(x.cantidad),unit:x.unidad,tokens:tipo==='resina'?medranoCategoryTokenPrice('resina'):Number(x.tokens_por_unidad)||0}});
@@ -1954,18 +1991,19 @@ function updateMedranoMultiProduct(row){
   const selected=product.value;
   const products=medranoCatalog(tipo,state.editMedranoMultiOrder);
   if(tipo==='flores')products.sort((a,b)=>medranoAlphabeticalCompare(a.name,b.name));
-  product.innerHTML='<option value="">Seleccionar producto</option>'+products.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)} · ${p.tokens>0?`${formatTokens(p.tokens)}/${escapeHtml(p.unit)}`:'sin valor'}${p.custom?'':` · disponible ${Number(p.qty-medranoTotalReserved(tipo,p.id,state.editMedranoMultiOrder?.id)).toLocaleString('es-AR')} ${escapeHtml(p.unit)}`}</option>`).join('');
+  product.innerHTML='<option value="">Seleccionar producto</option>'+products.map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(p.name)}${p.custom?'':` · ${p.tokens>0?`${formatTokens(p.tokens)}/${escapeHtml(p.unit)}`:'sin valor'} · disponible ${Number(p.qty-medranoTotalReserved(tipo,p.id,state.editMedranoMultiOrder?.id)).toLocaleString('es-AR')} ${escapeHtml(p.unit)}`}</option>`).join('');
   if([...product.options].some(option=>option.value===selected))product.value=selected;
+  syncMedranoCustomOilFields(row);
   updateMedranoMultiUnit(row);
 }
 function updateMedranoMultiUnit(row){
   const tipo=row.querySelector('[data-order-type]').value;
   const product=medranoCatalog(tipo,state.editMedranoMultiOrder).find(p=>p.id===row.querySelector('[data-order-product]').value);
-  const input=row.querySelector('[data-order-quantity]'),quantity=Number(input.value)||0;
+  const input=row.querySelector('[data-order-quantity]'),quantity=Number(input.value)||0,recipe=product?.custom?medranoCustomOilRecipeFromRow(row):null,customPrice=product?.custom?medranoCustomOilPrice(recipe):null;
   const balance=product?.custom?null:medranoOrderAvailability(tipo,product,state.editMedranoMultiOrder?.id);
   const shortage=balance&&quantity>balance.available;
   const missing=shortage?quantity-balance.available:0;
-  const status=product?`${product.unit} · ${formatTokens(product.tokens*quantity)}${product.custom?' · Se prepara a pedido':` · Disponible ${balance.available.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}${shortage?` · Faltan ${missing.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}`:''}`}`:'';
+  const status=product?product.custom?(customPrice?`unidades · ${formatTokens(customPrice.tokens*quantity)} · Se prepara a pedido`:'Elegí una concentración y presentación con precio configurado'):`${product.unit} · ${formatTokens(product.tokens*quantity)} · Disponible ${balance.available.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}${shortage?` · Faltan ${missing.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}`:''}`:'';
   const unit=row.querySelector('[data-order-unit]');unit.textContent=status;unit.classList.toggle('order-stock-warning',Boolean(shortage));
   configureWholeUnitInput(input,product?.unit||'',false);
   input.classList.toggle('input-error',Boolean(shortage));
@@ -1974,19 +2012,23 @@ function updateMedranoMultiUnit(row){
   updateMedranoMultiTotal();
 }
 function updateMedranoMultiTotal(){
-  const total=[...$('medrano-multi-lines').querySelectorAll('.medrano-multi-line')].reduce((sum,row)=>{const p=medranoCatalog(row.querySelector('[data-order-type]').value,state.editMedranoMultiOrder).find(x=>x.id===row.querySelector('[data-order-product]').value);return sum+(Number(row.querySelector('[data-order-quantity]').value)||0)*(p?.tokens||0)},0);
+  const total=[...$('medrano-multi-lines').querySelectorAll('.medrano-multi-line')].reduce((sum,row)=>{const p=medranoCatalog(row.querySelector('[data-order-type]').value,state.editMedranoMultiOrder).find(x=>x.id===row.querySelector('[data-order-product]').value),tokens=p?.custom?medranoCustomOilPrice(medranoCustomOilRecipeFromRow(row))?.tokens||0:p?.tokens||0;return sum+(Number(row.querySelector('[data-order-quantity]').value)||0)*tokens},0);
   $('medrano-multi-token-total').textContent=`Total: ${formatTokens(total)} · ${formatMoney(total*1000)}`;
 }
 function addMedranoMultiLine(item=null){
   const container=$('medrano-multi-lines'),row=document.createElement('div');row.className='medrano-multi-line';
-  row.innerHTML=`<label class="field-label">Tipo<select class="text-input" data-order-type>${Object.entries(medranoOrderCategories).map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select></label><label class="field-label">Producto o genética<select class="text-input" data-order-product></select></label><label class="field-label">Cantidad<input class="text-input" data-order-quantity type="number" min="0.01" step="0.01" inputmode="decimal"></label><span data-order-unit class="muted"></span><button class="secondary compact-button" data-remove-order-line type="button" aria-label="Quitar producto">Quitar</button>`;
+  const oilBases=[...new Set((state.medranoLabItems||[]).filter(stock=>stock.activo&&stock.categoria==='insumos'&&stock.tipo_insumo!=='envase'&&stock.unidad==='ml').map(stock=>stock.nombre))].sort(medranoAlphabeticalCompare);
+  row.innerHTML=`<label class="field-label">Tipo<select class="text-input" data-order-type>${Object.entries(medranoOrderCategories).map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select></label><label class="field-label">Producto o genética<select class="text-input" data-order-product></select></label><div class="custom-oil-order-fields" data-custom-oil-fields hidden><label class="field-label">Perfil de cannabinoides<select class="text-input" data-custom-oil-profile><option value="">Seleccionar</option>${fullSpectrumProfiles.filter(profile=>profile!=='Otro').map(profile=>`<option value="${profile}">${profile}</option>`).join('')}</select></label><label class="field-label">Ratio<input class="text-input" data-custom-oil-ratio maxlength="60" placeholder="Ej.: 1:1 o 1:2:1"></label><label class="field-label">Concentración<select class="text-input" data-custom-oil-concentration></select></label><label class="field-label">Presentación<select class="text-input" data-custom-oil-presentation></select></label><label class="field-label">Aceite portador<select class="text-input" data-custom-oil-base><option value="">Seleccionar</option>${oilBases.map(name=>`<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')}</select></label></div><label class="field-label">Cantidad<input class="text-input" data-order-quantity type="number" min="0.01" step="0.01" inputmode="decimal"></label><span data-order-unit class="muted"></span><button class="secondary compact-button" data-remove-order-line type="button" aria-label="Quitar producto">Quitar</button>`;
   container.append(row);row.querySelector('[data-order-type]').value=item?.tipo||'flores';
   row.querySelector('[data-order-type]').onchange=()=>{row.querySelector('[data-order-product]').value='';updateMedranoMultiProduct(row)};
-  row.querySelector('[data-order-product]').onchange=()=>updateMedranoMultiUnit(row);
+  row.querySelector('[data-order-product]').onchange=()=>{syncMedranoCustomOilFields(row);updateMedranoMultiUnit(row)};
+  row.querySelector('[data-custom-oil-profile]').onchange=()=>{syncMedranoCustomOilFields(row,true);updateMedranoMultiUnit(row)};
+  row.querySelector('[data-custom-oil-concentration]').onchange=()=>{syncMedranoCustomOilFields(row);updateMedranoMultiUnit(row)};
+  for(const field of ['[data-custom-oil-ratio]','[data-custom-oil-presentation]','[data-custom-oil-base]'])row.querySelector(field).addEventListener(field.includes('ratio')?'input':'change',()=>updateMedranoMultiUnit(row));
   row.querySelector('[data-order-quantity]').oninput=()=>updateMedranoMultiUnit(row);
   row.querySelector('[data-remove-order-line]').onclick=()=>{row.remove();updateMedranoMultiTotal()};
   updateMedranoMultiProduct(row);
-  if(item){row.querySelector('[data-order-product]').value=item.pedido_laboratorio?`catalog:${item.catalogo_producto_id}`:item.origen_id;row.querySelector('[data-order-quantity]').value=item.cantidad;updateMedranoMultiUnit(row)}
+  if(item){row.querySelector('[data-order-product]').value=item.pedido_laboratorio?'custom:oil':item.origen_id;row.querySelector('[data-order-quantity]').value=item.cantidad;if(item.pedido_laboratorio){const recipe=medranoCustomOilRecipe(item);row.querySelector('[data-custom-oil-profile]').value=recipe.perfil;syncMedranoCustomOilFields(row);row.querySelector('[data-custom-oil-ratio]').value=recipe.proporcion;row.querySelector('[data-custom-oil-concentration]').value=String(recipe.concentracion);syncMedranoCustomOilFields(row);row.querySelector('[data-custom-oil-presentation]').value=String(recipe.presentacion_ml);row.querySelector('[data-custom-oil-base]').value=recipe.base}updateMedranoMultiUnit(row)}
 }
 function openMedranoMultiDialog(order=null){
   if(!canManageMedrano()||!state.medranoMultiReady)return;
@@ -2007,14 +2049,16 @@ async function saveMedranoMultiOrder(){
   if(!patient)throw new Error('Seleccioná un paciente.');
   const rows=[...$('medrano-multi-lines').querySelectorAll('.medrano-multi-line')];
   if(!rows.length)throw new Error('Agregá al menos un producto.');
-  const items=rows.map(row=>{const tipo=row.querySelector('[data-order-type]').value,selected=row.querySelector('[data-order-product]').value,product=medranoCatalog(tipo,state.editMedranoMultiOrder).find(p=>p.id===selected);return {tipo,origen_id:product?.custom?null:selected,catalogo_producto_id:product?.custom?product.catalogId:null,pedido_laboratorio:Boolean(product?.custom),receta:product?.custom?product.recipe:null,cantidad:Number(row.querySelector('[data-order-quantity]').value)} });
+  const items=rows.map(row=>{const tipo=row.querySelector('[data-order-type]').value,selected=row.querySelector('[data-order-product]').value,product=medranoCatalog(tipo,state.editMedranoMultiOrder).find(p=>p.id===selected),recipe=product?.custom?medranoCustomOilRecipeFromRow(row):null,price=product?.custom?medranoCustomOilPrice(recipe):null;return {tipo,origen_id:product?.custom?null:selected,catalogo_producto_id:price?.catalogId||null,pedido_laboratorio:Boolean(product?.custom),receta:recipe,cantidad:Number(row.querySelector('[data-order-quantity]').value)} });
   if(items.some(i=>(!i.origen_id&&!i.pedido_laboratorio)||!Number.isFinite(i.cantidad)||i.cantidad<=0))throw new Error('Seleccioná todos los productos y sus cantidades.');
-  const keys=items.map(i=>`${i.tipo}:${i.origen_id||`catalog:${i.catalogo_producto_id}`}`);
+  const keys=items.map(i=>`${i.tipo}:${i.origen_id||JSON.stringify(i.receta)}`);
   if(new Set(keys).size!==keys.length)throw new Error('El mismo producto está repetido: sumá las cantidades en una sola línea.');
   for(const item of items){
-    const product=medranoCatalog(item.tipo,state.editMedranoMultiOrder).find(p=>p.id===(item.pedido_laboratorio?`catalog:${item.catalogo_producto_id}`:item.origen_id));
-    if(!product?.tokens)throw new Error(`Configurá el valor en Tokens de “${product?.name||'este producto'}” desde Lista de precios.`);
-    if(product.unit==='unidades'&&!Number.isInteger(item.cantidad))throw new Error('Las unidades deben ser enteras.');
+    const product=medranoCatalog(item.tipo,state.editMedranoMultiOrder).find(p=>p.id===(item.pedido_laboratorio?'custom:oil':item.origen_id)),customPrice=item.pedido_laboratorio?medranoCustomOilPrice(item.receta):null;
+    if(item.pedido_laboratorio&&!medranoCustomOilRecipeValid(item.receta))throw new Error('Completá perfil, ratio, concentración, presentación y aceite portador del aceite a pedido.');
+    if(item.pedido_laboratorio&&!customPrice)throw new Error(`No hay un precio único configurado para aceite 1:${item.receta.concentracion} de ${item.receta.presentacion_ml} ml.`);
+    if(!item.pedido_laboratorio&&!product?.tokens)throw new Error(`Configurá el valor en Tokens de “${product?.name||'este producto'}” desde Lista de precios.`);
+    if((item.pedido_laboratorio||product.unit==='unidades')&&!Number.isInteger(item.cantidad))throw new Error('Las unidades deben ser enteras.');
     const balance=product.custom?null:medranoOrderAvailability(item.tipo,product,state.editMedranoMultiOrder?.id);
     if(balance&&item.cantidad>balance.available)throw new Error(`Stock insuficiente de “${product.name}”. Disponible: ${balance.available.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}. Solicitado: ${item.cantidad.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}.`);
   }

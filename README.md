@@ -9,15 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.38. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.39. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
 
-## V3.26.38 — Aceites a pedido y entrega operativa
+## V3.26.39 — Configurador de aceites a pedido
 
-- Administración puede agregar a una comanda un aceite valorizado aunque no haya unidades terminadas en stock.
+- Administración puede elegir perfil de cannabinoides, ratio, concentración, presentación, aceite portador y cantidad de goteros.
+- Los Tokens se toman de la Lista de precios según concentración y presentación, sin duplicar precios por perfil o ratio.
 - Laboratorio recibe la receta, abre la producción desde la comanda y el lote resultante queda vinculado automáticamente.
 - Un aceite a pedido no puede dispensarse hasta que exista físicamente el resultado de su producción.
 - La confirmación manual de Laboratorio continúa visible como control, pero ya no bloquea a Administración o Dispensario cuando el producto ya existe en stock.
-- Requiere ejecutar `Rainbows_V3.26.38_aceites_a_pedido.sql` en Supabase antes de subir la aplicación.
+- Requiere ejecutar `Rainbows_V3.26.39_configurador_aceites_a_pedido.sql` en Supabase antes de subir la aplicación.
 
 ## V3.26.37 — Historial dentro de Pacientes
 
