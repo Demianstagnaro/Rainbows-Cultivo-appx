@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.36';
+const APP_VERSION='3.26.37';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1721,7 +1721,7 @@ function renderMedranoPatients(medranoNav,bindModuleNav){
   $('screen-title').textContent='Pacientes';
   const rows=state.medranoPatients||[];
   app.innerHTML=`${medranoNav}
-  <section class="panel stock-page-head"><div><button id="medrano-patients-back" class="secondary compact-button" type="button">← Administración</button><h2>Pacientes</h2><p class="muted">Registro general de pacientes de Medrano.</p></div>${canManageMedrano()?'<button id="medrano-add-patient" class="primary compact-button" type="button">+ Nuevo paciente</button>':''}</section>
+  <section class="panel stock-page-head"><div><button id="medrano-patients-back" class="secondary compact-button" type="button">← Administración</button><h2>Pacientes</h2><p class="muted">Registro general de pacientes de Medrano.</p></div><div class="patient-page-actions"><button id="medrano-open-patient-history" class="secondary compact-button" type="button">Historial de pacientes</button>${canManageMedrano()?'<button id="medrano-add-patient" class="primary compact-button" type="button">+ Nuevo paciente</button>':''}</div></section>
   <section class="panel stock-detail-panel medrano-patients-panel" data-stock-table-tools>
     <div class="stock-section-head"><div><h3>Registro de pacientes</h3><p class="muted">${rows.length} paciente${rows.length===1?'':'s'} registrado${rows.length===1?'':'s'}</p></div></div>
     ${stockTableToolbar('Buscar por socio, nombre, apellido, DNI, teléfono, domicilio, código, sexo, referido o fecha...')}
@@ -1732,6 +1732,7 @@ function renderMedranoPatients(medranoNav,bindModuleNav){
   </section>`;
   bindModuleNav(); bindStockTableTools(app);
   $('medrano-patients-back').onclick=()=>{state.medranoView='administracion';render()};
+  $('medrano-open-patient-history').onclick=()=>{state.medranoPatientHistoryId=null;openMedranoDataView('administracion-pacientes-historial')};
   const add=$('medrano-add-patient');if(add)add.onclick=()=>openMedranoPatientDialog();
   app.querySelectorAll('[data-edit-medrano-patient]').forEach(b=>b.onclick=()=>{const p=(state.medranoPatients||[]).find(x=>String(x.id)===String(b.dataset.editMedranoPatient));if(p)openMedranoPatientDialog(p)});
 }
@@ -3019,10 +3020,9 @@ function renderMedrano(){
   if(mv==='today'){renderMedranoToday(medranoNav,bindModuleNav);return}
   if(mv==='administracion'){
     $('screen-title').textContent='Administración';
-    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Administración</h2></div></div><div class="medrano-stock-grid"><button class="medrano-stock-card" id="medrano-open-orders" type="button"><strong>Comandas</strong><span>Registro diario de comandas</span></button><button class="medrano-stock-card" id="medrano-open-patients" type="button"><strong>Pacientes</strong><span>Registro de pacientes y saldos</span></button><button class="medrano-stock-card" id="medrano-open-patient-history" type="button"><strong>Historial de pacientes</strong><span>Todos los pedidos de cada paciente</span></button><button class="medrano-stock-card" id="medrano-open-caja" type="button"><strong>Caja</strong><span>Dinero y movimientos de Tokens</span></button><button class="medrano-stock-card" id="medrano-open-prices" type="button"><strong>Lista de precios</strong><span>Valores de flores y demás productos</span></button></div></section>`;
+    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Administración</h2></div></div><div class="medrano-stock-grid"><button class="medrano-stock-card" id="medrano-open-orders" type="button"><strong>Comandas</strong><span>Registro diario de comandas</span></button><button class="medrano-stock-card" id="medrano-open-patients" type="button"><strong>Pacientes</strong><span>Registro, saldos e historial</span></button><button class="medrano-stock-card" id="medrano-open-caja" type="button"><strong>Caja</strong><span>Dinero y movimientos de Tokens</span></button><button class="medrano-stock-card" id="medrano-open-prices" type="button"><strong>Lista de precios</strong><span>Valores de flores y demás productos</span></button></div></section>`;
     bindModuleNav();
     $('medrano-open-patients').onclick=()=>{state.medranoView='administracion-pacientes';render()};
-    $('medrano-open-patient-history').onclick=()=>{state.medranoPatientHistoryId=null;openMedranoDataView('administracion-pacientes-historial')};
     $('medrano-open-orders').onclick=()=>{state.medranoView='administracion-comandas';render()};
     $('medrano-open-caja').onclick=()=>{state.medranoView='administracion-caja';render()};
     $('medrano-open-prices').onclick=()=>{state.medranoView='administracion-precios';render()};

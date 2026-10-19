@@ -984,6 +984,7 @@ body{
 
 /* V3.26.36 — historial completo por paciente */
 .patient-history-picker{min-width:650px}
+.patient-page-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
 .patient-history-picker td:last-child{text-align:right}
 .patient-history-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 14px}
 .patient-history-summary article{display:grid;gap:5px;margin:0}
@@ -1007,4 +1008,4 @@ body{
 .patient-order-metadata dd{margin:0;overflow-wrap:anywhere;font-weight:700}
 .patient-history-legacy-product{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:10px}
 .patient-history-legacy-product span{color:var(--muted)}
-@media(max-width:700px){.patient-history-summary{grid-template-columns:1fr}.patient-order-card>summary{align-items:flex-start}.patient-order-metadata{grid-template-columns:1fr}.patient-order-status{max-width:55%;white-space:normal}}
+@media(max-width:700px){.patient-page-actions{display:grid;width:100%}.patient-page-actions button{width:100%}.patient-history-summary{grid-template-columns:1fr}.patient-order-card>summary{align-items:flex-start}.patient-order-metadata{grid-template-columns:1fr}.patient-order-status{max-width:55%;white-space:normal}}

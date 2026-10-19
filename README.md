@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.36. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.37. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.37 — Historial dentro de Pacientes
+
+- Mueve el acceso `Historial de pacientes` desde el menú general de Administración hacia la sección Pacientes.
+- El registro general y el historial continúan en pantallas separadas.
+- En celular, los botones de Historial y Nuevo paciente se acomodan verticalmente para facilitar su uso.
+- No requiere cambios en Supabase.
 
 ## V3.26.36 — Historial de pedidos por paciente
 
