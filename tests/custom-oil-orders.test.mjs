@@ -4,16 +4,25 @@ import test from 'node:test';
 
 const read=name=>fs.readFileSync(new URL(`../${name}`,import.meta.url),'utf8');
 const app=read('app.js');
-const sql=read('Rainbows_V3.26.38_aceites_a_pedido.sql');
+const sql=read('Rainbows_V3.26.39_configurador_aceites_a_pedido.sql');
 
 test('la comanda ofrece aceites valorizados para preparar a pedido',()=>{
   assert.match(app,/function parseMedranoOilRecipeName/);
   assert.match(app,/function medranoCustomOilCatalog/);
   assert.match(app,/Preparar a pedido/);
-  assert.match(app,/catalogo_producto_id:product\?\.custom\?product\.catalogId:null/);
+  assert.match(app,/data-custom-oil-profile/);
+  assert.match(app,/data-custom-oil-ratio/);
+  assert.match(app,/data-custom-oil-concentration/);
+  assert.match(app,/data-custom-oil-presentation/);
+  assert.match(app,/data-custom-oil-base/);
+  assert.match(app,/catalogo_producto_id:price\?\.catalogId\|\|null/);
+  assert.match(app,/\[5,10,20,30,/);
+  assert.match(app,/\[10,20,30,/);
   assert.match(sql,/add column if not exists pedido_laboratorio boolean/i);
   assert.match(sql,/add column if not exists receta jsonb/i);
   assert.match(sql,/from public\.medrano_catalogo_productos[\s\S]*categoria='aceites'/i);
+  assert.match(sql,/El ratio debe tener un valor por cada cannabinoide del perfil/);
+  assert.match(sql,/Aceite a pedido · /);
 });
 
 test('Laboratorio abre la receta y vincula la producción a la comanda',()=>{
