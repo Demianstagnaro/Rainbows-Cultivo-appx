@@ -6,12 +6,13 @@ import vm from 'node:vm';
 const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const styles=fs.readFileSync(new URL('../styles.css',import.meta.url),'utf8');
 
-test('Historial de pacientes es una pantalla separada del registro general',()=>{
-  assert.match(app,/id="medrano-open-patient-history"[^>]*><strong>Historial de pacientes<\/strong>/);
+test('Historial de pacientes se abre desde Pacientes en una pantalla separada',()=>{
+  const patientList=app.slice(app.indexOf('function renderMedranoPatients('),app.indexOf('const medranoOrderCategories='));
+  const administration=app.slice(app.indexOf("if(mv==='administracion'){"),app.indexOf("if(mv==='administracion-pacientes')"));
+  assert.match(patientList,/id="medrano-open-patient-history"[^>]*>Historial de pacientes<\/button>/);
   assert.match(app,/openMedranoDataView\('administracion-pacientes-historial'\)/);
   assert.match(app,/if\(mv==='administracion-pacientes-historial'\)\{renderMedranoPatientHistory/);
-  const patientList=app.slice(app.indexOf('function renderMedranoPatients('),app.indexOf('const medranoOrderCategories='));
-  assert.doesNotMatch(patientList,/Historial de pacientes|medrano-open-patient-history/);
+  assert.doesNotMatch(administration,/id="medrano-open-patient-history"|<strong>Historial de pacientes<\/strong>/);
 });
 
 test('la selección permite buscar por paciente, socio o DNI',()=>{
