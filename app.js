@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.35';
+const APP_VERSION='3.26.36';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -8,7 +8,7 @@ const rules=[
 {name:'Flora 3',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:false},
 {name:'Vege 1',type:'vege'},{name:'Vege 2',type:'vege'},{name:'Madres',type:'madres'},{name:'Esquejes',type:'esquejes'},{name:'Sala de trabajo',type:'trabajo'}];
 const $=id=>document.getElementById(id),app=$('app');
-const state={site:'palestina',medranoView:'today',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],medranoCounterItems:[],medranoPatients:[],medranoFlowerPrices:[],medranoCategoryPrices:[],medranoProductCatalog:[],editMedranoPatient:null,medranoOrders:[],medranoDispensedOrders:[],medranoDeletedOrders:[],editMedranoOrder:null,pendingDeleteMedranoOrder:null,medranoOrderHistoryYear:null,medranoOrderHistoryMonth:null,stockTransfers:[],stockTransferItems:[],pendingStockTransfer:null,medranoDispensarioSection:null,medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,dayChangeTimer:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
+const state={site:'palestina',medranoView:'today',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],medranoCounterItems:[],medranoPatients:[],medranoFlowerPrices:[],medranoCategoryPrices:[],medranoProductCatalog:[],editMedranoPatient:null,medranoPatientHistoryId:null,medranoOrders:[],medranoDispensedOrders:[],medranoDeletedOrders:[],editMedranoOrder:null,pendingDeleteMedranoOrder:null,medranoOrderHistoryYear:null,medranoOrderHistoryMonth:null,stockTransfers:[],stockTransferItems:[],pendingStockTransfer:null,medranoDispensarioSection:null,medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,dayChangeTimer:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
 state.site=localStorage.getItem('rainbows_site')==='medrano'?'medrano':'palestina';
 Object.assign(state,{medranoLabItems:[],medranoLabTransfers:[],medranoStockHistory:[],medranoStockHistoryComplete:false,medranoStockReady:false,medranoLoadIssues:[],editLabItem:null});
 Object.assign(state,{medranoDispensaryProducts:[],medranoLabDispMovements:[],medranoDispensaryTransfersReady:false});
@@ -300,7 +300,7 @@ async function load(){
   const medranoPage=state.site==='medrano'&&canAccessMedrano();
   const palestinaPage=!medranoPage;
   const dashboardPage=state.medranoView==='dashboard'&&admin;
-  const orderHistoryPage=dashboardPage||String(state.medranoView||'').startsWith('administracion-comandas-historial')||state.medranoView==='administracion-comandas-eliminadas'||state.medranoView==='dispensario-historial';
+  const orderHistoryPage=dashboardPage||state.medranoView==='administracion-pacientes-historial'||String(state.medranoView||'').startsWith('administracion-comandas-historial')||state.medranoView==='administracion-comandas-eliminadas'||state.medranoView==='dispensario-historial';
   const laboratoryHistoryPage=state.medranoView==='laboratorio-historial';
   const dispensaryHistoryPage=state.medranoView==='dispensario-historial';
   const cashPage=String(state.medranoView||'').startsWith('administracion-caja');
@@ -400,7 +400,7 @@ async function refreshMedranoModules(...requested){
     ...(scopes.has('transfers')?['stock_transferencias','stock_transferencia_items']:[])
   ]);
   const jobs=new Map(),add=(key,promise)=>jobs.set(key,promise);
-  const orderHistory=String(state.medranoView||'').startsWith('administracion-comandas-historial')||state.medranoView==='administracion-comandas-eliminadas'||state.medranoView==='dispensario-historial';
+  const orderHistory=state.medranoView==='administracion-pacientes-historial'||String(state.medranoView||'').startsWith('administracion-comandas-historial')||state.medranoView==='administracion-comandas-eliminadas'||state.medranoView==='dispensario-historial';
   const labHistory=state.medranoView==='laboratorio-historial';
   const dispensaryHistory=state.medranoView==='dispensario-historial';
   const cashView=String(state.medranoView||'').startsWith('administracion-caja');
@@ -1805,6 +1805,78 @@ function medranoOrderPaidAt(order){
 function medranoPatientName(patient){return `${patient?.nombre||''} ${patient?.apellido||''}`.trim()||'Paciente'}
 function medranoAlphabeticalCompare(left,right){return String(left||'').localeCompare(String(right||''),'es-AR',{sensitivity:'base',numeric:true})}
 function medranoSortedPatients(){return [...(state.medranoPatients||[])].sort((a,b)=>medranoAlphabeticalCompare(medranoPatientName(a),medranoPatientName(b)))}
+function medranoPatientOrderStatus(order){
+  if(order?.eliminada_at)return {key:'eliminada',label:'Eliminada'};
+  if(order?.dispensada_at||order?.estado==='dispensada'||order?.requiere_cierre===false)return {key:'dispensada',label:'Dispensada'};
+  if(order?.pago_estado==='pagada')return {key:'pagada',label:'Pagada · pendiente de entrega'};
+  return {key:'pendiente',label:'Pendiente de pago'};
+}
+function medranoPatientOrderTimestamp(order){return order?.eliminada_at||order?.dispensada_at||order?.pagada_at||order?.updated_at||order?.created_at||(order?.fecha?`${order.fecha}T00:00:00`:'')}
+function medranoPatientOrders(patientId){
+  const seen=new Set();
+  return [...(state.medranoOrders||[]),...(state.medranoDispensedOrders||[]),...(state.medranoDeletedOrders||[])]
+    .filter(order=>String(order.paciente_id||'')===String(patientId||''))
+    .filter(order=>{const key=`${order.multiple?'multi':'legacy'}:${order.id}`;if(seen.has(key))return false;seen.add(key);return true})
+    .sort((a,b)=>String(medranoPatientOrderTimestamp(b)).localeCompare(String(medranoPatientOrderTimestamp(a))));
+}
+function medranoPatientOrderProducts(order){
+  if(order.multiple)return medranoOrderItemTable(order);
+  const quantity=order.cantidad!==null&&order.cantidad!==undefined&&order.cantidad!==''?`Cantidad: ${Number(order.cantidad).toLocaleString('es-AR',{maximumFractionDigits:2})}`:'Sin cantidad registrada';
+  return `<div class="patient-history-legacy-product"><strong>${escapeHtml(order.producto||'Producto histórico')}</strong><span>${escapeHtml(quantity)}</span></div>`;
+}
+function medranoPatientOrderTokens(order){return order.tokens_total!==null&&order.tokens_total!==undefined?formatTokens(order.tokens_total):'Sin registro de Tokens'}
+function medranoPatientOrderActor(userId){return state.perfiles.find(profile=>String(profile.id)===String(userId||''))?.nombre||'—'}
+function medranoPatientOrderCard(order){
+  const status=medranoPatientOrderStatus(order);
+  const orderDate=order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'Sin fecha';
+  const paid=order.pago_estado==='historica'?'Histórica · sin fecha registrada':order.pagada_at?medranoOrderPaidAt(order):'Pendiente';
+  const delivered=order.dispensada_at?new Date(order.dispensada_at).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Argentina/Buenos_Aires'}):order.requiere_cierre===false?'Histórica · sin hora registrada':'Pendiente';
+  const deliveredBy=order.dispensada_at?order.dispensada_por_nombre||medranoPatientOrderActor(order.dispensada_por):'—';
+  return `<details class="patient-order-card">
+    <summary><span><strong>${escapeHtml(orderDate)}</strong><small>${escapeHtml(medranoPatientOrderTokens(order))}</small></span><span class="patient-order-status patient-order-status-${status.key}">${escapeHtml(status.label)}</span></summary>
+    <div class="patient-order-card-body">
+      ${medranoPatientOrderProducts(order)}
+      <dl class="patient-order-metadata">
+        <div><dt>Pago</dt><dd>${escapeHtml(paid)}</dd></div>
+        <div><dt>Medio</dt><dd>${escapeHtml(order.medio_pago||'—')}</dd></div>
+        <div><dt>Entrega</dt><dd>${escapeHtml(delivered)}</dd></div>
+        <div><dt>Entregada por</dt><dd>${escapeHtml(deliveredBy)}</dd></div>
+        ${order.eliminada_at?`<div><dt>Eliminada el</dt><dd>${escapeHtml(new Date(order.eliminada_at).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Argentina/Buenos_Aires'}))}</dd></div><div><dt>Motivo</dt><dd>${escapeHtml(order.motivo_eliminacion||'Sin motivo registrado')}</dd></div>`:''}
+      </dl>
+    </div>
+  </details>`;
+}
+function renderMedranoPatientHistory(medranoNav,bindModuleNav){
+  $('screen-title').textContent='Historial de pacientes';
+  const patient=(state.medranoPatients||[]).find(row=>String(row.id)===String(state.medranoPatientHistoryId||''));
+  if(!patient){
+    state.medranoPatientHistoryId=null;
+    const patients=medranoSortedPatients();
+    app.innerHTML=`${medranoNav}
+      <section class="panel stock-page-head"><div><button id="medrano-patient-history-back" class="secondary compact-button" type="button">← Administración</button><h2>Historial de pacientes</h2><p class="muted">Buscá y seleccioná un paciente para consultar todos sus pedidos.</p></div></section>
+      <section class="panel stock-detail-panel" data-stock-table-tools>
+        <div class="stock-section-head"><div><h3>Seleccionar paciente</h3><p class="muted">${patients.length} paciente${patients.length===1?'':'s'} disponible${patients.length===1?'':'s'}</p></div></div>
+        ${stockTableToolbar('Buscar por nombre, apellido, número de socio o DNI...')}
+        <div class="stock-table-wrap"><table class="stock-table patient-history-picker"><thead><tr><th data-sort-type="text">Nº socio</th><th data-sort-type="text">Paciente</th><th data-sort-type="text">DNI</th><th></th></tr></thead><tbody>${patients.length?patients.map(row=>`<tr><td>${escapeHtml(row.numero_socio||'—')}</td><td><strong>${escapeHtml(medranoPatientName(row))}</strong></td><td>${escapeHtml(row.dni||'—')}</td><td><button class="secondary compact-button" type="button" data-patient-history-select="${escapeHtml(row.id)}">Ver historial</button></td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="4">No hay pacientes registrados.</td></tr>'}</tbody></table></div>
+      </section>`;
+    bindModuleNav();bindStockTableTools(app);
+    $('medrano-patient-history-back').onclick=()=>{state.medranoView='administracion';render()};
+    app.querySelectorAll('[data-patient-history-select]').forEach(button=>button.onclick=()=>{state.medranoPatientHistoryId=button.dataset.patientHistorySelect;render()});
+    return;
+  }
+  const orders=medranoPatientOrders(patient.id),dispensed=orders.filter(order=>medranoPatientOrderStatus(order).key==='dispensada').length;
+  const tokens=orders.filter(order=>order.tokens_total!==null&&order.tokens_total!==undefined&&!order.eliminada_at).reduce((sum,order)=>sum+Number(order.tokens_total||0),0);
+  app.innerHTML=`${medranoNav}
+    <section class="panel stock-page-head"><div><button id="medrano-patient-history-change" class="secondary compact-button" type="button">← Cambiar paciente</button><h2>${escapeHtml(medranoPatientName(patient))}</h2><p class="muted">Socio ${escapeHtml(patient.numero_socio||'—')} · DNI ${escapeHtml(patient.dni||'—')} · Saldo ${escapeHtml(formatTokens(patient.saldo_tokens))}</p></div></section>
+    <section class="patient-history-summary">
+      <article class="panel"><span>Pedidos registrados</span><strong>${orders.length}</strong></article>
+      <article class="panel"><span>Dispensados</span><strong>${dispensed}</strong></article>
+      <article class="panel"><span>Tokens registrados</span><strong>${escapeHtml(formatTokens(tokens))}</strong></article>
+    </section>
+    <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Pedidos del paciente</h3><p class="muted">Del más reciente al más antiguo · incluye pendientes, dispensados y eliminados.</p></div></div><div class="patient-order-list">${orders.length?orders.map(medranoPatientOrderCard).join(''):'<div class="medrano-empty-stock"><strong>Sin pedidos</strong><p class="muted">Este paciente todavía no tiene comandas registradas.</p></div>'}</div></section>`;
+  bindModuleNav();
+  $('medrano-patient-history-change').onclick=()=>{state.medranoPatientHistoryId=null;render()};
+}
 function medranoReserved(tipo,id,excludeId=null){
   const pending=new Set(state.medranoMultiOrders.filter(o=>o.estado==='pendiente'&&o.id!==excludeId).map(o=>o.id));
   return state.medranoMultiItems.filter(i=>pending.has(i.comanda_id)&&i.tipo===tipo&&i.origen_id===id).reduce((sum,i)=>sum+Number(i.cantidad),0);
@@ -2947,15 +3019,17 @@ function renderMedrano(){
   if(mv==='today'){renderMedranoToday(medranoNav,bindModuleNav);return}
   if(mv==='administracion'){
     $('screen-title').textContent='Administración';
-    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Administración</h2></div></div><div class="medrano-stock-grid"><button class="medrano-stock-card" id="medrano-open-orders" type="button"><strong>Comandas</strong><span>Registro diario de comandas</span></button><button class="medrano-stock-card" id="medrano-open-patients" type="button"><strong>Pacientes</strong><span>Registro de pacientes y saldos</span></button><button class="medrano-stock-card" id="medrano-open-caja" type="button"><strong>Caja</strong><span>Dinero y movimientos de Tokens</span></button><button class="medrano-stock-card" id="medrano-open-prices" type="button"><strong>Lista de precios</strong><span>Valores de flores y demás productos</span></button></div></section>`;
+    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Administración</h2></div></div><div class="medrano-stock-grid"><button class="medrano-stock-card" id="medrano-open-orders" type="button"><strong>Comandas</strong><span>Registro diario de comandas</span></button><button class="medrano-stock-card" id="medrano-open-patients" type="button"><strong>Pacientes</strong><span>Registro de pacientes y saldos</span></button><button class="medrano-stock-card" id="medrano-open-patient-history" type="button"><strong>Historial de pacientes</strong><span>Todos los pedidos de cada paciente</span></button><button class="medrano-stock-card" id="medrano-open-caja" type="button"><strong>Caja</strong><span>Dinero y movimientos de Tokens</span></button><button class="medrano-stock-card" id="medrano-open-prices" type="button"><strong>Lista de precios</strong><span>Valores de flores y demás productos</span></button></div></section>`;
     bindModuleNav();
     $('medrano-open-patients').onclick=()=>{state.medranoView='administracion-pacientes';render()};
+    $('medrano-open-patient-history').onclick=()=>{state.medranoPatientHistoryId=null;openMedranoDataView('administracion-pacientes-historial')};
     $('medrano-open-orders').onclick=()=>{state.medranoView='administracion-comandas';render()};
     $('medrano-open-caja').onclick=()=>{state.medranoView='administracion-caja';render()};
     $('medrano-open-prices').onclick=()=>{state.medranoView='administracion-precios';render()};
     return;
   }
   if(mv==='administracion-pacientes'){renderMedranoPatients(medranoNav,bindModuleNav);return}
+  if(mv==='administracion-pacientes-historial'){renderMedranoPatientHistory(medranoNav,bindModuleNav);return}
   if(mv==='administracion-caja'){renderMedranoCaja(medranoNav,bindModuleNav);return}
   if(mv==='administracion-caja-historial'){renderMedranoCajaHistory(medranoNav,bindModuleNav);return}
   if(mv==='administracion-precios'){renderMedranoPriceList(medranoNav,bindModuleNav);return}
@@ -3107,6 +3181,7 @@ function appNavigationSnapshot(){
     medranoDispensarioRoom:state.medranoDispensarioRoom||null,
     medranoOrderHistoryYear:state.medranoOrderHistoryYear||null,
     medranoOrderHistoryMonth:state.medranoOrderHistoryMonth||null,
+    medranoPatientHistoryId:state.medranoPatientHistoryId||null,
     medranoDashboardPeriod:state.medranoDashboardPeriod||'month',
     medranoDashboardMonth:state.medranoDashboardMonth||'',
     medranoDateHistory:JSON.parse(JSON.stringify(state.medranoDateHistory||{})),
@@ -3136,6 +3211,7 @@ function restoreAppNavigation(snapshot){
   state.medranoDispensarioRoom=snapshot.medranoDispensarioRoom||null;
   state.medranoOrderHistoryYear=snapshot.medranoOrderHistoryYear||null;
   state.medranoOrderHistoryMonth=snapshot.medranoOrderHistoryMonth||null;
+  state.medranoPatientHistoryId=snapshot.medranoPatientHistoryId||null;
   state.medranoDashboardPeriod=snapshot.medranoDashboardPeriod||'month';
   state.medranoDashboardMonth=snapshot.medranoDashboardMonth||'';
   state.medranoDateHistory=JSON.parse(JSON.stringify(snapshot.medranoDateHistory||{}));

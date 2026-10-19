@@ -9,7 +9,17 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.35. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.36. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.36 — Historial de pedidos por paciente
+
+- Agrega `Historial de pacientes` como una pantalla independiente dentro de Administración.
+- Permite buscar pacientes por nombre, apellido, número de socio o DNI.
+- Al seleccionar un paciente muestra todas sus comandas, de la más reciente a la más antigua.
+- Cada pedido conserva estado, Tokens, pago, entrega, responsable y el detalle completo de productos, genética, lote y cantidades.
+- Incluye comandas pendientes, pagadas, dispensadas y eliminadas, sin duplicarlas.
+- El historial completo se descarga solamente al abrir esta pantalla para no demorar el uso normal de la app.
+- No requiere cambios en Supabase.
 
 ## V3.26.35 — Botón Atrás en celular
 
