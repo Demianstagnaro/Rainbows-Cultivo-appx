@@ -19,7 +19,7 @@ test('los productos por unidades usan contadores y validación enteros',()=>{
   assert.match(app,/function configureWholeUnitInput\(input,unit,allowZero=false\)/);
   assert.match(app,/input\.step=whole\?'1':'0\.01'/);
   assert.match(app,/input\.inputMode=whole\?'numeric':'decimal'/);
-  assert.match(app,/product\.unit==='unidades'&&!Number\.isInteger\(item\.cantidad\)/);
+  assert.match(app,/\(item\.pedido_laboratorio\|\|product\.unit==='unidades'\)&&!Number\.isInteger\(item\.cantidad\)/);
   assert.match(sql,/new\.unidad = 'unidades' and new\.cantidad <> trunc\(new\.cantidad\)/i);
   assert.match(sql,/before insert or update of cantidad,unidad/i);
 });
