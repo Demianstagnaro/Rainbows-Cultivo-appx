@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.39';
+const APP_VERSION='3.26.40';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1937,9 +1937,12 @@ function parseMedranoOilRecipeName(name){
   return {base:parts[baseIndex],perfil:profile.toUpperCase(),proporcion:ratio.replace(/^ratio\s+/i,'').replaceAll('-',':'),concentracion:Number(concentration.split(':')[1].replace(',','.')),presentacion_ml:Number(presentation.replace(/\s*ml$/i,'').replace(',','.'))};
 }
 function medranoOilPriceDimensions(name){
-  const concentration=String(name||'').match(/(?:^|·|\s)1\s*:\s*([0-9]+(?:[.,][0-9]+)?)(?:\s|·|$)/i);
-  const presentation=String(name||'').match(/(?:^|·|\s)([0-9]+(?:[.,][0-9]+)?)\s*ml(?:\s|·|$)/i);
-  return concentration&&presentation?{concentracion:Number(concentration[1].replace(',','.')),presentacion_ml:Number(presentation[1].replace(',','.'))}:null;
+  const parts=String(name||'').split('·').map(part=>part.trim()).filter(Boolean);
+  const concentration=[...parts].reverse().find(part=>/^1\s*:\s*[0-9]+(?:[.,][0-9]+)?$/i.test(part));
+  const presentation=parts.find(part=>/^[0-9]+(?:[.,][0-9]+)?\s*ml$/i.test(part));
+  if(!concentration||!presentation)return null;
+  const denominator=Number(concentration.split(':')[1].replace(',','.'));
+  return denominator>1?{concentracion:denominator,presentacion_ml:Number(presentation.replace(/\s*ml$/i,'').replace(',','.'))}:null;
 }
 function medranoOilPriceRules(){
   return (state.medranoProductCatalog||[]).filter(product=>product.activo!==false&&product.categoria==='aceites'&&product.unidad==='unidades'&&Number(product.tokens_por_unidad)>0).map(product=>{
@@ -1948,17 +1951,17 @@ function medranoOilPriceRules(){
   }).filter(Boolean);
 }
 function medranoCustomOilCatalog(){
-  return medranoOilPriceRules().length?[{id:'custom:oil',name:'Aceite · Preparar a pedido',qty:null,unit:'unidades',tokens:0,custom:true}]:[];
+  return medranoCategoryTokenPrice('resina')>0?[{id:'custom:oil',name:'Aceite · Preparar a pedido',qty:null,unit:'unidades',tokens:0,custom:true}]:[];
 }
 function medranoCustomOilRecipeFromRow(row){
   const custom=row?.querySelector('[data-custom-oil-fields]');if(!custom||custom.hidden)return null;
   return {perfil:row.querySelector('[data-custom-oil-profile]').value,proporcion:row.querySelector('[data-custom-oil-ratio]').value.trim().replaceAll('-',':'),concentracion:Number(row.querySelector('[data-custom-oil-concentration]').value),presentacion_ml:Number(row.querySelector('[data-custom-oil-presentation]').value),base:row.querySelector('[data-custom-oil-base]').value};
 }
 function medranoCustomOilPrice(recipe){
-  if(!recipe)return null;
-  const matches=medranoOilPriceRules().filter(rule=>rule.concentracion===recipe.concentracion&&rule.presentacion_ml===recipe.presentacion_ml);
-  const prices=[...new Set(matches.map(rule=>rule.tokens))];
-  return matches.length&&prices.length===1?matches[0]:null;
+  const resinTokens=medranoCategoryTokenPrice('resina');
+  if(!recipe||resinTokens<=0||recipe.concentracion<=1||recipe.presentacion_ml<=0)return null;
+  const resinGrams=recipe.presentacion_ml/recipe.concentracion;
+  return {tokens:Math.round(resinTokens*resinGrams*100)/100,resinGrams};
 }
 function medranoCustomOilRecipeValid(recipe){
   if(!recipe||!fullSpectrumProfiles.filter(profile=>profile!=='Otro').includes(recipe.perfil)||!recipe.base||recipe.concentracion<=1||recipe.presentacion_ml<=0)return false;
@@ -1971,7 +1974,7 @@ function syncMedranoCustomOilFields(row,resetRatio=false){
   const profile=row.querySelector('[data-custom-oil-profile]').value,ratio=row.querySelector('[data-custom-oil-ratio]');
   if(resetRatio||!ratio.value)ratio.value=profile?profile.split('-').map(()=>1).join(':'):'';
   const concentration=row.querySelector('[data-custom-oil-concentration]'),presentation=row.querySelector('[data-custom-oil-presentation]');
-  const rules=medranoOilPriceRules(),concentrations=[...new Set([5,10,20,30,...rules.map(rule=>rule.concentracion)])].sort((a,b)=>a-b);
+  const rules=medranoOilPriceRules(),concentrations=[...new Set([5,10,20,30,...rules.map(rule=>rule.concentracion).filter(value=>value>1)])].sort((a,b)=>a-b);
   const selectedConcentration=Number(concentration.value)||concentrations[0]||0;
   concentration.innerHTML='<option value="">Seleccionar</option>'+concentrations.map(value=>`<option value="${value}">1:${value}</option>`).join('');
   concentration.value=String(selectedConcentration);
@@ -2003,7 +2006,7 @@ function updateMedranoMultiUnit(row){
   const balance=product?.custom?null:medranoOrderAvailability(tipo,product,state.editMedranoMultiOrder?.id);
   const shortage=balance&&quantity>balance.available;
   const missing=shortage?quantity-balance.available:0;
-  const status=product?product.custom?(customPrice?`unidades · ${formatTokens(customPrice.tokens*quantity)} · Se prepara a pedido`:'Elegí una concentración y presentación con precio configurado'):`${product.unit} · ${formatTokens(product.tokens*quantity)} · Disponible ${balance.available.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}${shortage?` · Faltan ${missing.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}`:''}`:'';
+  const status=product?product.custom?(customPrice?`unidades · ${formatTokens(customPrice.tokens*quantity)} · ${Number(customPrice.resinGrams*quantity).toLocaleString('es-AR',{maximumFractionDigits:3})} g de resina · Se prepara a pedido`:'Configurá el precio por gramo de Resina'):`${product.unit} · ${formatTokens(product.tokens*quantity)} · Disponible ${balance.available.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}${shortage?` · Faltan ${missing.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}`:''}`:'';
   const unit=row.querySelector('[data-order-unit]');unit.textContent=status;unit.classList.toggle('order-stock-warning',Boolean(shortage));
   configureWholeUnitInput(input,product?.unit||'',false);
   input.classList.toggle('input-error',Boolean(shortage));
@@ -2018,7 +2021,7 @@ function updateMedranoMultiTotal(){
 function addMedranoMultiLine(item=null){
   const container=$('medrano-multi-lines'),row=document.createElement('div');row.className='medrano-multi-line';
   const oilBases=[...new Set((state.medranoLabItems||[]).filter(stock=>stock.activo&&stock.categoria==='insumos'&&stock.tipo_insumo!=='envase'&&stock.unidad==='ml').map(stock=>stock.nombre))].sort(medranoAlphabeticalCompare);
-  row.innerHTML=`<label class="field-label">Tipo<select class="text-input" data-order-type>${Object.entries(medranoOrderCategories).map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select></label><label class="field-label">Producto o genética<select class="text-input" data-order-product></select></label><div class="custom-oil-order-fields" data-custom-oil-fields hidden><label class="field-label">Perfil de cannabinoides<select class="text-input" data-custom-oil-profile><option value="">Seleccionar</option>${fullSpectrumProfiles.filter(profile=>profile!=='Otro').map(profile=>`<option value="${profile}">${profile}</option>`).join('')}</select></label><label class="field-label">Ratio<input class="text-input" data-custom-oil-ratio maxlength="60" placeholder="Ej.: 1:1 o 1:2:1"></label><label class="field-label">Concentración<select class="text-input" data-custom-oil-concentration></select></label><label class="field-label">Presentación<select class="text-input" data-custom-oil-presentation></select></label><label class="field-label">Aceite portador<select class="text-input" data-custom-oil-base><option value="">Seleccionar</option>${oilBases.map(name=>`<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')}</select></label></div><label class="field-label">Cantidad<input class="text-input" data-order-quantity type="number" min="0.01" step="0.01" inputmode="decimal"></label><span data-order-unit class="muted"></span><button class="secondary compact-button" data-remove-order-line type="button" aria-label="Quitar producto">Quitar</button>`;
+  row.innerHTML=`<label class="field-label">Tipo<select class="text-input" data-order-type>${Object.entries(medranoOrderCategories).map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select></label><label class="field-label">Producto o genética<select class="text-input" data-order-product></select></label><div class="custom-oil-order-fields" data-custom-oil-fields hidden><label class="field-label">Perfil de cannabinoides<select class="text-input" data-custom-oil-profile><option value="">Seleccionar</option>${fullSpectrumProfiles.filter(profile=>profile!=='Otro').map(profile=>`<option value="${profile}">${profile}</option>`).join('')}</select></label><label class="field-label">Ratio de cannabinoides<input class="text-input" data-custom-oil-ratio maxlength="60" placeholder="Ej.: 1:1 o 1:2:1"></label><label class="field-label">Concentración del aceite<select class="text-input" data-custom-oil-concentration></select></label><label class="field-label">Presentación<select class="text-input" data-custom-oil-presentation></select></label><label class="field-label">Aceite portador<select class="text-input" data-custom-oil-base><option value="">Seleccionar</option>${oilBases.map(name=>`<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')}</select></label></div><label class="field-label">Cantidad<input class="text-input" data-order-quantity type="number" min="0.01" step="0.01" inputmode="decimal"></label><span data-order-unit class="muted"></span><button class="secondary compact-button" data-remove-order-line type="button" aria-label="Quitar producto">Quitar</button>`;
   container.append(row);row.querySelector('[data-order-type]').value=item?.tipo||'flores';
   row.querySelector('[data-order-type]').onchange=()=>{row.querySelector('[data-order-product]').value='';updateMedranoMultiProduct(row)};
   row.querySelector('[data-order-product]').onchange=()=>{syncMedranoCustomOilFields(row);updateMedranoMultiUnit(row)};
@@ -2049,14 +2052,14 @@ async function saveMedranoMultiOrder(){
   if(!patient)throw new Error('Seleccioná un paciente.');
   const rows=[...$('medrano-multi-lines').querySelectorAll('.medrano-multi-line')];
   if(!rows.length)throw new Error('Agregá al menos un producto.');
-  const items=rows.map(row=>{const tipo=row.querySelector('[data-order-type]').value,selected=row.querySelector('[data-order-product]').value,product=medranoCatalog(tipo,state.editMedranoMultiOrder).find(p=>p.id===selected),recipe=product?.custom?medranoCustomOilRecipeFromRow(row):null,price=product?.custom?medranoCustomOilPrice(recipe):null;return {tipo,origen_id:product?.custom?null:selected,catalogo_producto_id:price?.catalogId||null,pedido_laboratorio:Boolean(product?.custom),receta:recipe,cantidad:Number(row.querySelector('[data-order-quantity]').value)} });
+  const items=rows.map(row=>{const tipo=row.querySelector('[data-order-type]').value,selected=row.querySelector('[data-order-product]').value,product=medranoCatalog(tipo,state.editMedranoMultiOrder).find(p=>p.id===selected),recipe=product?.custom?medranoCustomOilRecipeFromRow(row):null;return {tipo,origen_id:product?.custom?null:selected,catalogo_producto_id:null,pedido_laboratorio:Boolean(product?.custom),receta:recipe,cantidad:Number(row.querySelector('[data-order-quantity]').value)} });
   if(items.some(i=>(!i.origen_id&&!i.pedido_laboratorio)||!Number.isFinite(i.cantidad)||i.cantidad<=0))throw new Error('Seleccioná todos los productos y sus cantidades.');
   const keys=items.map(i=>`${i.tipo}:${i.origen_id||JSON.stringify(i.receta)}`);
   if(new Set(keys).size!==keys.length)throw new Error('El mismo producto está repetido: sumá las cantidades en una sola línea.');
   for(const item of items){
     const product=medranoCatalog(item.tipo,state.editMedranoMultiOrder).find(p=>p.id===(item.pedido_laboratorio?'custom:oil':item.origen_id)),customPrice=item.pedido_laboratorio?medranoCustomOilPrice(item.receta):null;
     if(item.pedido_laboratorio&&!medranoCustomOilRecipeValid(item.receta))throw new Error('Completá perfil, ratio, concentración, presentación y aceite portador del aceite a pedido.');
-    if(item.pedido_laboratorio&&!customPrice)throw new Error(`No hay un precio único configurado para aceite 1:${item.receta.concentracion} de ${item.receta.presentacion_ml} ml.`);
+    if(item.pedido_laboratorio&&!customPrice)throw new Error('Configurá primero el precio general de Resina en la Lista de precios.');
     if(!item.pedido_laboratorio&&!product?.tokens)throw new Error(`Configurá el valor en Tokens de “${product?.name||'este producto'}” desde Lista de precios.`);
     if((item.pedido_laboratorio||product.unit==='unidades')&&!Number.isInteger(item.cantidad))throw new Error('Las unidades deben ser enteras.');
     const balance=product.custom?null:medranoOrderAvailability(item.tipo,product,state.editMedranoMultiOrder?.id);
@@ -2412,10 +2415,16 @@ function renderMedranoDispensaryHistory(medranoNav,bindModuleNav){
 
 function medranoFlowerTokenPrice(size){return Number(state.medranoFlowerPrices.find(row=>row.tamano===size)?.tokens_por_gramo)||0}
 function medranoCategoryTokenPrice(category){return Number(state.medranoCategoryPrices.find(row=>row.categoria===category)?.tokens_por_unidad)||0}
+function medranoAutomaticOilPrice(name){
+  const dimensions=medranoOilPriceDimensions(name),resinTokens=medranoCategoryTokenPrice('resina');
+  if(!dimensions||resinTokens<=0)return null;
+  const resinGrams=dimensions.presentacion_ml/dimensions.concentracion;
+  return {tokens:Math.round(resinTokens*resinGrams*100)/100,resinGrams,...dimensions};
+}
 const medranoCatalogCategoryLabels={resina:'Resina',aceites:'Aceites',cremas:'Cremas',capsulas:'Cápsulas',mostrador:'Mostrador'};
 function medranoTokenPriceRows(){
   const flowers=Object.entries(stockLotSizes).map(([size,label])=>{const row=state.medranoFlowerPrices.find(item=>item.tamano===size);return{type:'flores',id:row?.id||'',size,category:'Flores',name:`Flores ${label}`,unit:'g',tokens:Number(row?.tokens_por_gramo)||0,active:true}});
-  const catalog=state.medranoProductCatalog.map(product=>({type:product.categoria,id:product.id,category:medranoCatalogCategoryLabels[product.categoria]||product.categoria,name:formatMeasurementText(product.nombre),unit:product.unidad==='unidades'?'unidad':product.unidad,tokens:product.categoria==='resina'?medranoCategoryTokenPrice('resina'):Number(product.tokens_por_unidad)||0,active:product.activo!==false}));
+  const catalog=state.medranoProductCatalog.map(product=>{const oilPrice=product.categoria==='aceites'?medranoAutomaticOilPrice(product.nombre):null;return{type:product.categoria,id:product.id,category:medranoCatalogCategoryLabels[product.categoria]||product.categoria,name:formatMeasurementText(product.nombre),unit:product.unidad==='unidades'?'unidad':product.unidad,tokens:product.categoria==='resina'?medranoCategoryTokenPrice('resina'):(oilPrice?.tokens??Number(product.tokens_por_unidad))||0,active:product.activo!==false,automatic:Boolean(oilPrice),resinGrams:oilPrice?.resinGrams||0}});
   return [...flowers,...catalog].sort((a,b)=>a.category.localeCompare(b.category,'es')||a.name.localeCompare(b.name,'es'));
 }
 function medranoMoneyInputFormat(value){
@@ -2555,8 +2564,8 @@ function renderMedranoPriceList(medranoNav,bindModuleNav){
   $('screen-title').textContent='Lista de precios';
   if(!state.medranoPriceListReady){app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-prices-back" class="secondary compact-button" type="button">← Administración</button><h2>Lista de precios</h2></div></section><section class="panel error-panel"><strong>Falta actualizar el catálogo de productos.</strong><p>Aplicá la migración V3.25.1 en Supabase y luego tocá Reintentar.</p><button id="medrano-retry-load" class="primary compact-button" type="button">Reintentar</button></section>`;bindModuleNav();$('medrano-prices-back').onclick=()=>{state.medranoView='administracion';render()};bindMedranoLoadRetry();return}
   const prices=medranoTokenPriceRows();
-  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-prices-back" class="secondary compact-button" type="button">← Administración</button><h2>Lista de precios</h2><p class="muted">Catálogo central · 1 Token = $1.000 · Rosin y Resina BHO comparten el precio por gramo · Los productos nuevos elaborados aparecen automáticamente como “Sin precio”.</p></div><button id="medrano-catalog-add" class="primary compact-button" type="button">+ Agregar producto</button></section>
-  <section class="panel stock-detail-panel" data-stock-table-tools>${stockTableToolbar('Buscar por categoría, producto o unidad...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Categoría</th><th data-sort-type="text">Producto</th><th data-sort-type="text">Unidad</th><th data-sort-type="number">Tokens por unidad</th><th data-sort-type="number">Equivalente</th><th>Estado</th><th></th></tr></thead><tbody>${prices.length?prices.map(p=>`<tr><td>${escapeHtml(p.category)}</td><td><strong>${escapeHtml(p.name)}</strong></td><td>${escapeHtml(p.unit)}</td><td data-sort-value="${p.tokens}"><input class="text-input token-price-input" data-token-price type="number" min="0" step="0.01" value="${p.tokens}"></td><td data-token-money data-sort-value="${p.tokens*1000}">${formatMoney(p.tokens*1000)}</td><td>${p.active?(p.tokens>0?'Activo':'Sin precio'):'Inactivo'}</td><td><button class="secondary compact-button" type="button" data-save-token-price data-token-type="${escapeHtml(p.type)}" data-token-id="${escapeHtml(p.id)}" data-token-size="${escapeHtml(p.size||'')}">Guardar</button></td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="7">No hay productos cargados.</td></tr>'}</tbody></table></div></section>`;
+  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-prices-back" class="secondary compact-button" type="button">← Administración</button><h2>Lista de precios</h2><p class="muted">Catálogo central · 1 Token = $1.000 · Rosin y Resina BHO comparten el precio por gramo · Los productos nuevos elaborados aparecen automáticamente como “Sin precio”, excepto los aceites, que se calculan según sus gramos de resina.</p></div><button id="medrano-catalog-add" class="primary compact-button" type="button">+ Agregar producto</button></section>
+  <section class="panel stock-detail-panel" data-stock-table-tools>${stockTableToolbar('Buscar por categoría, producto o unidad...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Categoría</th><th data-sort-type="text">Producto</th><th data-sort-type="text">Unidad</th><th data-sort-type="number">Tokens por unidad</th><th data-sort-type="number">Equivalente</th><th>Estado</th><th></th></tr></thead><tbody>${prices.length?prices.map(p=>`<tr><td>${escapeHtml(p.category)}</td><td><strong>${escapeHtml(p.name)}</strong>${p.automatic?`<br><span class="muted">${Number(p.resinGrams).toLocaleString('es-AR',{maximumFractionDigits:3})} g de resina por unidad</span>`:''}</td><td>${escapeHtml(p.unit)}</td><td data-sort-value="${p.tokens}">${p.automatic?`<strong>${formatTokens(p.tokens)}</strong>`:`<input class="text-input token-price-input" data-token-price type="number" min="0" step="0.01" value="${p.tokens}">`}</td><td data-token-money data-sort-value="${p.tokens*1000}">${formatMoney(p.tokens*1000)}</td><td>${p.active?(p.tokens>0?'Activo':'Sin precio'):'Inactivo'}</td><td>${p.automatic?'<span class="preparation-badge preparation-listo">Automático</span>':`<button class="secondary compact-button" type="button" data-save-token-price data-token-type="${escapeHtml(p.type)}" data-token-id="${escapeHtml(p.id)}" data-token-size="${escapeHtml(p.size||'')}">Guardar</button>`}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="7">No hay productos cargados.</td></tr>'}</tbody></table></div></section>`;
   bindModuleNav();bindStockTableTools(app);$('medrano-prices-back').onclick=()=>{state.medranoView='administracion';render()};$('medrano-catalog-add').onclick=openMedranoCatalogDialog;
   app.querySelectorAll('[data-save-token-price]').forEach(b=>b.onclick=async()=>{b.disabled=true;try{await saveMedranoTokenPrice(b)}catch(e){alert(e.message||'No se pudo guardar el valor.')}finally{b.disabled=false}});
 }

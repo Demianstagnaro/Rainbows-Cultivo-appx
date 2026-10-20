@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.39. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.40. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.40 — Precio automático de aceites
+
+- Evita que el ratio cannabinoide `1:1` aparezca por error como una concentración del aceite.
+- Calcula los Tokens de cada aceite según los gramos reales de resina contenidos: presentación ÷ concentración.
+- Usa siempre el precio general vigente de Resina; con 125 Tokens por gramo, un aceite 1:10 de 10 ml vale 125 Tokens y uno 1:20 de 10 ml vale 62,5 Tokens.
+- Actualiza automáticamente la Lista de precios, el stock de aceites y las comandas pendientes no pagadas cuando cambia el precio de la Resina.
+- Requiere ejecutar `Rainbows_V3.26.40_precio_automatico_aceites.sql` en Supabase antes de subir la aplicación.
 
 ## V3.26.39 — Configurador de aceites a pedido
 
