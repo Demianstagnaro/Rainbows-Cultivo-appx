@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.41';
+const APP_VERSION='3.26.42';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1968,6 +1968,12 @@ function medranoCustomOilRecipeValid(recipe){
   const parts=recipe.perfil.split('-').length,ratios=recipe.proporcion.split(':').map(Number);
   return ratios.length===parts&&ratios.every(value=>Number.isFinite(value)&&value>0);
 }
+function medranoIsCarrierOil(stock){
+  if(!stock?.activo||stock.categoria!=='insumos'||stock.tipo_insumo==='envase'||stock.unidad!=='ml')return false;
+  const name=String(stock.nombre||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  if(/agua|vitamina|alcohol|glicerina|esencia|fragancia|extracto/.test(name))return false;
+  return /aceite|coco|sesamo|oliva|almendra|jojoba|mct|uva|girasol|canola|palta|aguacate|argan/.test(name);
+}
 function syncMedranoCustomOilFields(row,resetRatio=false){
   const custom=row.querySelector('[data-custom-oil-fields]'),selected=row.querySelector('[data-order-product]').value==='custom:oil';
   custom.hidden=!selected;if(!selected)return;
@@ -2020,7 +2026,7 @@ function updateMedranoMultiTotal(){
 }
 function addMedranoMultiLine(item=null){
   const container=$('medrano-multi-lines'),row=document.createElement('div');row.className='medrano-multi-line';
-  const oilBases=[...new Set((state.medranoLabItems||[]).filter(stock=>stock.activo&&stock.categoria==='insumos'&&stock.tipo_insumo!=='envase'&&stock.unidad==='ml').map(stock=>stock.nombre))].sort(medranoAlphabeticalCompare);
+  const oilBases=[...new Set((state.medranoLabItems||[]).filter(medranoIsCarrierOil).map(stock=>stock.nombre))].sort(medranoAlphabeticalCompare);
   row.innerHTML=`<label class="field-label">Tipo<select class="text-input" data-order-type>${Object.entries(medranoOrderCategories).map(([key,label])=>`<option value="${key}">${label}</option>`).join('')}</select></label><label class="field-label">Producto o genética<select class="text-input" data-order-product></select></label><div class="custom-oil-order-fields" data-custom-oil-fields hidden><label class="field-label">Perfil de cannabinoides<select class="text-input" data-custom-oil-profile><option value="">Seleccionar</option>${fullSpectrumProfiles.filter(profile=>profile!=='Otro').map(profile=>`<option value="${profile}">${profile}</option>`).join('')}</select></label><label class="field-label">Ratio de cannabinoides<input class="text-input" data-custom-oil-ratio maxlength="60" placeholder="Ej.: 1:1 o 1:2:1"></label><label class="field-label">Concentración del aceite<select class="text-input" data-custom-oil-concentration></select></label><label class="field-label">Presentación<select class="text-input" data-custom-oil-presentation></select></label><label class="field-label">Aceite portador<select class="text-input" data-custom-oil-base><option value="">Seleccionar</option>${oilBases.map(name=>`<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('')}</select></label></div><label class="field-label">Cantidad<input class="text-input" data-order-quantity type="number" min="0.01" step="0.01" inputmode="decimal"></label><span data-order-unit class="muted"></span><button class="secondary compact-button" data-remove-order-line type="button" aria-label="Quitar producto">Quitar</button>`;
   container.append(row);row.querySelector('[data-order-type]').value=item?.tipo||'flores';
   row.querySelector('[data-order-type]').onchange=()=>{row.querySelector('[data-order-product]').value='';updateMedranoMultiProduct(row)};
@@ -2052,7 +2058,7 @@ async function saveMedranoMultiOrder(){
   if(!patient)throw new Error('Seleccioná un paciente.');
   const rows=[...$('medrano-multi-lines').querySelectorAll('.medrano-multi-line')];
   if(!rows.length)throw new Error('Agregá al menos un producto.');
-  const items=rows.map(row=>{const tipo=row.querySelector('[data-order-type]').value,selected=row.querySelector('[data-order-product]').value,product=medranoCatalog(tipo,state.editMedranoMultiOrder).find(p=>p.id===selected),recipe=product?.custom?medranoCustomOilRecipeFromRow(row):null;return {tipo,origen_id:product?.custom?null:selected,catalogo_producto_id:null,pedido_laboratorio:Boolean(product?.custom),receta:recipe,cantidad:Number(row.querySelector('[data-order-quantity]').value)} });
+  const items=rows.map(row=>{const tipo=row.querySelector('[data-order-type]').value,selected=row.querySelector('[data-order-product]').value,product=medranoCatalog(tipo,state.editMedranoMultiOrder).find(p=>p.id===selected),recipe=product?.custom?medranoCustomOilRecipeFromRow(row):null;return {tipo:product?.custom?'aceites':tipo,origen_id:product?.custom?null:selected,catalogo_producto_id:null,pedido_laboratorio:Boolean(product?.custom),receta:recipe,cantidad:Number(row.querySelector('[data-order-quantity]').value)} });
   if(items.some(i=>(!i.origen_id&&!i.pedido_laboratorio)||!Number.isFinite(i.cantidad)||i.cantidad<=0))throw new Error('Seleccioná todos los productos y sus cantidades.');
   const keys=items.map(i=>`${i.tipo}:${i.origen_id||JSON.stringify(i.receta)}`);
   if(new Set(keys).size!==keys.length)throw new Error('El mismo producto está repetido: sumá las cantidades en una sola línea.');
@@ -2686,7 +2692,7 @@ function labCreamDraft(){
   return{name:`Crema · ${details.join(' · ')}`.slice(0,180),resin,container,ingredients:ingredientRows,presentation,planned,profile,ratio,genetic,resinGrams,totalGrams,concentration,metadata:{perfil:resin.item.perfil_cannabinoide,proporcion:resin.item.proporcion_cannabinoides||null,genetica_id:resin.item.genetica_id||null,genetica:genetic||null,lote_resina:resin.item.lote||null,resina_producto:resin.item.nombre,resina_gramos:resinGrams,concentracion:concentration,presentacion_cantidad:presentation,presentacion_unidad:'g',unidades_previstas:planned,envase_id:container.item.id}};
 }
 function setupLabFinalOilFields(metadata={}){
-  const pure=(state.medranoLabItems||[]).filter(i=>i.categoria==='insumos'&&i.activo&&i.tipo_insumo!=='envase'&&i.unidad==='ml');
+  const pure=(state.medranoLabItems||[]).filter(medranoIsCarrierOil);
   const containers=(state.medranoLabItems||[]).filter(i=>i.categoria==='insumos'&&i.activo&&i.tipo_insumo==='envase'&&i.unidad==='unidades'&&i.unidad_capacidad==='ml');
   $('lab-final-oil-pure').parentElement.firstChild.textContent='Aceite puro (se calcularán los ml necesarios)';
   $('lab-final-oil-container').parentElement.firstChild.textContent='Tamaño de gotero';
@@ -2723,7 +2729,7 @@ function labFinalOilDraft(){
   const pure=(state.medranoLabItems||[]).find(i=>i.id===$('lab-final-oil-pure').value),container=(state.medranoLabItems||[]).find(i=>i.id===$('lab-final-oil-container').value);
   const rows=[...$('lab-production-materials').querySelectorAll('.lab-production-material')],sources=rows.map(row=>({row,item:(state.medranoLabItems||[]).find(i=>i.id===row.querySelector('.lab-material-id').value)}));
   const weights=names.length===1&&(!rawRatio||ratio.length===1)?[1]:ratio;
-  if(!names.length||weights.length!==names.length||weights.some(x=>!Number.isFinite(x)||x<=0)||!Number.isFinite(concentration)||concentration<=1||!Number.isInteger(count)||count<=0||!pure||pure.tipo_insumo==='envase'||pure.unidad!=='ml'||!container||container.tipo_insumo!=='envase'||container.unidad!=='unidades'||container.unidad_capacidad!=='ml'||!Number(container.capacidad_envase)||sources.length!==names.length||sources.some(x=>!x.item))return null;
+  if(!names.length||weights.length!==names.length||weights.some(x=>!Number.isFinite(x)||x<=0)||!Number.isFinite(concentration)||concentration<=1||!Number.isInteger(count)||count<=0||!medranoIsCarrierOil(pure)||!container||container.tipo_insumo!=='envase'||container.unidad!=='unidades'||container.unidad_capacidad!=='ml'||!Number(container.capacidad_envase)||sources.length!==names.length||sources.some(x=>!x.item))return null;
   const byProfile=new Map(sources.map(source=>[source.item.perfil_cannabinoide,source]));
   if(byProfile.size!==names.length||names.some(name=>!byProfile.has(name))||sources.some(source=>source.row.dataset.requiredProfile!==source.item.perfil_cannabinoide))return null;
   const totalVolume=Number(container.capacidad_envase)*count,totalEquivalent=totalVolume/concentration,totalWeight=weights.reduce((sum,value)=>sum+value,0),parts=[],materials=[];

@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.41. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.42. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.42 — Comandas de aceites a pedido
+
+- Amplía la ventana de comandas y elimina el desplazamiento horizontal en celular.
+- Limita “Aceite portador” a insumos oleosos; excluye agua de rosas, vitamina E y otros líquidos no compatibles.
+- Corrige la validación de los aceites personalizados para que se guarden como productos de la categoría Aceites.
+- Requiere ejecutar `Rainbows_V3.26.42_comandas_aceites.sql` en Supabase antes de subir la aplicación.
 
 ## V3.26.41 — Recetas de Laboratorio más claras
 
