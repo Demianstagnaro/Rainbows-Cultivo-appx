@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.44. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.45. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.45 — Preparación sólo para aceites personalizados
+
+- Los productos de Laboratorio elegidos desde stock ya no muestran “En preparación” ni requieren confirmación manual.
+- Únicamente los aceites personalizados mantienen el circuito de preparación en Laboratorio.
+- La entrega de un aceite personalizado queda bloqueada hasta que su producción termine y exista el producto físico.
+- Limpia los estados de preparación antiguos de resinas, cremas, cápsulas y aceites tomados desde stock.
+- Requiere ejecutar `Rainbows_V3.26.45_preparacion_solo_aceites_a_pedido.sql` en Supabase.
 
 ## V3.26.44 — Inicio único de aceites personalizados
 

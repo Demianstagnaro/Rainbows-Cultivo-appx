@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.44';
+const APP_VERSION='3.26.45';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1763,12 +1763,12 @@ function medranoLabOrders(orders,items){
   return orders.map(order=>medranoLabOrderView(order,items)).filter(Boolean);
 }
 const medranoPreparationLabels={pendiente:'Pendiente de preparación',en_proceso:'En preparación',listo:'Listo para entregar'};
-function medranoPreparationState(item){return medranoLabOrderTypes.has(item?.tipo)?item.preparacion_estado||'en_proceso':null}
+function medranoPreparationState(item){return item?.pedido_laboratorio?item.preparacion_estado||'en_proceso':null}
 function medranoPreparationBadge(item){
   const status=medranoPreparationState(item);
   return status?`<span class="preparation-badge preparation-${status}">${escapeHtml(medranoPreparationLabels[status]||status)}</span>`:'—';
 }
-function medranoOrderLabReady(order){return !order?.multiple||(order.items||[]).filter(item=>medranoLabOrderTypes.has(item.tipo)).every(item=>medranoPreparationState(item)==='listo')}
+function medranoOrderLabReady(order){return !order?.multiple||(order.items||[]).filter(item=>item.pedido_laboratorio).every(item=>medranoPreparationState(item)==='listo')}
 function medranoOrderHasPhysicalStock(order){return !order?.multiple||(order.items||[]).every(item=>Boolean(item.origen_id))}
 function medranoCustomOilRecipe(item){
   if(!item?.pedido_laboratorio)return null;
@@ -1783,14 +1783,13 @@ function medranoCustomOilRecipeText(item){
   return [recipe.perfil,recipe.proporcion?`Ratio ${recipe.proporcion}`:'',recipe.concentracion?`1:${recipe.concentracion}`:'',recipe.presentacion_ml?`${recipe.presentacion_ml} ml`:'',recipe.base?`Base ${recipe.base}`:''].filter(Boolean).join(' · ');
 }
 function medranoPreparationActions(item,order){
+  if(!item?.pedido_laboratorio)return '—';
   if(typeof canManageMedrano!=='function'||!canManageMedrano()||order.estado!=='pendiente')return medranoPreparationBadge(item);
-  if(item.pedido_laboratorio&&!item.origen_id){
+  if(!item.origen_id){
     const linked=item.preparacion_trabajo_id;
     return `<div class="preparation-actions">${medranoPreparationBadge(item)}${linked?'<span class="muted">Producción vinculada</span>':`<button type="button" class="primary compact-button" data-prepare-custom-oil="${escapeHtml(item.id)}">Preparar aceite</button>`}</div>`;
   }
-  const status=medranoPreparationState(item),next=status==='listo'?'en_proceso':'listo';
-  const label=status==='listo'?'Reabrir':'Marcar listo';
-  return `<div class="preparation-actions">${medranoPreparationBadge(item)}<button type="button" class="${status==='en_proceso'?'primary':'secondary'} compact-button" data-lab-preparation-item="${escapeHtml(item.id)}" data-lab-preparation-status="${next}">${label}</button></div>`;
+  return medranoPreparationBadge(item);
 }
 function medranoLabOrderRows(orders){
   return `<div class="stock-table-wrap"><table class="stock-table medrano-orders-table"><thead><tr><th>Fecha</th><th>Producto</th><th>Tokens</th><th>Paciente</th><th>Preparación</th></tr></thead><tbody>${orders.length?orders.map(order=>`<tr><td>${order.fecha?parse(order.fecha).toLocaleDateString('es-AR'):'—'}</td><td>${order.items.map(item=>{const trace=medranoOrderItemTrace(item),recipe=medranoCustomOilRecipeText(item);return `<div class="lab-order-item"><strong>${escapeHtml(medranoOrderItemName(item))}</strong> · ${Number(item.cantidad).toLocaleString('es-AR')} ${escapeHtml(item.unidad)}${recipe?`<br><span class="custom-order-recipe">A pedido · ${escapeHtml(recipe)}</span>`:''}${trace?`<br><span class="muted">${escapeHtml(trace)}</span>`:''}</div>`}).join('')}</td><td>${Number(order.items.reduce((sum,item)=>sum+Number(item.tokens_total||0),0)).toLocaleString('es-AR',{maximumFractionDigits:2})} Tokens</td><td>${escapeHtml(order.paciente_nombre||'—')}</td><td>${order.items.map(item=>medranoPreparationActions(item,order)).join('')}</td></tr>`).join(''):'<tr><td colspan="5" class="muted">No hay comandas con productos de Laboratorio.</td></tr>'}</tbody></table></div>`;
@@ -2145,7 +2144,7 @@ async function markMedranoOrderDispensed(orderId){
   if(!order)throw new Error('No se encontró la comanda.');
   if(order.dispensada_at)return;
   if(!medranoOrderHasPhysicalStock(order))throw new Error('El aceite a pedido todavía no fue producido. Laboratorio debe elaborarlo antes de la entrega.');
-  if(!medranoOrderLabReady(order)&&!confirm('Laboratorio todavía no marcó todos los productos como listos. ¿Querés dispensar igualmente usando el stock reservado?'))return;
+  if(!medranoOrderLabReady(order))throw new Error('El aceite a pedido todavía no está listo para entregar.');
   if(order.multiple&&order.pago_estado!=='pagada')throw new Error('Administración debe confirmar primero el cobro de la comanda.');
   const q=order.multiple?await db.rpc('cerrar_comanda_multiproducto',{p_id:order.id,p_medio:null}):await db.rpc('marcar_comanda_dispensada',{objetivo_id:order.id});
   if(q.error)throw q.error;
@@ -2187,9 +2186,9 @@ function medranoOrderActionsHtml(order,area='administracion'){
   const canCharge=area==='administracion',canDispense=['administracion','dispensario'].includes(area);
   const payment=order.multiple?`<span class="payment-badge ${paid||historical?'paid':'pending'}">${historical?'Histórica':paid?'Pagada':'Pago pendiente'}</span>${canCharge&&!paid&&!historical&&!dispensed?`<button type="button" class="secondary compact-button" data-pay-medrano-order="${safeId}">Cobrar</button>`:''}`:'';
   const paymentPending=order.multiple&&!paid&&!historical;
-  const disabledReason=!physicalStock?'Aceite a pedido pendiente de producción':paymentPending?'Administración debe confirmar el cobro':!canDispense?'La dispensa se confirma desde Administración o Dispensario':'';
+  const disabledReason=!physicalStock||!labReady?'Aceite a pedido pendiente de producción':paymentPending?'Administración debe confirmar el cobro':!canDispense?'La dispensa se confirma desde Administración o Dispensario':'';
   const dispenseDisabled=dispensed||Boolean(disabledReason);
-  return `<div class="medrano-order-actions">${payment}${!physicalStock&&!dispensed?'<span class="preparation-badge preparation-pendiente">Pendiente de producción</span>':!labReady&&!dispensed?'<span class="preparation-badge preparation-pendiente">Laboratorio sin confirmar · entrega habilitada</span>':''}${paymentPending&&area==='dispensario'?'<span class="preparation-badge preparation-pendiente">Esperando cobro de Administración</span>':''}<label class="medrano-order-dispensed"><input type="checkbox" data-dispense-medrano-order="${safeId}" ${dispensed?'checked ':''}${dispenseDisabled?`disabled${disabledReason?` title="${escapeHtml(disabledReason)}"`:''}`:''}><span>Dispensada</span></label>${medranoOrderOptionsHtml(order)}</div>`;
+  return `<div class="medrano-order-actions">${payment}${(!physicalStock||!labReady)&&!dispensed?'<span class="preparation-badge preparation-pendiente">Pendiente de producción</span>':''}${paymentPending&&area==='dispensario'?'<span class="preparation-badge preparation-pendiente">Esperando cobro de Administración</span>':''}<label class="medrano-order-dispensed"><input type="checkbox" data-dispense-medrano-order="${safeId}" ${dispensed?'checked ':''}${dispenseDisabled?`disabled${disabledReason?` title="${escapeHtml(disabledReason)}"`:''}`:''}><span>Dispensada</span></label>${medranoOrderOptionsHtml(order)}</div>`;
 }
 
 function findEditableMedranoOrder(orderId){
@@ -3001,22 +3000,10 @@ function medranoLabJobRows(jobs){
     return `<tr><td>${escapeHtml(medranoJobTypes[job.tipo]||job.tipo)}</td><td><strong>${escapeHtml(typeof formatMeasurementText==='function'?formatMeasurementText(job.producto):job.producto)}</strong>${job.paciente?`<br>${escapeHtml(job.paciente)}`:''}${job.detalle?`<br><span class="muted">${escapeHtml(job.detalle)}</span>`:''}</td><td>${detail}</td><td>${escapeHtml({pendiente:'Pendiente',en_proceso:'En proceso',finalizado:'Finalizado',cancelado:'Cancelado'}[job.estado]||job.estado)}</td><td>${medranoJobDay(job.finalizado_at||job.updated_at||job.created_at)?parse(medranoJobDay(job.finalizado_at||job.updated_at||job.created_at)).toLocaleDateString('es-AR'):'—'}</td><td>${escapeHtml(actor)}</td>${canManageMedrano()?`<td><div class="counter-item-actions">${canEdit?`<button type="button" class="secondary compact-button" data-lab-job-edit="${job.id}">Editar</button>`:''}${actions}${['pendiente','en_proceso'].includes(job.estado)?`<button type="button" class="danger compact-button" data-lab-job-state="${job.id}" data-job-status="cancelado">Cancelar</button>`:''}</div></td>`:''}</tr>`;
   }).join(''):`<tr><td colspan="${canManageMedrano()?7:6}" class="muted">Sin registros.</td></tr>`}</tbody></table></div>`;
 }
-async function changeMedranoPreparationState(itemId,status){
-  if(!canManageMedrano()||!state.medranoMultiReady)throw new Error('No está habilitada la preparación de comandas.');
-  if(!['pendiente','en_proceso','listo'].includes(status))throw new Error('Estado de preparación inválido.');
-  const item=(state.medranoMultiItems||[]).find(row=>String(row.id)===String(itemId));
-  if(!item||!medranoLabOrderTypes.has(item.tipo))throw new Error('No se encontró el producto de Laboratorio.');
-  const action=status==='en_proceso'?'iniciar la preparación':status==='listo'?'marcar el producto como listo':'reabrir la preparación';
-  if(!confirm(`¿${action.charAt(0).toUpperCase()+action.slice(1)} de “${medranoOrderItemName(item)}”?`))return;
-  const q=await db.rpc('cambiar_preparacion_item_comanda',{p_item:item.id,p_estado:status});
-  if(q.error)throw q.error;
-  await refreshMedranoModules('orders');
-}
 function bindMedranoLabJobActions(){
   app.querySelectorAll('[data-lab-job-edit]').forEach(button=>button.onclick=()=>{const job=state.medranoLabJobs.find(j=>j.id===button.dataset.labJobEdit);if(job?.produccion_controlada)openLabProduction(job);else openMedranoLabJobDialog('aceite_base',job)});
   app.querySelectorAll('[data-lab-job-finish]').forEach(button=>button.onclick=()=>{const job=state.medranoLabJobs.find(j=>j.id===button.dataset.labJobFinish);if(job)openLabProductionFinish(job)});
   app.querySelectorAll('[data-lab-job-state]').forEach(button=>button.onclick=async()=>{const job=state.medranoLabJobs.find(j=>j.id===button.dataset.labJobState);if(!job)return;button.disabled=true;try{await changeMedranoLabJobStatus(job,button.dataset.jobStatus)}catch(e){console.error(e);alert(e.message||'No se pudo actualizar el trabajo.')}finally{button.disabled=false}});
-  app.querySelectorAll('[data-lab-preparation-item]').forEach(button=>button.onclick=async()=>{button.disabled=true;try{await changeMedranoPreparationState(button.dataset.labPreparationItem,button.dataset.labPreparationStatus)}catch(e){console.error(e);alert(e.message||'No se pudo actualizar la preparación.')}finally{button.disabled=false}});
   app.querySelectorAll('[data-prepare-custom-oil]').forEach(button=>button.onclick=()=>{const item=(state.medranoMultiItems||[]).find(row=>String(row.id)===String(button.dataset.prepareCustomOil));if(item)openLabProduction(null,item)});
 }
 function renderMedranoLaboratory(medranoNav,bindModuleNav,history=false){
@@ -3107,7 +3094,7 @@ function renderMedranoToday(medranoNav,bindModuleNav){
   const pendingOrders=(state.medranoMultiOrders||[]).filter(order=>order.estado==='pendiente'&&!order.eliminada_at);
   const orderViews=pendingOrders.map(medranoMultiOrderView);
   const unpaid=orderViews.filter(order=>order.pago_estado!=='pagada');
-  const deliverable=orderViews.filter(order=>order.pago_estado==='pagada'&&medranoOrderHasPhysicalStock(order));
+  const deliverable=orderViews.filter(order=>order.pago_estado==='pagada'&&medranoOrderHasPhysicalStock(order)&&medranoOrderLabReady(order));
   const labItems=orderViews.flatMap(order=>order.items||[]).filter(item=>medranoLabOrderTypes.has(item.tipo));
   const preparing=labItems.filter(item=>medranoPreparationState(item)==='en_proceso');
   const activeJobs=(state.medranoLabJobs||[]).filter(job=>['pendiente','en_proceso'].includes(job.estado));
