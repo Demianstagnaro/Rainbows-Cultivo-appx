@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.43. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.44. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.44 — Inicio único de aceites personalizados
+
+- Al preparar un aceite desde una comanda, la producción queda iniciada automáticamente.
+- Se elimina el segundo botón “Iniciar”; el próximo paso operativo es finalizar e indicar el rendimiento real.
+- La vinculación, la validación de stock y el inicio se ejecutan en una sola operación para evitar estados incompletos.
+- Requiere ejecutar `Rainbows_V3.26.44_inicio_unico_aceite.sql` en Supabase.
 
 ## V3.26.43 — Rendimiento esperado y obtenido
 
