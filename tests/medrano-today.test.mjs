@@ -29,7 +29,7 @@ test('Hoy reúne cobros, preparación, entregas, producción y recepciones',()=>
     'Recepciones desde Palestina',
     'Recepciones en Laboratorio'
   ])assert.match(app,new RegExp(label));
-  assert.match(app,/order\.pago_estado==='pagada'&&medranoOrderHasPhysicalStock\(order\)/);
+  assert.match(app,/order\.pago_estado==='pagada'&&medranoOrderHasPhysicalStock\(order\)&&medranoOrderLabReady\(order\)/);
   assert.match(app,/medranoPreparationState\(item\)==='en_proceso'/);
 });
 

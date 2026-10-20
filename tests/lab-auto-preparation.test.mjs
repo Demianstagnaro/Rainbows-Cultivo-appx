@@ -3,17 +3,19 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
 const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
-const sql=fs.readFileSync(new URL('../Rainbows_V3.26.7_preparacion_automatica_laboratorio.sql',import.meta.url),'utf8');
+const sql=fs.readFileSync(new URL('../Rainbows_V3.26.45_preparacion_solo_aceites_a_pedido.sql',import.meta.url),'utf8');
 
-test('los productos de Laboratorio nacen En preparación',()=>{
-  assert.match(sql,/set preparacion_estado='en_proceso'/i);
-  assert.match(sql,/coalesce\(new\.preparacion_estado,'en_proceso'\)/i);
-  assert.match(app,/item\.preparacion_estado\|\|'en_proceso'/);
+test('solamente los aceites personalizados tienen estado de preparación',()=>{
+  assert.match(sql,/if coalesce\(new\.pedido_laboratorio,false\) then/i);
+  assert.match(sql,/new\.preparacion_estado:=null/i);
+  assert.match(sql,/where not coalesce\(pedido_laboratorio,false\)/i);
+  assert.match(app,/function medranoPreparationState\(item\)\{return item\?\.pedido_laboratorio\?/);
+  assert.match(app,/if\(!item\?\.pedido_laboratorio\)return '—'/);
 });
 
-test('Laboratorio solamente confirma listo o reabre la preparación',()=>{
-  assert.match(sql,/p_estado not in \('en_proceso','listo'\)/i);
-  assert.match(app,/next=status==='listo'\?'en_proceso':'listo'/);
-  assert.match(app,/label=status==='listo'\?'Reabrir':'Marcar listo'/);
-  assert.doesNotMatch(app,/status==='pendiente'\?'Iniciar'/);
+test('el aceite personalizado queda listo únicamente al terminar su producción',()=>{
+  assert.match(sql,/La preparación se actualiza automáticamente al finalizar el aceite personalizado/);
+  assert.doesNotMatch(app,/data-lab-preparation-item/);
+  assert.doesNotMatch(app,/Marcar listo/);
+  assert.match(app,/data-prepare-custom-oil/);
 });

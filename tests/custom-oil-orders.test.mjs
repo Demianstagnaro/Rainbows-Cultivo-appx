@@ -60,7 +60,7 @@ test('se puede dispensar sin confirmación manual pero no sin producto físico',
   assert.match(sql,/where comanda_id=p_id and origen_id is null/i);
   assert.match(sql,/El aceite a pedido todavía no fue producido por Laboratorio/);
   assert.match(app,/Aceite a pedido pendiente de producción/);
-  assert.match(app,/entrega habilitada/);
+  assert.doesNotMatch(app,/entrega habilitada/);
 });
 
 test('la ventana de comandas es amplia y no obliga a desplazarse horizontalmente',()=>{

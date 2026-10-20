@@ -6,6 +6,7 @@ const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const sql=fs.readFileSync(new URL('../Rainbows_V3.26.3_preparacion_comandas_laboratorio.sql',import.meta.url),'utf8');
 const sqlStock=fs.readFileSync(new URL('../Rainbows_V3.26.4_comandas_desde_stock.sql',import.meta.url),'utf8');
 const sqlTrace=fs.readFileSync(new URL('../Rainbows_V3.26.5_lotes_en_comandas.sql',import.meta.url),'utf8');
+const sqlCustomOnly=fs.readFileSync(new URL('../Rainbows_V3.26.45_preparacion_solo_aceites_a_pedido.sql',import.meta.url),'utf8');
 
 test('los productos elaborados usan tres estados de preparación',()=>{
   assert.match(sql,/preparacion_estado[\s\S]*?'pendiente','en_proceso','listo'/i);
@@ -14,16 +15,14 @@ test('los productos elaborados usan tres estados de preparación',()=>{
   assert.match(app,/Listo para entregar/);
 });
 
-test('iniciar preparación usa el lote reservado sin crear otra producción',()=>{
+test('los campos de preparación permanecen protegidos y trazables',()=>{
   assert.match(sqlStock,/add column if not exists preparacion_estado text/);
   assert.match(sqlStock,/add column if not exists preparacion_trabajo_id uuid/);
   assert.match(sqlStock,/create trigger normalizar_preparacion_item_comanda/i);
   assert.match(sqlTrace,/to_jsonb\(new\)-array\['preparacion_estado','preparacion_trabajo_id'\]/i);
-  assert.match(sqlStock,/create or replace function public\.cambiar_preparacion_item_comanda/i);
   assert.doesNotMatch(sqlStock,/insert into public\.medrano_laboratorio_trabajos\s*\(/i);
-  assert.match(sqlStock,/set preparacion_estado=p_estado,preparacion_trabajo_id=null/i);
   assert.match(sqlStock,/origen_id del ítem ya identifica el lote físico reservado/i);
-  assert.match(app,/cambiar_preparacion_item_comanda/);
+  assert.match(sqlCustomOnly,/before insert or update of tipo,pedido_laboratorio,preparacion_estado,preparacion_trabajo_id/i);
 });
 
 test('todos los productos trazables muestran genética y lote',()=>{
@@ -38,12 +37,13 @@ test('todos los productos trazables muestran genética y lote',()=>{
   assert.match(sqlTrace,/where i\.tipo in \('resina','aceites','cremas','capsulas'\)/i);
 });
 
-test('la confirmación de Laboratorio informa sin bloquear una entrega con stock físico',()=>{
+test('sólo el aceite personalizado queda bloqueado hasta que exista físicamente',()=>{
   assert.match(app,/function medranoOrderLabReady/);
-  assert.match(app,/Laboratorio sin confirmar · entrega habilitada/);
-  assert.match(app,/Laboratorio todavía no marcó todos los productos como listos/);
+  assert.match(app,/filter\(item=>item\.pedido_laboratorio\)/);
+  assert.match(app,/El aceite a pedido todavía no está listo para entregar/);
   assert.match(app,/function medranoOrderHasPhysicalStock/);
-  assert.doesNotMatch(app,/disabledReason=!labReady\?'Esperando productos de Laboratorio'/i);
+  assert.match(app,/disabledReason=!physicalStock\|\|!labReady\?'Aceite a pedido pendiente de producción'/i);
+  assert.doesNotMatch(app,/Laboratorio sin confirmar · entrega habilitada/);
   assert.match(app,/data-dispense-medrano-order[\s\S]*?dispenseDisabled/i);
 });
 
