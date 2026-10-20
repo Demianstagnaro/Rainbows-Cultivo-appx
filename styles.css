@@ -953,6 +953,28 @@ body{
 .lab-production-material{padding:12px 0;border-bottom:1px solid rgba(148,163,184,.2)}
 .lab-production-material .field-label{display:block;margin-bottom:8px}
 .lab-production-material .lab-material-remove{margin-bottom:8px}
+.lab-recipe-summary{margin:14px 0}
+.lab-recipe-card{overflow:hidden;border:1px solid rgba(56,189,248,.28);border-radius:16px;background:linear-gradient(145deg,rgba(14,165,233,.09),rgba(15,23,42,.72));box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
+.lab-recipe-head{display:grid;gap:4px;padding:15px 16px;border-bottom:1px solid rgba(148,163,184,.18)}
+.lab-recipe-head>span{color:#7dd3fc;font-size:.72rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase}
+.lab-recipe-head>strong{font-size:1.05rem;line-height:1.3}
+.lab-recipe-head>small{color:var(--muted);font-size:.78rem;line-height:1.4;overflow-wrap:anywhere}
+.lab-recipe-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0;padding:12px 14px}
+.lab-recipe-metrics>div{display:grid;gap:3px;min-width:0;padding:9px 10px;border:1px solid rgba(148,163,184,.14);border-radius:10px;background:rgba(255,255,255,.035)}
+.lab-recipe-metrics dt{color:var(--muted);font-size:.7rem;font-weight:800}
+.lab-recipe-metrics dd{margin:0;font-size:.88rem;font-weight:850;overflow-wrap:anywhere}
+.lab-recipe-materials{padding:2px 16px 13px}
+.lab-recipe-materials h4{margin:5px 0 7px;color:#cbd5e1;font-size:.77rem;letter-spacing:.04em;text-transform:uppercase}
+.lab-recipe-materials ul{display:grid;gap:0;margin:0;padding:0;list-style:none}
+.lab-recipe-materials li{position:relative;padding:7px 4px 7px 19px;border-top:1px solid rgba(148,163,184,.12);font-size:.84rem;line-height:1.35}
+.lab-recipe-materials li::before{content:'✓';position:absolute;left:1px;color:#7dd3fc;font-weight:900}
+.lab-recipe-result{display:grid;gap:4px;margin:0 14px 13px;padding:11px 12px;border:1px solid rgba(34,197,94,.26);border-radius:11px;background:rgba(34,197,94,.09)}
+.lab-recipe-result span{color:#86efac;font-size:.7rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+.lab-recipe-result strong{font-size:.95rem;line-height:1.35}
+.lab-recipe-note{margin:0;padding:0 16px 15px;color:var(--muted);font-size:.76rem;line-height:1.45}
+.lab-recipe-pending{display:grid;gap:4px;padding:13px 14px;border:1px dashed rgba(245,158,11,.42);border-radius:13px;background:rgba(245,158,11,.07)}
+.lab-recipe-pending strong{color:#fcd34d;font-size:.86rem}.lab-recipe-pending span{color:var(--muted);font-size:.8rem;line-height:1.45}
+@media(max-width:420px){.lab-recipe-metrics{grid-template-columns:1fr 1fr;padding:10px}.lab-recipe-head{padding:13px}.lab-recipe-materials{padding-left:13px;padding-right:13px}.lab-recipe-result{margin-left:10px;margin-right:10px}.lab-recipe-note{padding-left:13px;padding-right:13px}}
 
 /* Estados de comandas y tareas */
 .status-heading-pending{color:#fb7185!important}.status-heading-completed{color:#4ade80!important}.lab-order-item+.lab-order-item{margin-top:6px}

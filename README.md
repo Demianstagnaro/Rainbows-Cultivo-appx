@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.40. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.41. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.41 — Recetas de Laboratorio más claras
+
+- Reemplaza el texto continuo de la comanda de producción por una ficha visual.
+- Separa producto, datos técnicos, materias primas y resultado esperado.
+- Incluye un aviso claro cuando todavía faltan datos para calcular la receta.
+- No modifica cálculos, stock ni funciones de Supabase.
 
 ## V3.26.40 — Precio automático de aceites
 

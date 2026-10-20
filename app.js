@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.40';
+const APP_VERSION='3.26.41';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2747,6 +2747,11 @@ function refreshLabFinalOilDraft(){
   }
   labProductionOutputOptions();
 }
+function labRecipeAmount(value,maximumFractionDigits=3){return Number(value).toLocaleString('es-AR',{maximumFractionDigits})}
+function labRecipeSummaryMarkup({title,product='',metrics=[],materials=[],result='',note=''}){
+  return `<section class="lab-recipe-card"><header class="lab-recipe-head"><span>Receta calculada</span><strong>${escapeHtml(title)}</strong>${product?`<small>${escapeHtml(formatMeasurementText(product))}</small>`:''}</header>${metrics.length?`<dl class="lab-recipe-metrics">${metrics.filter(item=>item.value!==''&&item.value!==null&&item.value!==undefined).map(item=>`<div><dt>${escapeHtml(item.label)}</dt><dd>${escapeHtml(String(item.value))}</dd></div>`).join('')}</dl>`:''}${materials.length?`<div class="lab-recipe-materials"><h4>Materias primas</h4><ul>${materials.map(item=>`<li>${escapeHtml(formatMeasurementText(item))}</li>`).join('')}</ul></div>`:''}${result?`<div class="lab-recipe-result"><span>Resultado esperado</span><strong>${escapeHtml(result)}</strong></div>`:''}${note?`<p class="lab-recipe-note">${escapeHtml(note)}</p>`:''}</section>`;
+}
+function labRecipePendingMarkup(message){return `<div class="lab-recipe-pending"><strong>Completá la receta</strong><span>${escapeHtml(message)}</span></div>`}
 function labProductionOutputOptions(selected='',selectedName=''){
   const type=$('lab-production-type').value,category=medranoProductionCategory[type];
   $('lab-production-output-field').firstChild.textContent=type==='aceite_final'?'Resultado automático':'Producto obtenido';
@@ -2769,7 +2774,7 @@ function labProductionOutputOptions(selected='',selectedName=''){
     $('lab-production-unit-field').hidden=true;
     $('lab-production-unit').value='ml';
     $('lab-production-unit').disabled=true;
-    $('lab-production-oil-summary').textContent=draft?`${draft.parts.join(' + ')} = ${draft.totalVolume.toLocaleString('es-AR',{maximumFractionDigits:2})} ml teóricos · Resina equivalente ${draft.resinEquivalent.toLocaleString('es-AR',{maximumFractionDigits:3})} g · Concentración 1:${draft.concentration.toLocaleString('es-AR',{maximumFractionDigits:2})} · ${draft.profile}${draft.ratio?` ${draft.ratio}`:''}`:'Agregá al menos una fuente cannabinoide (resina o aceite preparado) y otro componente para calcular el aceite.';
+    $('lab-production-oil-summary').innerHTML=draft?labRecipeSummaryMarkup({title:'Aceite base a granel',product:draft.name,metrics:[{label:'Perfil',value:draft.profile},{label:'Ratio',value:draft.ratio||'—'},{label:'Concentración',value:`1:${labRecipeAmount(draft.concentration,2)}`},{label:'Resina equivalente',value:`${labRecipeAmount(draft.resinEquivalent)} g`}],materials:draft.parts,result:`${labRecipeAmount(draft.totalVolume,2)} ml teóricos`,note:'Al finalizar se cargará el rendimiento real obtenido.'}):labRecipePendingMarkup('Agregá al menos una fuente cannabinoide (resina o aceite preparado) y otro componente para calcular el aceite.');
     $('lab-production-output').onchange=null;
     return;
   }
@@ -2777,7 +2782,7 @@ function labProductionOutputOptions(selected='',selectedName=''){
     const draft=labFinalOilDraft();
     $('lab-production-output').innerHTML=`<option value="${escapeHtml(draft?.name||'')}">${escapeHtml(draft?.name||'Completá la receta, los aceites base y el envase')}</option>`;
     $('lab-production-name-field').hidden=true;$('lab-production-unit-field').hidden=true;$('lab-production-unit').value='unidades';$('lab-production-unit').disabled=true;
-    $('lab-production-oil-summary').textContent=draft?`RECETA PARA ${draft.count} GOTERO${draft.count===1?'':'S'}: volumen final ${draft.totalVolume.toLocaleString('es-AR',{maximumFractionDigits:3})} ml. Usar ${draft.parts.join(' + ')} + ${draft.pureVolume.toLocaleString('es-AR',{maximumFractionDigits:3})} ml de ${draft.pure.nombre} + ${draft.count} gotero${draft.count===1?'':'s'} de ${draft.presentation.toLocaleString('es-AR',{maximumFractionDigits:2})} ml. RESULTADO ESPERADO: ${draft.count} aceite${draft.count===1?'':'s'} terminado${draft.count===1?'':'s'} · ${draft.profile}${draft.ratio?` · Ratio ${draft.ratio}`:''} · 1:${draft.concentration.toLocaleString('es-AR',{maximumFractionDigits:2})}. Los números que figuran dentro de los selectores son sólo el stock disponible; no se usará el total. Al finalizar, Laboratorio confirmará cuántos salieron realmente y recién entonces se descontará lo calculado.`:'Elegí el perfil final para que aparezca una base compatible por cada cannabinoide; después completá ratio, concentración, cantidad de goteros, aceite puro y tamaño de gotero.';
+    $('lab-production-oil-summary').innerHTML=draft?labRecipeSummaryMarkup({title:`Receta para ${draft.count} gotero${draft.count===1?'':'s'}`,product:draft.name,metrics:[{label:'Perfil',value:draft.profile},{label:'Ratio',value:draft.ratio||'—'},{label:'Concentración',value:`1:${labRecipeAmount(draft.concentration,2)}`},{label:'Volumen final',value:`${labRecipeAmount(draft.totalVolume)} ml`}],materials:[...draft.parts,`${labRecipeAmount(draft.pureVolume)} ml de ${draft.pure.nombre}`,`${draft.count} gotero${draft.count===1?'':'s'} de ${labRecipeAmount(draft.presentation,2)} ml`],result:`${draft.count} aceite${draft.count===1?'':'s'} terminado${draft.count===1?'':'s'}`,note:'Los selectores muestran el stock disponible, pero sólo se descontarán las cantidades calculadas cuando Laboratorio confirme el resultado real.'}):labRecipePendingMarkup('Elegí el perfil final y completá el ratio, la concentración, la cantidad de goteros, el aceite puro y el tamaño del gotero.');
     $('lab-production-output').onchange=null;return;
   }
   if(type==='capsulas'){
@@ -2787,7 +2792,7 @@ function labProductionOutputOptions(selected='',selectedName=''){
     $('lab-production-unit-field').hidden=true;
     $('lab-production-unit').value='unidades';
     $('lab-production-unit').disabled=true;
-    $('lab-production-oil-summary').textContent=draft?`Resultado automático: cápsulas de ${draft.size.toLocaleString('es-AR',{maximumFractionDigits:3})} g con ${draft.resin.item.nombre}${draft.genetic&&draft.genetic!=='Sin identificar'?` · Genética ${draft.genetic}`:''}${draft.resin.item.lote?` · Lote ${draft.resin.item.lote}`:''}. Se planifican ${draft.planned.toLocaleString('es-AR')} cápsulas; al finalizar se ingresará la cantidad que salió realmente.`:'El insumo de cápsulas debe indicar el tamaño en su nombre (por ejemplo, “Cápsulas de 1 g”) y estar medido en unidades.';
+    $('lab-production-oil-summary').innerHTML=draft?labRecipeSummaryMarkup({title:'Producción de cápsulas',product:draft.name,metrics:[{label:'Tamaño',value:`${labRecipeAmount(draft.size)} g`},{label:'Genética',value:draft.genetic&&draft.genetic!=='Sin identificar'?draft.genetic:'—'},{label:'Perfil',value:draft.profile||'—'},{label:'Ratio',value:draft.ratio&&draft.ratio!=='Sin cargar'?draft.ratio:'—'},{label:'Lote',value:draft.resin.item.lote||'—'}],materials:[`${labRecipeAmount(draft.resin.material.cantidad)} g de ${draft.resin.item.nombre}`,`${labRecipeAmount(draft.capsule.material.cantidad,0)} unidades de ${draft.capsule.item.nombre}`],result:`${labRecipeAmount(draft.planned,0)} cápsula${draft.planned===1?'':'s'} planificada${draft.planned===1?'':'s'}`,note:'Al finalizar se ingresará la cantidad que salió realmente.'}):labRecipePendingMarkup('El insumo de cápsulas debe indicar el tamaño en su nombre (por ejemplo, “Cápsulas de 1 g”) y estar medido en unidades.');
     $('lab-production-output').onchange=null;
     return;
   }
@@ -2798,7 +2803,7 @@ function labProductionOutputOptions(selected='',selectedName=''){
     $('lab-production-unit-field').hidden=true;
     $('lab-production-unit').value='unidades';
     $('lab-production-unit').disabled=true;
-    $('lab-production-oil-summary').textContent=draft?`Resultado automático: ${draft.planned.toLocaleString('es-AR')} cremas de ${draft.presentation.toLocaleString('es-AR',{maximumFractionDigits:2})} g · ${draft.resinGrams.toLocaleString('es-AR',{maximumFractionDigits:3})} g de resina en ${draft.totalGrams.toLocaleString('es-AR',{maximumFractionDigits:2})} g finales · concentración 1:${draft.concentration.toLocaleString('es-AR',{maximumFractionDigits:2})} · ${draft.profile}${draft.ratio!=='—'?` · Ratio ${draft.ratio}`:''}. Al finalizar se cargará la cantidad que salió realmente.`:'La crema necesita una resina trazable, al menos un ingrediente de base y un frasco con capacidad en gramos.';
+    $('lab-production-oil-summary').innerHTML=draft?labRecipeSummaryMarkup({title:'Producción de cremas',product:draft.name,metrics:[{label:'Presentación',value:`${labRecipeAmount(draft.presentation,2)} g`},{label:'Perfil',value:draft.profile},{label:'Ratio',value:draft.ratio&&draft.ratio!=='Sin cargar'?draft.ratio:'—'},{label:'Concentración',value:`1:${labRecipeAmount(draft.concentration,2)}`},{label:'Peso final',value:`${labRecipeAmount(draft.totalGrams,2)} g`}],materials:[`${labRecipeAmount(draft.resinGrams)} g de ${draft.resin.item.nombre}`,...draft.ingredients.map(row=>`${labRecipeAmount(row.material.cantidad)} ${row.item.unidad} de ${row.item.nombre}`),`${labRecipeAmount(draft.container.material.cantidad,0)} frasco${draft.container.material.cantidad===1?'':'s'} de ${labRecipeAmount(draft.presentation,2)} g`],result:`${labRecipeAmount(draft.planned,0)} crema${draft.planned===1?'':'s'} de ${labRecipeAmount(draft.presentation,2)} g`,note:'Al finalizar se cargará la cantidad que salió realmente.'}):labRecipePendingMarkup('La crema necesita una resina trazable, al menos un ingrediente de base y un frasco con capacidad en gramos.');
     $('lab-production-output').onchange=null;
     return;
   }
