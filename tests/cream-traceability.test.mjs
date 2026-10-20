@@ -29,7 +29,7 @@ test('el rendimiento final de crema se registra en frascos enteros',()=>{
 test('la crema calcula y muestra la concentración de resina',()=>{
   assert.match(app,/concentration=totalGrams\/resinGrams/);
   assert.match(app,/Concentración<\/th>/);
-  assert.match(app,/concentración 1:\$\{draft\.concentration/);
+  assert.match(app,/label:'Concentración',value:`1:\$\{labRecipeAmount\(draft\.concentration,2\)\}`/);
   assert.match(sql261,/v_concentracion:=v_gramos_totales\/v_resina_cantidad/);
   assert.match(sql261,/'concentracion',v_concentracion/);
 });

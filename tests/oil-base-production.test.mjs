@@ -10,7 +10,8 @@ test('la producción base queda diferenciada del aceite final y calcula concentr
   assert.match(html,/value="aceite_final">Preparar aceite final<\/option>/);
   assert.match(app,/const equivalent=material\.cantidad\/Number\(item\.concentracion_denominador\)/);
   assert.match(app,/concentration=totalVolume\/resinEquivalent/);
-  assert.match(app,/Resina equivalente[\s\S]*?Concentración 1:/);
+  assert.match(app,/label:'Concentración'/);
+  assert.match(app,/label:'Resina equivalente'/);
   assert.match(app,/type==='aceite_base'\?'ml'/);
 });
 
