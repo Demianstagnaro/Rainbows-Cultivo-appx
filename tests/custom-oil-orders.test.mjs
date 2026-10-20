@@ -8,6 +8,7 @@ const html=read('index.html');
 const styles=read('styles.css');
 const sql=read('Rainbows_V3.26.40_precio_automatico_aceites.sql');
 const fixSql=read('Rainbows_V3.26.42_comandas_aceites.sql');
+const singleStartSql=read('Rainbows_V3.26.44_inicio_unico_aceite.sql');
 
 test('la comanda ofrece aceites valorizados para preparar a pedido',()=>{
   assert.match(app,/function parseMedranoOilRecipeName/);
@@ -35,6 +36,12 @@ test('Laboratorio abre la receta y vincula la producción a la comanda',()=>{
   assert.match(sql,/create or replace function public\.vincular_produccion_aceite_comanda/i);
   assert.match(sql,/create trigger completar_aceite_comanda_desde_produccion/i);
   assert.match(sql,/set origen_id=v_stock\.id,catalogo_producto_id=v_stock\.catalogo_producto_id,nombre=v_stock\.nombre,preparacion_estado='listo'/i);
+});
+
+test('preparar un aceite de comanda crea y deja la producción en proceso en un solo paso',()=>{
+  assert.match(singleStartSql,/create or replace function public\.vincular_produccion_aceite_comanda/i);
+  assert.match(singleStartSql,/if v_job\.estado='pendiente' then[\s\S]*perform public\.cambiar_estado_trabajo_laboratorio\(p_trabajo,'en_proceso'\)/i);
+  assert.match(singleStartSql,/set preparacion_estado='en_proceso',preparacion_trabajo_id=p_trabajo/i);
 });
 
 test('el precio de cada aceite es proporcional a los gramos de resina',()=>{
