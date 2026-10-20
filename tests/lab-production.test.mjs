@@ -12,11 +12,22 @@ test('la extracción toma un lote de flores y muestra materias primas y retorno 
   const context={state,escapeHtml:x=>String(x).replaceAll('<','&lt;').replaceAll('>','&gt;'),canManageMedrano:()=>false,medranoLabCategoryName:x=>x,parse:x=>new Date(`${x}T12:00:00Z`),Date};
   vm.runInNewContext(`${code}\nglobalThis.renderRow=medranoLabJobRows;globalThis.materialRow=labProductionMaterialRow;`,context);
   assert.match(context.materialRow('flores'),/MC · F1C9 \(100 g\)/);
-  const row=context.renderRow([{id:'trabajo',tipo:'resina',producto:'Resina MC',estado:'finalizado',produccion_controlada:true,resultado_cantidad:20,resultado_unidad:'g'}]);
+  const row=context.renderRow([{id:'trabajo',tipo:'resina',producto:'Resina MC',estado:'finalizado',produccion_controlada:true,resultado_metadata:{resultado_esperado:22,resultado_esperado_unidad:'g'},resultado_cantidad:20,resultado_unidad:'g'}]);
   assert.match(row,/MC · 100 g/);
-  assert.match(row,/Obtenido: 20 g/);
+  assert.match(row,/Resultado esperado[\s\S]*22 g/);
+  assert.match(row,/Resultado obtenido[\s\S]*20 g/);
   assert.match(row,/Resina MC/);
   assert.doesNotMatch(row,/Reabrir/);
+});
+
+test('cada producción conserva el objetivo antes de registrar el resultado real',()=>{
+  assert.match(html,/id="lab-production-expected"[^>]*placeholder="Ej\.: 20"/);
+  assert.match(app,/resultado_esperado:expected,resultado_esperado_unidad:unit/);
+  assert.match(app,/type==='aceite_base'\?draft\?\.totalVolume/);
+  assert.match(app,/type==='aceite_final'\?finalOilDraft\?\.count/);
+  assert.match(app,/type==='crema'\?creamDraft\?\.planned/);
+  assert.match(app,/type==='capsulas'\?capsuleDraft\?\.planned/);
+  assert.match(app,/function labProductionExpected\(job,materials=\[\]\)/);
 });
 
 test('la producción exige cierre transaccional y bloquea reapertura tras afectar stock',()=>{
