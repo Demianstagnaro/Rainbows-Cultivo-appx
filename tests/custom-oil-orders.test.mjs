@@ -4,7 +4,10 @@ import test from 'node:test';
 
 const read=name=>fs.readFileSync(new URL(`../${name}`,import.meta.url),'utf8');
 const app=read('app.js');
+const html=read('index.html');
+const styles=read('styles.css');
 const sql=read('Rainbows_V3.26.40_precio_automatico_aceites.sql');
+const fixSql=read('Rainbows_V3.26.42_comandas_aceites.sql');
 
 test('la comanda ofrece aceites valorizados para preparar a pedido',()=>{
   assert.match(app,/function parseMedranoOilRecipeName/);
@@ -51,4 +54,24 @@ test('se puede dispensar sin confirmación manual pero no sin producto físico',
   assert.match(sql,/El aceite a pedido todavía no fue producido por Laboratorio/);
   assert.match(app,/Aceite a pedido pendiente de producción/);
   assert.match(app,/entrega habilitada/);
+});
+
+test('la ventana de comandas es amplia y no obliga a desplazarse horizontalmente',()=>{
+  assert.match(html,/id="medrano-multi-dialog" class="dialog medrano-multi-dialog"/);
+  assert.match(styles,/\.medrano-multi-dialog\{width:min\(96vw,980px\);max-width:none\}/);
+  assert.match(styles,/@media\(max-width:480px\)\{\.medrano-multi-line,\.custom-oil-order-fields\{grid-template-columns:1fr\}/);
+});
+
+test('aceite portador excluye líquidos que no son aceites',()=>{
+  assert.match(app,/function medranoIsCarrierOil\(stock\)/);
+  assert.match(app,/agua\|vitamina\|alcohol\|glicerina/);
+  assert.match(app,/filter\(medranoIsCarrierOil\)/);
+});
+
+test('el pedido personalizado se guarda siempre como aceite sin depender de un catálogo',()=>{
+  assert.match(app,/tipo:product\?\.custom\?'aceites':tipo/);
+  assert.match(fixSql,/v_tipo:=case when coalesce\(\(v_line->>'pedido_laboratorio'\)::boolean,false\) then 'aceites'/i);
+  assert.doesNotMatch(fixSql,/nullif\(v_line->>'catalogo_producto_id',''\) is null/i);
+  assert.match(fixSql,/pedido_laboratorio and tipo='aceites' and origen_id is null and jsonb_typeof\(receta\)='object'/i);
+  assert.match(fixSql,/set origen_id=v_stock\.id,catalogo_producto_id=v_stock\.catalogo_producto_id,nombre=v_stock\.nombre,preparacion_estado='listo'/i);
 });
