@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.42';
+const APP_VERSION='3.26.43';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2866,6 +2866,7 @@ function openLabProduction(job=null,orderItem=null){
   $('lab-production-unit').value=job?.resultado_unidad||({resina:'g',aceite_base:'ml',aceite_final:'unidades',crema:'unidades',capsulas:'unidades'}[$('lab-production-type').value]);
   $('lab-production-resin-profile').value=metadata.perfil||'';
   $('lab-production-resin-ratio').value=metadata.proporcion||'';
+  $('lab-production-expected').value=metadata.resultado_esperado??'';
   $('lab-production-detail').value=orderItem?`Aceite a pedido · Comanda ${orderItem.comanda_id}`:job?.detalle||'';
   labProductionOutputOptions(job?.resultado_stock_id||'',job?.producto||'');
   if(orderItem)$('lab-production-type').disabled=true;
@@ -2881,10 +2882,13 @@ async function saveLabProduction(){
   const item=['resina','aceite_base','aceite_final','crema','capsulas'].includes(type)?null:(state.medranoLabItems||[]).find(i=>i.id===output);
   const name=type==='resina'?output:type==='aceite_base'?draft?.name||'':type==='aceite_final'?finalOilDraft?.name||'':type==='crema'?creamDraft?.name||'':type==='capsulas'?capsuleDraft?.name||'':item?.nombre||$('lab-production-name').value.trim(),unit=type==='resina'?'g':type==='aceite_base'?'ml':['aceite_final','crema','capsulas'].includes(type)?'unidades':item?.unidad||$('lab-production-unit').value;
   const materials=type==='aceite_final'&&finalOilDraft?finalOilDraft.materials:labProductionMaterialsValue();
-  const metadata=type==='resina'?{perfil:$('lab-production-resin-profile').value,proporcion:$('lab-production-resin-ratio').value.trim()||null}:type==='aceite_base'&&draft?{perfil:draft.profile,proporcion:draft.ratio||null,base:draft.base,concentracion:draft.concentration}:type==='aceite_final'&&finalOilDraft?finalOilDraft.metadata:type==='crema'&&creamDraft?creamDraft.metadata:type==='capsulas'&&capsuleDraft?capsuleDraft.metadata:{};
+  const expected=type==='resina'?Number($('lab-production-expected').value):type==='aceite_base'?draft?.totalVolume:type==='aceite_final'?finalOilDraft?.count:type==='crema'?creamDraft?.planned:type==='capsulas'?capsuleDraft?.planned:null;
+  const baseMetadata=type==='resina'?{perfil:$('lab-production-resin-profile').value,proporcion:$('lab-production-resin-ratio').value.trim()||null}:type==='aceite_base'&&draft?{perfil:draft.profile,proporcion:draft.ratio||null,base:draft.base,concentracion:draft.concentration}:type==='aceite_final'&&finalOilDraft?finalOilDraft.metadata:type==='crema'&&creamDraft?creamDraft.metadata:type==='capsulas'&&capsuleDraft?capsuleDraft.metadata:{};
+  const metadata={...baseMetadata,resultado_esperado:expected,resultado_esperado_unidad:unit};
   if(!medranoProductionCategory[type]||!name||name.length>180||!materials.length||new Set(materials.map(m=>m.id)).size!==materials.length||materials.some(m=>!m.id||!Number.isFinite(m.cantidad)||m.cantidad<=0)||$('lab-production-detail').value.length>2000)throw new Error('Revisá el producto obtenido y las cantidades de materias primas.');
   if(type==='resina'&&!fullSpectrumProfiles.includes(metadata.perfil))throw new Error('Seleccioná el perfil de cannabinoides de la resina.');
   if(type==='resina'&&medranoCannabinoidRatioRequired(metadata.perfil)&&!metadata.proporcion)throw new Error('Indicá la proporción de cannabinoides de la resina, por ejemplo 1-1 o 1-2.');
+  if(type==='resina'&&(!Number.isFinite(expected)||expected<=0))throw new Error('Indicá el resultado esperado de la extracción en gramos.');
   if(type==='resina'&&(materials.length!==1||materials[0].category!=='flores')||type==='aceite_base'&&!draft||type==='aceite_final'&&!finalOilDraft||type==='crema'&&!creamDraft||type==='capsulas'&&!capsuleDraft||!['resina','aceite_base','aceite_final','crema','capsulas'].includes(type)&&!materials.some(m=>m.category==='resina'))throw new Error(type==='capsulas'?'Elegí una resina y un insumo de cápsulas cuyo nombre indique el tamaño, por ejemplo “Cápsulas de 1 g”.':type==='crema'?'Elegí una resina trazable, la base y un frasco con capacidad en gramos.':type==='aceite_final'?'Completá la receta y elegí un aceite base simple por cannabinoide, el aceite puro y el gotero.':'Elegí las materias primas necesarias para este trabajo.');
   const payload=materials.map(({id,cantidad})=>({id,cantidad}));
   const q=type==='aceite_final'?await db.rpc('guardar_produccion_aceite_final',{p_id:state.editMedranoLabJob?.id||null,p_aceites:materials.filter(x=>x.category==='aceites').map(x=>x.id),p_aceite_puro_id:finalOilDraft.pure.id,p_envase_id:finalOilDraft.container.id,p_perfil:finalOilDraft.profile,p_proporcion:finalOilDraft.ratio,p_concentracion:finalOilDraft.concentration,p_unidades:finalOilDraft.count,p_detalle:$('lab-production-detail').value.trim()}):type==='crema'?await db.rpc('guardar_produccion_crema',{p_id:state.editMedranoLabJob?.id||null,p_insumos:payload,p_detalle:$('lab-production-detail').value.trim()}):await db.rpc('guardar_produccion_laboratorio',{p_id:state.editMedranoLabJob?.id||null,p_tipo:type,p_insumos:payload,p_producto:name,p_producto_id:['resina','aceite_base','capsulas'].includes(type)?null:output||null,p_unidad:unit,p_detalle:$('lab-production-detail').value.trim(),p_metadata:metadata});
@@ -2895,9 +2899,29 @@ async function saveLabProduction(){
   }
   closeDialog('lab-production-dialog');state.editMedranoLabJob=null;state.pendingLabOrderItem=null;await refreshMedranoModules('laboratory','orders');
 }
+function labProductionExpected(job,materials=[]){
+  const metadata=job?.resultado_metadata||{};
+  const saved=Number(metadata.resultado_esperado);
+  if(Number.isFinite(saved)&&saved>0)return saved;
+  const legacy=Number(job?.tipo==='capsulas'?metadata.capsulas_previstas:metadata.unidades_previstas);
+  if(Number.isFinite(legacy)&&legacy>0)return legacy;
+  if(job?.tipo==='aceite_base'){
+    const calculated=materials.reduce((sum,row)=>sum+Number(row.cantidad||0),0);
+    if(calculated>0)return calculated;
+  }
+  return null;
+}
+function labProductionResultText(job,value){
+  if(value===null||value===undefined||!Number.isFinite(Number(value)))return 'No registrado';
+  const quantity=Number(value).toLocaleString('es-AR',{maximumFractionDigits:3});
+  const unit=job.tipo==='aceite_final'?'gotero':job.tipo==='crema'?'frasco':job.tipo==='capsulas'?'cápsula':job.resultado_unidad||'';
+  const plural=Number(value)===1?'':unit==='cápsula'?'s':'s';
+  return `${quantity} ${unit}${['gotero','frasco','cápsula'].includes(unit)?plural:''}`.trim();
+}
 function openLabProductionFinish(job){
   state.finishMedranoLabJob=job;
-  $('lab-production-finish-summary').textContent=job.tipo==='capsulas'?`${job.producto}. Ingresá cuántas cápsulas salieron realmente; los insumos se descontarán según lo cargado al crear el trabajo.`:job.tipo==='crema'?`${job.producto}. Ingresá cuántos frascos completos salieron realmente; se conservarán los lotes e insumos utilizados.`:job.tipo==='aceite_final'?`${job.producto}. Ingresá cuántos goteros completos salieron realmente; la receta conserva los consumos calculados.`:`${job.producto} · resultado en ${job.resultado_unidad}`;
+  const materials=(state.medranoLabMaterials||[]).filter(row=>row.trabajo_id===job.id),expected=labProductionExpected(job,materials);
+  $('lab-production-finish-summary').textContent=`${job.producto} · Resultado esperado: ${labProductionResultText(job,expected)}. Ingresá el resultado obtenido realmente.`;
   $('lab-production-return-label').firstChild.textContent=job.tipo==='capsulas'?'Cápsulas obtenidas':job.tipo==='crema'?'Frascos obtenidos':job.tipo==='aceite_final'?'Goteros obtenidos':'Rendimiento real';
   $('lab-production-return').value='';configureWholeUnitInput($('lab-production-return'),job.resultado_unidad,false);
   $('lab-production-finish-dialog').showModal();
@@ -2970,7 +2994,8 @@ function medranoLabJobRows(jobs){
   return `<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th>Tipo</th><th>Producto / paciente</th><th>Materias primas / resultado</th><th>Estado</th><th>Fecha</th><th>Registrado por</th>${canManageMedrano()?'<th>Acciones</th>':''}</tr></thead><tbody>${jobs.length?jobs.map(job=>{
     const actor=state.perfiles.find(p=>p.id===job.creado_por)?.nombre||'—';
     const materials=(state.medranoLabMaterials||[]).filter(x=>x.trabajo_id===job.id);
-    const detail=job.produccion_controlada?`<details><summary>${materials.length} materia${materials.length===1?'':'s'} prima${materials.length===1?'':'s'}</summary>${materials.map(x=>`<div>${escapeHtml(typeof formatMeasurementText==='function'?formatMeasurementText(x.nombre):x.nombre)} · ${Number(x.cantidad).toLocaleString('es-AR')} ${escapeHtml(x.unidad)}</div>`).join('')}</details>${job.resultado_cantidad!=null?`<strong>Obtenido: ${Number(job.resultado_cantidad).toLocaleString('es-AR')} ${escapeHtml(job.resultado_unidad)}</strong>`:''}`:job.cantidad==null?'—':`${Number(job.cantidad).toLocaleString('es-AR')} ${escapeHtml(job.unidad||'')}`;
+    const expected=labProductionExpected(job,materials);
+    const detail=job.produccion_controlada?`<details><summary>${materials.length} materia${materials.length===1?'':'s'} prima${materials.length===1?'':'s'}</summary>${materials.map(x=>`<div>${escapeHtml(typeof formatMeasurementText==='function'?formatMeasurementText(x.nombre):x.nombre)} · ${Number(x.cantidad).toLocaleString('es-AR')} ${escapeHtml(x.unidad)}</div>`).join('')}</details>${job.resultado_cantidad!=null?`<div class="lab-job-result-comparison"><div><span>Resultado esperado</span><strong>${escapeHtml(labProductionResultText(job,expected))}</strong></div><div><span>Resultado obtenido</span><strong>${escapeHtml(labProductionResultText(job,Number(job.resultado_cantidad)))}</strong></div></div>`:expected!=null?`<div class="lab-job-expected"><span>Resultado esperado</span><strong>${escapeHtml(labProductionResultText(job,expected))}</strong></div>`:''}`:job.cantidad==null?'—':`${Number(job.cantidad).toLocaleString('es-AR')} ${escapeHtml(job.unidad||'')}`;
     const actions=job.estado==='pendiente'?`<button type="button" class="secondary compact-button" data-lab-job-state="${job.id}" data-job-status="en_proceso">Iniciar</button>`:job.estado==='en_proceso'?job.produccion_controlada?`<button type="button" class="primary compact-button" data-lab-job-finish="${job.id}">Finalizar</button>`:`<button type="button" class="primary compact-button" data-lab-job-state="${job.id}" data-job-status="finalizado">Finalizar</button>`:job.produccion_controlada&&job.estado==='finalizado'?'':`<button type="button" class="secondary compact-button" data-lab-job-state="${job.id}" data-job-status="pendiente">Reabrir</button>`;
     const canEdit=job.estado==='pendiente'||job.estado==='en_proceso'&&!job.produccion_controlada;
     return `<tr><td>${escapeHtml(medranoJobTypes[job.tipo]||job.tipo)}</td><td><strong>${escapeHtml(typeof formatMeasurementText==='function'?formatMeasurementText(job.producto):job.producto)}</strong>${job.paciente?`<br>${escapeHtml(job.paciente)}`:''}${job.detalle?`<br><span class="muted">${escapeHtml(job.detalle)}</span>`:''}</td><td>${detail}</td><td>${escapeHtml({pendiente:'Pendiente',en_proceso:'En proceso',finalizado:'Finalizado',cancelado:'Cancelado'}[job.estado]||job.estado)}</td><td>${medranoJobDay(job.finalizado_at||job.updated_at||job.created_at)?parse(medranoJobDay(job.finalizado_at||job.updated_at||job.created_at)).toLocaleDateString('es-AR'):'—'}</td><td>${escapeHtml(actor)}</td>${canManageMedrano()?`<td><div class="counter-item-actions">${canEdit?`<button type="button" class="secondary compact-button" data-lab-job-edit="${job.id}">Editar</button>`:''}${actions}${['pendiente','en_proceso'].includes(job.estado)?`<button type="button" class="danger compact-button" data-lab-job-state="${job.id}" data-job-status="cancelado">Cancelar</button>`:''}</div></td>`:''}</tr>`;

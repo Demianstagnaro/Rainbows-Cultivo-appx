@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.42. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.43. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.43 — Rendimiento esperado y obtenido
+
+- Cada producción finalizada muestra por separado el resultado esperado y el obtenido.
+- Aceites, cremas y cápsulas guardan automáticamente el objetivo calculado por la receta.
+- Las extracciones de resina permiten indicar el resultado esperado en gramos al crear el trabajo.
+- El objetivo también aparece antes de confirmar el rendimiento real y permanece en el historial.
 
 ## V3.26.42 — Comandas de aceites a pedido
 
