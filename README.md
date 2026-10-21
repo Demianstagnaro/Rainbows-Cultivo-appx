@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.45. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.46. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.46 — Corrección segura de cosechas y stock
+
+- Evita abrir dos formularios iguales o guardar dos veces una cosecha por demora de la conexión.
+- El botón Guardar se bloquea inmediatamente y el formulario se cierra al confirmar.
+- Los administradores pueden eliminar un registro de Stock Palestina cargado por error si todavía no tiene movimientos, sin borrar la cosecha.
+- Requiere ejecutar `Rainbows_V3.26.46_eliminar_stock_y_evitar_doble_cosecha.sql` en Supabase.
 
 ## V3.26.45 — Preparación sólo para aceites personalizados
 
