@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.46';
+const APP_VERSION='3.26.47';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -4077,6 +4077,8 @@ function renderStock(){
   ${renderStockCycleDetail(selected,canManage)}`;
   bindStockTableTools(app);
   bindStockLotSizes(app);
+  app.querySelectorAll('[data-stock-correct-item]').forEach(button=>button.onclick=()=>correctPalestinaStockItem(button.dataset.stockCorrectItem));
+  app.querySelectorAll('[data-stock-delete-item]').forEach(button=>button.onclick=()=>deletePalestinaStockItem(button.dataset.stockDeleteItem));
   $('stock-back-room').onclick=()=>{state.stockCycle=null;renderStock()};
   if(canDeleteStockCycle)$('stock-delete-cycle').onclick=()=>deletePalestinaStockCycle(selected);
   if(canManage){
@@ -4088,7 +4090,7 @@ function renderStock(){
 async function deletePalestinaStockCycle(cycle){
   if(currentRole()!=='administrador')return;
   const label=`${cycle.sala} · Ciclo ${cycle.ciclo}`;
-  if(!confirm(`¿Eliminar el registro de stock de ${label}?\n\nLa cosecha no se elimina. Esta acción solo está disponible si el stock todavía no tiene movimientos.`))return;
+  if(!confirm(`¿Eliminar el registro de stock de ${label}?\n\nLa cosecha no se elimina. Se quitarán los ingresos automáticos, pero la acción seguirá bloqueada si hubo salidas o movimientos operativos.`))return;
   const button=$('stock-delete-cycle');
   button.disabled=true;
   button.textContent='Eliminando…';
@@ -4107,11 +4109,54 @@ async function deletePalestinaStockCycle(cycle){
     button.textContent='Eliminar registro de stock';
   }
 }
+function stockCorrectionNumber(raw){
+  if(raw===null)return null;
+  const normalized=String(raw).trim().replace(/\s/g,'').replace(',','.');
+  if(normalized===''||!Number.isFinite(Number(normalized))||Number(normalized)<0)return NaN;
+  return Number(normalized);
+}
+async function correctPalestinaStockItem(itemId){
+  if(currentRole()!=='administrador')return;
+  const item=state.stockItems.find(row=>String(row.id)===String(itemId));
+  if(!item)return;
+  const current=stockItemCurrent(item);
+  const initialRaw=prompt(`Corregir ${item.nombre_historico}\n\nStock inicial en gramos:`,String(Number(item.stock_inicial)||0));
+  const initial=stockCorrectionNumber(initialRaw);
+  if(initial===null)return;
+  if(Number.isNaN(initial)){alert('Ingresá un stock inicial válido, igual o mayor a cero.');return}
+  const currentRaw=prompt(`Corregir ${item.nombre_historico}\n\nStock actual en gramos:`,String(current));
+  const actual=stockCorrectionNumber(currentRaw);
+  if(actual===null)return;
+  if(Number.isNaN(actual)){alert('Ingresá un stock actual válido, igual o mayor a cero.');return}
+  const reason=prompt('Motivo de la corrección:','Corrección de carga de cosecha')?.trim();
+  if(!reason){alert('Indicá el motivo para que la corrección quede auditada.');return}
+  try{
+    const result=await db.rpc('corregir_existencia_stock_palestina',{p_existencia_id:item.id,p_stock_inicial:initial,p_stock_actual:actual,p_motivo:reason});
+    if(result.error)throw result.error;
+    await refresh();
+    state.view='stock';state.stockRoom=state.stockRoom||null;state.stockCycle=item.ciclo_id;render();
+  }catch(e){console.error(e);alert(e.message||'No se pudieron corregir las cantidades.')}
+}
+async function deletePalestinaStockItem(itemId){
+  if(currentRole()!=='administrador')return;
+  const item=state.stockItems.find(row=>String(row.id)===String(itemId));
+  if(!item)return;
+  if(!confirm(`¿Eliminar únicamente ${item.nombre_historico} · lote ${item.numero_lote||'—'}?\n\nSe quitará esta genética y su ingreso automático. La cosecha original no se elimina.`))return;
+  const reason=prompt('Motivo de la eliminación:','Genética duplicada por error de carga')?.trim();
+  if(!reason){alert('Indicá el motivo para que la eliminación quede auditada.');return}
+  try{
+    const result=await db.rpc('eliminar_existencia_stock_palestina',{p_existencia_id:item.id,p_motivo:reason});
+    if(result.error)throw result.error;
+    await refresh();
+    state.view='stock';state.stockCycle=item.ciclo_id;render();
+  }catch(e){console.error(e);alert(e.message||'No se pudo eliminar la genética del stock.')}
+}
 function renderStockCycleDetail(cycle,canManage){
   const items=stockCycleItems(cycle.id);
   const movements=stockCycleMovements(cycle.id);
+  const canCorrect=currentRole()==='administrador';
   return `<section class="stock-kpis"><div class="panel"><span>Stock inicial</span><strong>${formatGrams(cycle.stock_inicial)}</strong></div><div class="panel"><span>Stock actual</span><strong>${formatGrams(stockCycleCurrent(cycle))}</strong></div><div class="panel"><span>Genéticas</span><strong>${items.length}</strong></div><div class="panel"><span>Movimientos</span><strong>${movements.length}</strong></div></section>
-  <section class="panel stock-detail-panel" data-stock-table-tools><h3>Stock por genética</h3>${stockTableToolbar('Buscar por lote, genética, fecha, tamaño o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha</th><th data-sort-type="number">Stock inicial</th><th data-sort-type="number">Stock actual</th><th data-sort-type="text">Tamaño</th></tr></thead><tbody>${items.length?items.map(item=>`<tr><td><strong>${escapeHtml(item.numero_lote||'—')}</strong></td><td>${escapeHtml(item.nombre_historico)}</td><td data-sort-value="${escapeHtml(stockLotDateValue(item))}">${stockLotDateHtml(item)}</td><td data-sort-value="${Number(item.stock_inicial)||0}">${formatGrams(Number(item.stock_inicial)||0)}</td><td data-sort-value="${stockItemCurrent(item)}"><strong>${formatGrams(stockItemCurrent(item))}</strong></td><td>${stockLotSizeHtml('palestina',item.id,item.tamano,canManage)}</td></tr>`).join(''):'<tr data-empty-row="1"><td colspan="6">Sin detalle cargado.</td></tr>'}</tbody></table></div></section>
+  <section class="panel stock-detail-panel" data-stock-table-tools><h3>Stock por genética</h3>${stockTableToolbar('Buscar por lote, genética, fecha, tamaño o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha</th><th data-sort-type="number">Stock inicial</th><th data-sort-type="number">Stock actual</th><th data-sort-type="text">Tamaño</th>${canCorrect?'<th>Acciones</th>':''}</tr></thead><tbody>${items.length?items.map(item=>`<tr><td><strong>${escapeHtml(item.numero_lote||'—')}</strong></td><td>${escapeHtml(item.nombre_historico)}</td><td data-sort-value="${escapeHtml(stockLotDateValue(item))}">${stockLotDateHtml(item)}</td><td data-sort-value="${Number(item.stock_inicial)||0}">${formatGrams(Number(item.stock_inicial)||0)}</td><td data-sort-value="${stockItemCurrent(item)}"><strong>${formatGrams(stockItemCurrent(item))}</strong></td><td>${stockLotSizeHtml('palestina',item.id,item.tamano,canManage)}</td>${canCorrect?`<td><div class="stock-section-actions"><button type="button" class="secondary compact-button" data-stock-correct-item="${item.id}">Corregir</button><button type="button" class="danger compact-button" data-stock-delete-item="${item.id}">Eliminar</button></div></td>`:''}</tr>`).join(''):`<tr data-empty-row="1"><td colspan="${canCorrect?7:6}">Sin detalle cargado.</td></tr>`}</tbody></table></div></section>
   <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Agrupado por día. Abrí una fecha para ver el detalle completo.</p></div>${canManage?`<button class="primary compact-button" data-stock-add-cycle="${cycle.id}">+ Movimiento</button>`:''}</div>${renderPalestinaMovementDays(movements)}</section>`;
 }
 

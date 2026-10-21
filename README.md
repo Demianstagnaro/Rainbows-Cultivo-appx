@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.46. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.47. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.47 — Corrección de stock por genética
+
+- Cada genética de Stock Palestina permite corregir stock inicial y actual.
+- Permite eliminar solamente una genética duplicada sin borrar la cosecha ni las demás partidas.
+- Los ingresos automáticos ya no bloquean una corrección; las salidas operativas sí protegen la trazabilidad.
+- Cada corrección administrativa conserva responsable, motivo y estado anterior.
+- Requiere ejecutar `Rainbows_V3.26.47_correccion_stock_por_genetica.sql` en Supabase.
 
 ## V3.26.46 — Corrección segura de cosechas y stock
 
