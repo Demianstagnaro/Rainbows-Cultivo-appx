@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.47';
+const APP_VERSION='3.26.48';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -11,6 +11,7 @@ const $=id=>document.getElementById(id),app=$('app');
 const state={site:'palestina',medranoView:'today',view:'today',month:new Date(new Date().getFullYear(),new Date().getMonth(),1),day:null,room:null,roomDay:null,tab:'summary',session:null,profile:null,perfiles:[],salas:[],camas:[],plantas:[],geneticas:[],empleados:[],tareas:[],realizaciones:[],joins:[],generalTasks:[],generalJoins:[],pending:null,pendingKind:'dated',selected:new Set(),editTask:null,editGeneralTask:null,menuTask:null,menuRoom:null,editBed:null,editPlant:null,editGenetic:null,cosechas:[],cosechaDetalles:[],editHarvest:null,selectedHarvest:null,harvestYear:'todos',harvestRoom:'todas',stockCycles:[],stockItems:[],stockMovements:[],stockRoom:null,stockCycle:null,stockOverviewExpanded:false,medranoDispensarioLots:[],medranoCounterItems:[],medranoPatients:[],medranoFlowerPrices:[],medranoCategoryPrices:[],medranoProductCatalog:[],editMedranoPatient:null,medranoPatientHistoryId:null,medranoOrders:[],medranoDispensedOrders:[],medranoDeletedOrders:[],editMedranoOrder:null,pendingDeleteMedranoOrder:null,medranoOrderHistoryYear:null,medranoOrderHistoryMonth:null,stockTransfers:[],stockTransferItems:[],pendingStockTransfer:null,medranoDispensarioSection:null,medranoDispensarioRoom:null,medranoDispensarioExpanded:false,todayDay:null,dayChangeTimer:null,channel:null,backups:[],backupRuns:[],backupLoading:false,pendingVoiceRoomChange:null};
 let harvestSaveInFlight=false;
 let harvestSaveCommitted=false;
+let harvestSaveRequestKey=null;
 state.site=localStorage.getItem('rainbows_site')==='medrano'?'medrano':'palestina';
 Object.assign(state,{medranoLabItems:[],medranoLabTransfers:[],medranoStockHistory:[],medranoStockHistoryComplete:false,medranoStockReady:false,medranoLoadIssues:[],editLabItem:null});
 Object.assign(state,{medranoDispensaryProducts:[],medranoLabDispMovements:[],medranoDispensaryTransfersReady:false});
@@ -3760,6 +3761,7 @@ function openHarvest(id=null){
   const dialog=$('harvest-dialog');
   if(harvestSaveInFlight||dialog.open)return;
   harvestSaveCommitted=false;
+  harvestSaveRequestKey=crypto.randomUUID();
   const h=id?state.cosechas.find(x=>String(x.id)===String(id)):null;state.editHarvest=h||null;
   $('harvest-dialog-title').textContent=h?'Editar cosecha':'Nueva cosecha';$('harvest-date').value=h?.fecha||ymd(today());$('harvest-room').value=h?.sala||'Flora 1';$('harvest-cycle').value=h?.ciclo||'';$('harvest-goal').value=h?.meta_gramos??'';$('harvest-total').value=h?.total_gramos??'';$('harvest-plants').value=h?.cantidad_plantas??'';$('harvest-notes').value=h?.observaciones||'';$('delete-harvest').hidden=!h;
   $('harvest-lines').innerHTML=(h?harvestDetails(h.id):[]).map(harvestLineTemplate).join('');bindHarvestLines();dialog.showModal();
@@ -3813,45 +3815,23 @@ async function saveHarvestDialog(){
       lines.push(grouped);
     }
   });
+  if(!harvestSaveRequestKey)harvestSaveRequestKey=crypto.randomUUID();
   closeDialog('harvest-dialog');
-  let harvestId=state.editHarvest?.id;
-  if(harvestId){
-    const q=await db.from('cosechas').update(payload).eq('id',harvestId);if(q.error)throw q.error;
-    const previous=harvestDetails(harvestId);
-    const keptIds=lines.filter(x=>x.id).map(x=>x.id);
-    const removedIds=previous.filter(x=>!keptIds.includes(String(x.id))).map(x=>x.id);
-    if(removedIds.length){const del=await db.from('cosecha_geneticas').delete().in('id',removedIds);if(del.error)throw del.error}
-    for(const line of lines){
-      const detailPayload={genetica_id:line.genetica_id,nombre_historico:line.nombre_historico,tamano:line.tamano,gramos:line.gramos};
-      if(line.id){const u=await db.from('cosecha_geneticas').update(detailPayload).eq('id',line.id).eq('cosecha_id',harvestId);if(u.error)throw u.error}
-      else{const i=await db.from('cosecha_geneticas').insert({...detailPayload,cosecha_id:harvestId});if(i.error)throw i.error}
-    }
-  }else{
-    const q=await db.from('cosechas').insert(payload).select('id').single();if(q.error)throw q.error;harvestId=q.data.id;
-    if(lines.length){
-      const detailPayloads=lines.map(line=>({
-        cosecha_id:harvestId,
-        genetica_id:line.genetica_id,
-        nombre_historico:line.nombre_historico,
-        tamano:line.tamano,
-        gramos:line.gramos
-      }));
-      const q2=await db.from('cosecha_geneticas').insert(detailPayloads);
-      if(q2.error){
-        await db.from('cosechas').delete().eq('id',harvestId);
-        throw q2.error;
-      }
-    }
-  }
+  const save=await db.rpc('guardar_cosecha_completa',{
+    p_cosecha_id:state.editHarvest?.id||null,
+    p_idempotency_key:harvestSaveRequestKey,
+    p_fecha:payload.fecha,
+    p_sala:payload.sala,
+    p_ciclo:payload.ciclo,
+    p_meta_gramos:payload.meta_gramos,
+    p_total_gramos:payload.total_gramos,
+    p_cantidad_plantas:payload.cantidad_plantas,
+    p_observaciones:payload.observaciones,
+    p_origen:payload.origen,
+    p_detalles:lines.map(line=>({id:line.id,genetica_id:line.genetica_id,nombre_historico:line.nombre_historico,tamano:line.tamano,gramos:line.gramos}))
+  });
+  if(save.error)throw save.error;
   harvestSaveCommitted=true;
-  const linkedCycle=state.stockCycles.find(c=>String(c.cosecha_id||'')===String(harvestId));
-  const syncMessage=linkedCycle
-    ?`La cosecha quedó guardada. Ya está vinculada al Stock Palestina.\n\n¿Actualizar su stock sin duplicar el ingreso? Los cambios se registrarán como ajustes.`
-    :`La cosecha quedó guardada.\n\n¿Crear automáticamente la planilla de Stock Palestina con el detalle por genética?`;
-  if(confirm(syncMessage)){
-    const sync=await db.rpc('sincronizar_cosecha_stock',{p_cosecha_id:harvestId});
-    if(sync.error)throw new Error(`La cosecha se guardó, pero no se pudo sincronizar el stock: ${sync.error.message}`);
-  }
   state.editHarvest=null;await refresh();state.view='harvests';render();
 }
 async function deleteHarvestDialog(){if(!canViewHarvests())throw new Error('Solo un administrador puede eliminar cosechas.');if(!state.editHarvest||!confirm(`¿Eliminar ${state.editHarvest.sala} · Ciclo ${state.editHarvest.ciclo}?`))return;const q=await db.from('cosechas').delete().eq('id',state.editHarvest.id);if(q.error)throw q.error;closeDialog('harvest-dialog');state.editHarvest=null;state.selectedHarvest=null;await refresh();state.view='harvests';render()}
