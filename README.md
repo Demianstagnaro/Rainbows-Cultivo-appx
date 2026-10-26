@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.48. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.49. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.49 — Movimientos de stock estructurados
+
+- Clasifica cada movimiento de Medrano como ingreso, dispensa, consumo o resultado de producción, salida o recepción de traslado, control físico, corrección, baja o reactivación.
+- Conserva el vínculo con la operación original y agrega origen, destino, cantidad movida y paciente cuando corresponde.
+- Completa la nueva clasificación también en el historial ya existente sin alterar cantidades ni fechas.
+- El historial muestra el tipo de movimiento y el recorrido del producto de manera legible.
+- Requiere ejecutar `Rainbows_V3.26.49_movimientos_stock_estructurados.sql` en Supabase.
 
 ## V3.26.48 — Cosecha y stock atómicos
 
