@@ -10,7 +10,7 @@ test('cada resultado de cosecha permite elegir y guarda el tamaño',()=>{
   assert.match(app,/class="text-input harvest-line-size"/);
   assert.match(app,/Object\.entries\(stockLotSizes\)/);
   assert.match(app,/tamano:row\.querySelector\('\.harvest-line-size'\)/);
-  assert.match(app,/detailPayload=\{genetica_id:line\.genetica_id,nombre_historico:line\.nombre_historico,tamano:line\.tamano,gramos:line\.gramos\}/);
+  assert.match(app,/p_detalles:lines\.map\(line=>\(\{id:line\.id,genetica_id:line\.genetica_id,nombre_historico:line\.nombre_historico,tamano:line\.tamano,gramos:line\.gramos\}\)\)/);
   assert.match(app,/Seleccioná el tamaño de cada genética cargada/);
 });
 

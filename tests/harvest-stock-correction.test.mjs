@@ -12,7 +12,7 @@ test('la cosecha bloquea aperturas y guardados simultáneos',()=>{
   assert.match(app,/if\(harvestSaveInFlight\)return/);
   assert.match(app,/button\.disabled=true/);
   assert.match(app,/button\.textContent='Guardando…'/);
-  assert.match(app,/closeDialog\('harvest-dialog'\);[\s\S]*?let harvestId=/);
+  assert.match(app,/closeDialog\('harvest-dialog'\);[\s\S]*?db\.rpc\('guardar_cosecha_completa'/);
 });
 
 test('un error posterior al guardado no reabre el formulario',()=>{
