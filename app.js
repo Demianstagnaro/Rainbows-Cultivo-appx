@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.49';
+const APP_VERSION='3.26.50';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1365,7 +1365,7 @@ function medranoDailyHistory(sector,categoria,period="past"){
   const days=[...new Set(rows.map(row=>row.fecha))].sort().reverse();
   return `<section class="panel stock-detail-panel"><h3>${period==="today"?"Movimientos de hoy":"Historial diario de movimientos"}</h3>${!state.medranoStockReady?'<p class="muted">No se pudo cargar el historial del stock.</p>':days.length?`<div class="stock-day-list">${days.map(day=>`<details class="stock-day-group" ${period==='today'?'open':''}><summary><strong>${parse(day).toLocaleDateString('es-AR')}</strong><span>${rows.filter(row=>row.fecha===day).length} movimientos</span></summary><div class="stock-day-detail">${medranoStockMovementsTable(rows.filter(row=>row.fecha===day))}</div></details>`).join('')}</div>`:'<p class="muted">Todavía no hay movimientos registrados en este inventario.</p>'}</section>`;
 }
-function medranoOperationLabel(type){return({produccion:'Producción relacionada',traslado:'Traslado relacionado',dispensa:'Dispensa relacionada',pago:'Pago relacionado',ajuste:'Ajuste relacionado'}[type]||'Operación relacionada')}
+function medranoOperationLabel(type){return({produccion:'Producción relacionada',traslado:'Traslado relacionado',dispensa:'Dispensa relacionada',pago:'Pago relacionado',ajuste:'Ajuste relacionado',correccion:'Corrección relacionada'}[type]||'Operación relacionada')}
 function medranoMovementTypeLabel(type){return({ingreso:'Ingreso',dispensa:'Dispensa',produccion_consumo:'Consumo de producción',produccion_resultado:'Resultado de producción',traslado_salida:'Salida por traslado',traslado_recepcion:'Recepción de traslado',control_fisico:'Control físico',correccion:'Corrección de stock',baja:'Producto retirado',reactivacion:'Producto reactivado'}[type]||'')}
 function medranoMovementAction(action){
   const clean=String(action||'').replace(/ · [0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,'').split(' · Detalle: ')[0];
@@ -1469,6 +1469,8 @@ function openLabItemDialog(item=null){
   $('lab-item-resin-lot').value=item?.lote||'';
   $('lab-item-presentation').value=item?.presentacion_cantidad??'';
   $('lab-item-quantity').value=item?.cantidad??0;
+  $('lab-item-correction-reason-field').hidden=!item;
+  $('lab-item-correction-reason').value='';
   $('lab-item-unit').value=resin?'g':cream?'unidades':item?.unidad||(category==='aceites'?'ml':'unidades');
   $('lab-item-unit').disabled=!resin&&Boolean(item);
   updateLabItemInsumoFields();
@@ -1506,7 +1508,10 @@ async function saveLabItem(item=null,active=true){
   if(cream&&active&&(!fullSpectrumProfiles.includes(profile)||!lot||!Number.isFinite(presentation)||presentation<=0))throw new Error('Completá perfil de cannabinoides, ratio cuando corresponda, lote y presentación de la crema.');
   if(unit==='unidades'&&!Number.isInteger(quantity))throw new Error('Las unidades deben ser cantidades enteras.');
   if(inputType==='envase'&&(!Number.isFinite(containerCapacity)||containerCapacity<=0||!['g','ml'].includes(capacityUnit)))throw new Error('Indicá la capacidad de cada envase y si está expresada en g o ml.');
-  const q=await db.rpc('guardar_stock_laboratorio_v3',{p_id:selected?.id||null,p_categoria:category,p_nombre:name,p_catalogo_producto_id:catalogId,p_genetica_id:geneticId,p_lote:lot,p_perfil_cannabinoide:profile,p_proporcion_cannabinoides:ratio,p_cantidad:quantity,p_unidad:inputType==='envase'||cream?'unidades':unit,p_activo:active,p_tipo_insumo:inputType,p_capacidad_envase:containerCapacity,p_unidad_capacidad:capacityUnit,p_presentacion_cantidad:presentation,p_presentacion_unidad:presentationUnit});
+  const quantityChanged=Boolean(selected)&&quantity!==Number(selected.cantidad);
+  const correctionReason=quantityChanged?$('lab-item-correction-reason').value.trim():null;
+  if(quantityChanged&&correctionReason.length<5)throw new Error('Explicá el motivo de la corrección de cantidad.');
+  const q=await db.rpc('guardar_stock_laboratorio_v4',{p_id:selected?.id||null,p_categoria:category,p_nombre:name,p_catalogo_producto_id:catalogId,p_genetica_id:geneticId,p_lote:lot,p_perfil_cannabinoide:profile,p_proporcion_cannabinoides:ratio,p_cantidad:quantity,p_unidad:inputType==='envase'||cream?'unidades':unit,p_activo:active,p_tipo_insumo:inputType,p_capacidad_envase:containerCapacity,p_unidad_capacidad:capacityUnit,p_presentacion_cantidad:presentation,p_presentacion_unidad:presentationUnit,p_motivo_correccion:correctionReason});
   if(q.error)throw q.error;
   closeDialog('lab-item-dialog');state.editLabItem=null;await refreshMedranoModules('inventory','catalog');
 }
@@ -1614,13 +1619,24 @@ async function saveMedranoCounterQuantity(id,value){
   if(!canManageMedrano())throw new Error('No tenés permiso para modificar el Mostrador.');
   const cantidad=Number(value);
   if(!Number.isInteger(cantidad)||cantidad<0)throw new Error('Ingresá una cantidad válida, sin decimales.');
-  const q=await db.from('medrano_mostrador_productos').update({cantidad,updated_at:new Date().toISOString()}).eq('id',id);
+  const item=state.medranoCounterItems.find(row=>String(row.id)===String(id));
+  if(!item)throw new Error('No se encontró el producto.');
+  if(cantidad===Number(item.cantidad))return;
+  const motivo=prompt(`Motivo de la corrección de “${item.nombre}” (${Number(item.cantidad)} → ${cantidad} unidades):`,'');
+  if(motivo===null)return;
+  if(motivo.trim().length<5)throw new Error('Explicá el motivo de la corrección.');
+  const q=await db.rpc('corregir_stock_medrano',{p_sector:'dispensario',p_categoria:'mostrador',p_stock_id:id,p_cantidad:cantidad,p_motivo:motivo.trim()});
   if(q.error)throw q.error;
   await refreshMedranoModules('inventory');
 }
 async function removeMedranoCounterItem(id){
   if(!canManageMedrano())throw new Error('No tenés permiso para modificar el Mostrador.');
-  const q=await db.from('medrano_mostrador_productos').update({activo:false,updated_at:new Date().toISOString()}).eq('id',id);
+  const item=state.medranoCounterItems.find(row=>String(row.id)===String(id));
+  if(!item)throw new Error('No se encontró el producto.');
+  const motivo=prompt(`Motivo para sacar “${item.nombre}” de la lista:`,'');
+  if(motivo===null)return;
+  if(motivo.trim().length<5)throw new Error('Explicá el motivo del retiro.');
+  const q=await db.rpc('retirar_stock_mostrador',{p_stock_id:id,p_motivo:motivo.trim()});
   if(q.error)throw q.error;
   await refreshMedranoModules('inventory');
 }

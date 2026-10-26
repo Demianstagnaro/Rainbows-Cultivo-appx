@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.49. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.50. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.50 — Correcciones de stock protegidas
+
+- Las cantidades de Mostrador ya no se actualizan directamente desde el navegador.
+- Toda corrección exige un motivo y registra cantidad anterior, cantidad nueva, diferencia y responsable.
+- Editar un producto de Laboratorio conserva sus datos descriptivos, pero cualquier cambio de cantidad pasa por una operación protegida y atómica.
+- Retirar un producto de Mostrador también exige un motivo y conserva su historial.
+- Se bloquea el acceso directo a las funciones y permisos anteriores que permitían omitir la justificación.
+- Requiere ejecutar `Rainbows_V3.26.50_correcciones_stock_protegidas.sql` en Supabase.
 
 ## V3.26.49 — Movimientos de stock estructurados
 
