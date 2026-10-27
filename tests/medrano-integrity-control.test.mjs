@@ -27,7 +27,8 @@ test('revisa stock, reservas, cobros, dispensas, producción y traslados',()=>{
 test('Hoy en Medrano carga el control bajo demanda y no corrige automáticamente',()=>{
   assert.match(app,/db\.rpc\('revisar_integridad_medrano'\)/);
   assert.match(app,/function medranoIntegrityMarkup\(\)/);
-  assert.match(app,/if\(!state\.medranoIntegrity\.loaded&&!state\.medranoIntegrity\.loading\)queueMicrotask/);
+  assert.match(app,/function loadMedranoTodayControls\(\)/);
+  assert.match(app,/queueMicrotask\(\(\)=>loadMedranoTodayControls\(\)\)/);
   assert.match(app,/data-integrity-refresh/);
   assert.match(app,/data-integrity-target/);
   assert.match(styles,/\.medrano-integrity-card\.is-ok/);
@@ -40,7 +41,7 @@ test('el control aparece en Hoy y no en el tablero de indicadores',()=>{
   assert.doesNotMatch(dashboard,/medranoIntegrityMarkup\(\)/);
   assert.match(today,/medranoIntegrityMarkup\(\)/);
   assert.match(today,/data-integrity-refresh/);
-  assert.match(today,/loadMedranoIntegrity\(\)/);
+  assert.match(today,/loadMedranoTodayControls\(\)/);
 });
 
 test('cada aviso permite abrir el sector relacionado',()=>{

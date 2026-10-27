@@ -28,7 +28,7 @@ test('Hoy muestra alertas y permite abrir el stock relacionado',()=>{
   assert.match(app,/function medranoStockControlMarkup\(\)/);
   assert.match(app,/db\.rpc\('listar_control_stock_medrano'\)/);
   assert.match(today,/medranoStockControlMarkup\(\)/);
-  assert.match(today,/loadMedranoStockControl\(\)/);
+  assert.match(today,/loadMedranoTodayControls\(\)/);
   assert.match(today,/data-stock-control-target/);
   assert.match(styles,/\.medrano-stock-alert-card\.is-ok/);
 });
