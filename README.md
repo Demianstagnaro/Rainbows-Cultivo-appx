@@ -9,7 +9,14 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.53. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.54. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.54 — Carga optimizada de Hoy
+
+- Los controles de integridad y stock mínimo se consultan en paralelo.
+- La pantalla realiza una sola actualización visual al iniciar y otra al terminar, en lugar de redibujarse por cada control.
+- Evita iniciar cargas duplicadas y no redibuja `Hoy` si el usuario ya cambió de módulo.
+- No requiere una nueva migración de Supabase.
 
 ## V3.26.53 — Alertas de stock mínimo
 

@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.53';
+const APP_VERSION='3.26.54';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -24,6 +24,7 @@ Object.assign(state,{medranoDateHistory:{}});
 Object.assign(state,{medranoDashboardPeriod:'month',medranoDashboardMonth:''});
 Object.assign(state,{medranoIntegrity:{loaded:false,loading:false,issues:[],error:null,checkedAt:null}});
 Object.assign(state,{medranoStockControl:{loaded:false,loading:false,rows:[],error:null,checkedAt:null}});
+Object.assign(state,{medranoTodayControlsLoading:false});
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
 function requiredRoomId(name){
@@ -3148,6 +3149,41 @@ async function loadMedranoStockControl(force=false){
     :{loaded:true,loading:false,rows:result.data||[],error:null,checkedAt:new Date().toISOString()};
   if(state.site==='medrano'&&state.medranoView==='today')render();
 }
+async function loadMedranoTodayControls(){
+  if(currentRole()!=='administrador'||state.medranoTodayControlsLoading)return;
+  const needIntegrity=!state.medranoIntegrity.loaded&&!state.medranoIntegrity.loading;
+  const needStock=!state.medranoStockControl.loaded&&!state.medranoStockControl.loading;
+  if(!needIntegrity&&!needStock)return;
+  state.medranoTodayControlsLoading=true;
+  if(needIntegrity)state.medranoIntegrity={...state.medranoIntegrity,loading:true,error:null};
+  if(needStock)state.medranoStockControl={...state.medranoStockControl,loading:true,error:null};
+  const visible=()=>state.site==='medrano'&&state.medranoView==='today';
+  if(visible())render();
+  const checkedAt=new Date().toISOString();
+  try{
+    const [integrityResult,stockResult]=await Promise.all([
+      needIntegrity?db.rpc('revisar_integridad_medrano'):Promise.resolve(null),
+      needStock?db.rpc('listar_control_stock_medrano'):Promise.resolve(null)
+    ]);
+    if(needIntegrity){
+      state.medranoIntegrity=integrityResult?.error
+        ?{loaded:true,loading:false,issues:[],error:integrityResult.error.message||'Falta instalar la migración del control de integridad.',checkedAt}
+        :{loaded:true,loading:false,issues:integrityResult?.data||[],error:null,checkedAt};
+    }
+    if(needStock){
+      state.medranoStockControl=stockResult?.error
+        ?{loaded:true,loading:false,rows:[],error:stockResult.error.message||'Falta instalar la migración de alertas de stock.',checkedAt}
+        :{loaded:true,loading:false,rows:stockResult?.data||[],error:null,checkedAt};
+    }
+  }catch(error){
+    const message=error?.message||'No se pudieron completar los controles automáticos.';
+    if(needIntegrity)state.medranoIntegrity={loaded:true,loading:false,issues:[],error:message,checkedAt};
+    if(needStock)state.medranoStockControl={loaded:true,loading:false,rows:[],error:message,checkedAt};
+  }finally{
+    state.medranoTodayControlsLoading=false;
+    if(visible())render();
+  }
+}
 function openMedranoStockMinimumDialog(){
   const control=state.medranoStockControl||{};
   if(currentRole()!=='administrador'||control.error||!control.loaded)return;
@@ -3235,8 +3271,7 @@ function renderMedranoToday(medranoNav,bindModuleNav){
   app.querySelectorAll('[data-stock-control-refresh]').forEach(button=>button.onclick=()=>loadMedranoStockControl(true));
   app.querySelectorAll('[data-stock-minimum-config]').forEach(button=>button.onclick=openMedranoStockMinimumDialog);
   app.querySelectorAll('[data-stock-control-target]').forEach(button=>button.onclick=()=>openMedranoIntegrityTarget(button.dataset.stockControlTarget));
-  if(!state.medranoIntegrity.loaded&&!state.medranoIntegrity.loading)queueMicrotask(()=>loadMedranoIntegrity());
-  if(!state.medranoStockControl.loaded&&!state.medranoStockControl.loading)queueMicrotask(()=>loadMedranoStockControl());
+  if((!state.medranoIntegrity.loaded&&!state.medranoIntegrity.loading)||(!state.medranoStockControl.loaded&&!state.medranoStockControl.loading))queueMicrotask(()=>loadMedranoTodayControls());
 }
 function renderMedrano(){
   $('today-label').textContent=nice(today());
