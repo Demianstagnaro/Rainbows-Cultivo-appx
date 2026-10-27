@@ -1,0 +1,74 @@
+name: Backup diario de Rainbows
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '30 6 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rainbows-database-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Verificar secretos
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_DB_URL" || { echo 'Falta SUPABASE_DB_URL'; exit 1; }
+          test -n "$BACKUP_ENCRYPTION_KEY" || { echo 'Falta BACKUP_ENCRYPTION_KEY'; exit 1; }
+          test "${#BACKUP_ENCRYPTION_KEY}" -ge 32 || { echo 'BACKUP_ENCRYPTION_KEY debe tener al menos 32 caracteres'; exit 1; }
+
+      - name: Exportar base de datos
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backup
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/roles.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f backup/data.sql --use-copy --data-only \
+            -x "storage.buckets_vectors" -x "storage.vector_indexes"
+          test -s backup/schema.sql
+          test -s backup/data.sql
+          printf '{"created_at":"%s","repository":"%s","commit":"%s","format":1}\n' \
+            "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$GITHUB_REPOSITORY" "$GITHUB_SHA" > backup/metadata.json
+          (cd backup && sha256sum roles.sql schema.sql data.sql metadata.json > SHA256SUMS)
+
+      - name: Cifrar copia
+        id: encrypted
+        shell: bash
+        run: |
+          set -euo pipefail
+          stamp="$(date -u +%Y%m%d-%H%M%S)"
+          archive="rainbows-backup-${stamp}.tar.gz"
+          tar -C backup -czf "$archive" roles.sql schema.sql data.sql metadata.json SHA256SUMS
+          printf '%s' "$BACKUP_ENCRYPTION_KEY" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 --symmetric --cipher-algo AES256 --output "${archive}.gpg" "$archive"
+          rm -rf backup "$archive"
+          echo "name=rainbows-backup-${stamp}" >> "$GITHUB_OUTPUT"
+          echo "file=${archive}.gpg" >> "$GITHUB_OUTPUT"
+
+      - name: Guardar copia cifrada durante 30 días
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.encrypted.outputs.name }}
+          path: ${{ steps.encrypted.outputs.file }}
+          retention-days: 30
+          compression-level: 0
+          if-no-files-found: error
+

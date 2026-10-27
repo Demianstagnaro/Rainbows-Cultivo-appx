@@ -1,0 +1,117 @@
+name: Restaurar backup de Rainbows
+
+on:
+  workflow_dispatch:
+    inputs:
+      artifact_id:
+        description: ID del backup cifrado
+        required: true
+        type: string
+      confirmation:
+        description: Confirmación de seguridad
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: rainbows-database-restore
+  cancel-in-progress: false
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      RECOVERY_DB_URL: ${{ secrets.RECOVERY_DB_URL }}
+      RECOVERY_PROJECT_REF: ${{ secrets.RECOVERY_PROJECT_REF }}
+      PRODUCTION_PROJECT_REF: ${{ secrets.PRODUCTION_PROJECT_REF }}
+      BACKUP_ENCRYPTION_KEY: ${{ secrets.BACKUP_ENCRYPTION_KEY }}
+      ARTIFACT_ID: ${{ inputs.artifact_id }}
+      CONFIRMATION: ${{ inputs.confirmation }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Bloqueos de seguridad
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$CONFIRMATION" = 'RESTAURAR' || { echo 'Falta la confirmación RESTAURAR'; exit 1; }
+          [[ "$ARTIFACT_ID" =~ ^[0-9]+$ ]] || { echo 'ID de backup inválido'; exit 1; }
+          test -n "$RECOVERY_DB_URL" || { echo 'Falta RECOVERY_DB_URL'; exit 1; }
+          test -n "$RECOVERY_PROJECT_REF" || { echo 'Falta RECOVERY_PROJECT_REF'; exit 1; }
+          test -n "$PRODUCTION_PROJECT_REF" || { echo 'Falta PRODUCTION_PROJECT_REF'; exit 1; }
+          test -n "$BACKUP_ENCRYPTION_KEY" || { echo 'Falta BACKUP_ENCRYPTION_KEY'; exit 1; }
+          test "$RECOVERY_PROJECT_REF" != "$PRODUCTION_PROJECT_REF" || { echo 'El proyecto de recuperación no puede ser Producción'; exit 1; }
+          case "$RECOVERY_DB_URL" in
+            *"$RECOVERY_PROJECT_REF"*) ;;
+            *) echo 'RECOVERY_DB_URL no corresponde al proyecto de recuperación'; exit 1 ;;
+          esac
+          case "$RECOVERY_DB_URL" in
+            *"$PRODUCTION_PROJECT_REF"*) echo 'Bloqueado: la URL apunta a Producción'; exit 1 ;;
+          esac
+
+      - name: Instalar cliente PostgreSQL
+        shell: bash
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-client
+
+      - name: Descargar backup seleccionado
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p encrypted
+          curl --fail --location --silent --show-error \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" \
+            -o artifact.zip
+          unzip -q artifact.zip -d encrypted
+          test "$(find encrypted -maxdepth 1 -type f -name 'rainbows-backup-*.tar.gz.gpg' | wc -l)" -eq 1
+
+      - name: Descifrar y verificar
+        shell: bash
+        run: |
+          set -euo pipefail
+          encrypted_file="$(find encrypted -maxdepth 1 -type f -name 'rainbows-backup-*.tar.gz.gpg' -print -quit)"
+          printf '%s' "$BACKUP_ENCRYPTION_KEY" | gpg --batch --yes --pinentry-mode loopback \
+            --passphrase-fd 0 --decrypt --output backup.tar.gz "$encrypted_file"
+          mkdir -p restored
+          tar -C restored -xzf backup.tar.gz
+          (cd restored && sha256sum --check SHA256SUMS)
+          test -s restored/schema.sql
+          test -s restored/data.sql
+
+      - name: Verificar que el proyecto de recuperación esté vacío
+        shell: bash
+        run: |
+          set -euo pipefail
+          existing="$(psql "$RECOVERY_DB_URL" -At --set ON_ERROR_STOP=1 \
+            --command "select case when to_regclass('public.perfiles') is null then 'empty' else 'rainbows' end")"
+          test "$existing" = 'empty' || { echo 'El proyecto de recuperación ya contiene Rainbows. Usá un proyecto nuevo y vacío.'; exit 1; }
+
+      - name: Restaurar en el proyecto de recuperación
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$RECOVERY_DB_URL" --set ON_ERROR_STOP=1 \
+            --command 'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon, authenticated;'
+          psql \
+            --single-transaction \
+            --variable ON_ERROR_STOP=1 \
+            --file restored/roles.sql \
+            --file restored/schema.sql \
+            --command 'SET session_replication_role = replica' \
+            --file restored/data.sql \
+            --dbname "$RECOVERY_DB_URL"
+
+      - name: Confirmar restauración
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql "$RECOVERY_DB_URL" --set ON_ERROR_STOP=1 \
+            --command "select count(*) as perfiles_restaurados from public.perfiles;"
+
