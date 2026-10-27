@@ -1043,3 +1043,16 @@ body{
 .patient-history-legacy-product{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px;border:1px solid var(--line);border-radius:10px}
 .patient-history-legacy-product span{color:var(--muted)}
 @media(max-width:700px){.patient-page-actions{display:grid;width:100%}.patient-page-actions button{width:100%}.patient-history-summary{grid-template-columns:1fr}.patient-order-card>summary{align-items:flex-start}.patient-order-metadata{grid-template-columns:1fr}.patient-order-status{max-width:55%;white-space:normal}}
+.medrano-integrity-card{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;border-left:5px solid #8a94a3}
+.medrano-integrity-card.is-ok{border-left-color:#198754;background:linear-gradient(90deg,rgba(25,135,84,.08),transparent 45%)}
+.medrano-integrity-card.has-errors{display:block;border-left-color:#c43b3b;background:linear-gradient(90deg,rgba(196,59,59,.07),transparent 45%)}
+.medrano-integrity-card.is-loading{border-left-color:#c28a1b}
+.medrano-integrity-card h3,.medrano-integrity-card p{margin-top:0}
+.medrano-integrity-card>div:first-child{min-width:0}
+.medrano-integrity-group{width:100%;margin-top:12px;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.medrano-integrity-group summary{display:flex;justify-content:space-between;gap:12px;padding:12px 14px;cursor:pointer}
+.medrano-integrity-list{border-top:1px solid var(--line)}
+.medrano-integrity-issue{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.medrano-integrity-issue:last-child{border-bottom:0}
+.medrano-integrity-issue p{margin:4px 0 0;color:var(--muted)}
+@media(max-width:700px){.medrano-integrity-card,.medrano-integrity-issue{flex-direction:column}.medrano-integrity-card button,.medrano-integrity-issue button{width:100%}}

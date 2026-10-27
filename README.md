@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.50. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.51. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.51 — Control automático de integridad
+
+- Agrega al tablero Medrano un control exclusivo para administradores y de solo lectura.
+- Detecta reservas superiores al stock, cobros sin sus movimientos relacionados, dispensas o producciones incompletas, traslados demorados y productos sin precio o trazabilidad.
+- Los controles históricos sensibles empiezan desde la instalación de esta versión para evitar falsos avisos por registros antiguos; los saldos y pendientes actuales se revisan completos.
+- Cada aviso explica el problema y permite abrir directamente el sector relacionado.
+- No corrige ni elimina datos automáticamente.
+- Requiere ejecutar `Rainbows_V3.26.51_control_integridad_medrano.sql` en Supabase.
 
 ## V3.26.50 — Correcciones de stock protegidas
 
