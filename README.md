@@ -9,14 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.52. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.53. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
 
-## V3.26.52 — Integridad dentro de Hoy
+## V3.26.53 — Alertas de stock mínimo
 
-- Mueve el control automático de integridad desde el tablero de indicadores hacia `Hoy en Medrano`.
-- Conserva los avisos, la actualización manual y los accesos directos a cada sector.
-- El tablero `Medrano` vuelve a mostrar únicamente estadísticas e indicadores del período.
-- No requiere una nueva migración de Supabase si V3.26.51 ya está instalada.
+- Agrega en `Hoy en Medrano` alertas configurables de stock bajo para flores, productos, insumos y artículos de Mostrador.
+- El mínimo se define individualmente por producto o lote y puede dejarse desactivado.
+- El saldo controlado es el stock libre real: físico menos reservas de comandas y producciones iniciadas.
+- Distingue stock bajo de stock agotado y permite abrir directamente el sector correspondiente.
+- Requiere ejecutar `Rainbows_V3.26.53_alertas_stock_minimo.sql` en Supabase.
 
 ## V3.26.51 — Control automático de integridad
 

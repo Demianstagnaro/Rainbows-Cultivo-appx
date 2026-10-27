@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.52';
+const APP_VERSION='3.26.53';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -23,6 +23,7 @@ Object.assign(state,{medranoCajaMovements:[],medranoTokenMovements:[],medranoCas
 Object.assign(state,{medranoDateHistory:{}});
 Object.assign(state,{medranoDashboardPeriod:'month',medranoDashboardMonth:''});
 Object.assign(state,{medranoIntegrity:{loaded:false,loading:false,issues:[],error:null,checkedAt:null}});
+Object.assign(state,{medranoStockControl:{loaded:false,loading:false,rows:[],error:null,checkedAt:null}});
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
 function requiredRoomId(name){
@@ -383,6 +384,7 @@ async function load(){
   state.medranoPriceListReady=state.medranoCajaBaseReady&&![qs[34],qs[35],qs[36]].some(q=>q.missing);
   state.medranoLoadIssues=qs.slice(22).flatMap(q=>q.issue?[q.issue]:[]);
   applyMedranoOrderRows(legacyMedranoOrders,state.medranoMultiOrders,state.medranoMultiItems);
+  state.medranoStockControl={loaded:false,loading:false,rows:[],error:null,checkedAt:null};
   if(!admin){
     state.cosechas=[];state.cosechaDetalles=[];state.selectedHarvest=null;state.editHarvest=null;
   }
@@ -478,6 +480,9 @@ async function refreshMedranoModules(...requested){
       state.medranoPriceListReady=true;
     }
     if(scopes.has('transfers')){state.stockTransfers=result.stockTransfers.data||[];state.stockTransferItems=result.stockTransferItems.data||[]}
+    if(['orders','inventory','laboratory','transfers'].some(scope=>scopes.has(scope))){
+      state.medranoStockControl={loaded:false,loading:false,rows:[],error:null,checkedAt:null};
+    }
     __resetDataPerfCaches();render();
   }catch(error){
     console.error('Falló la actualización parcial de Medrano; se usa la carga completa.',error);
@@ -3121,6 +3126,52 @@ function openMedranoIntegrityTarget(target){
   state.medranoView=target;
   render();
 }
+function medranoStockControlMarkup(){
+  const control=state.medranoStockControl||{};
+  if(control.loading)return `<section class="panel medrano-stock-alert-card is-loading"><div><h3>Alertas de stock</h3><p class="muted">Calculando stock físico, reservas y saldo libre…</p></div></section>`;
+  if(control.error)return `<section class="panel medrano-stock-alert-card has-errors"><div><h3>Alertas de stock</h3><p>No se pudo revisar el stock mínimo.</p><small>${escapeHtml(control.error)}</small></div><button type="button" class="secondary compact-button" data-stock-control-refresh>Reintentar</button></section>`;
+  if(!control.loaded)return `<section class="panel medrano-stock-alert-card is-loading"><div><h3>Alertas de stock</h3><p class="muted">Preparando control de mínimos…</p></div></section>`;
+  const rows=control.rows||[],configured=rows.filter(row=>Number(row.minimo)>0),alerts=configured.filter(row=>row.alerta);
+  const checked=control.checkedAt?new Date(control.checkedAt).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'}):'';
+  if(!configured.length)return `<section class="panel medrano-stock-alert-card is-unconfigured"><div><h3>Alertas de stock</h3><p>Definí el mínimo de los productos y materias primas que querés controlar.</p></div><button type="button" class="secondary compact-button" data-stock-minimum-config>Configurar mínimos</button></section>`;
+  if(!alerts.length)return `<section class="panel medrano-stock-alert-card is-ok"><div><h3>Stock controlado · Sin alertas</h3><p>${configured.length} producto${configured.length===1?'':'s'} por encima de su mínimo.</p>${checked?`<small>Última revisión: ${escapeHtml(checked)}</small>`:''}</div><button type="button" class="secondary compact-button" data-stock-minimum-config>Configurar mínimos</button></section>`;
+  const list=alerts.map(row=>`<article class="medrano-stock-alert-item ${row.alerta==='sin_stock'?'is-critical':''}"><div><strong>${escapeHtml(row.producto)}</strong><p>${escapeHtml(row.sector==='laboratorio'?'Laboratorio':'Dispensario')} · Libre ${Number(row.disponible).toLocaleString('es-AR',{maximumFractionDigits:3})} ${escapeHtml(row.unidad)} · Mínimo ${Number(row.minimo).toLocaleString('es-AR',{maximumFractionDigits:3})} ${escapeHtml(row.unidad)}${Number(row.reservado)>0?` · Reservado ${Number(row.reservado).toLocaleString('es-AR',{maximumFractionDigits:3})} ${escapeHtml(row.unidad)}`:''}</p></div><button type="button" class="secondary compact-button" data-stock-control-target="${escapeHtml(row.destino)}">Abrir stock</button></article>`).join('');
+  return `<section class="panel medrano-stock-alert-card has-errors"><div class="stock-section-head"><div><h3>Stock bajo · ${alerts.length} alerta${alerts.length===1?'':'s'}</h3><p>El saldo libre ya alcanzó el mínimo configurado.</p>${checked?`<small>Última revisión: ${escapeHtml(checked)}</small>`:''}</div><button type="button" class="secondary compact-button" data-stock-minimum-config>Configurar mínimos</button></div><div class="medrano-stock-alert-list">${list}</div></section>`;
+}
+async function loadMedranoStockControl(force=false){
+  if(currentRole()!=='administrador'||state.medranoStockControl.loading||(!force&&state.medranoStockControl.loaded))return;
+  state.medranoStockControl={...state.medranoStockControl,loading:true,error:null};
+  if(state.site==='medrano'&&state.medranoView==='today')render();
+  const result=await db.rpc('listar_control_stock_medrano');
+  state.medranoStockControl=result.error
+    ?{loaded:true,loading:false,rows:[],error:result.error.message||'Falta instalar la migración de alertas de stock.',checkedAt:new Date().toISOString()}
+    :{loaded:true,loading:false,rows:result.data||[],error:null,checkedAt:new Date().toISOString()};
+  if(state.site==='medrano'&&state.medranoView==='today')render();
+}
+function openMedranoStockMinimumDialog(){
+  const control=state.medranoStockControl||{};
+  if(currentRole()!=='administrador'||control.error||!control.loaded)return;
+  const rows=[...(control.rows||[])].sort((a,b)=>String(a.sector).localeCompare(String(b.sector),'es')||String(a.categoria).localeCompare(String(b.categoria),'es')||String(a.producto).localeCompare(String(b.producto),'es'));
+  $('medrano-stock-minimum-list').innerHTML=rows.length?rows.map(row=>`<label class="medrano-stock-minimum-row"><span><strong>${escapeHtml(row.producto)}</strong><small>${escapeHtml(row.sector==='laboratorio'?'Laboratorio':'Dispensario')} · ${escapeHtml(row.categoria)} · Libre ${Number(row.disponible).toLocaleString('es-AR',{maximumFractionDigits:3})} ${escapeHtml(row.unidad)}</small></span><input class="text-input" type="number" min="0" step="${row.unidad==='unidades'?'1':'0.01'}" inputmode="decimal" value="${Number(row.minimo)>0?escapeHtml(String(Number(row.minimo))):''}" placeholder="Sin control" data-stock-minimum-sector="${escapeHtml(row.sector)}" data-stock-minimum-id="${escapeHtml(row.stock_id)}" data-stock-minimum-unit="${escapeHtml(row.unidad)}" aria-label="Mínimo de ${escapeHtml(row.producto)}"></label>`).join(''):'<p class="muted">No hay productos activos para configurar.</p>';
+  $('medrano-stock-minimum-dialog').showModal();
+}
+async function saveMedranoStockMinimums(){
+  if(currentRole()!=='administrador')throw new Error('Solo Administración puede configurar mínimos.');
+  const values=[...document.querySelectorAll('[data-stock-minimum-id]')].map(input=>{
+    const raw=input.value.trim();
+    if(!raw)return null;
+    const minimo=Number(raw);
+    if(!Number.isFinite(minimo)||minimo<0)throw new Error('Revisá los mínimos ingresados.');
+    if(minimo===0)return null;
+    if(input.dataset.stockMinimumUnit==='unidades'&&!Number.isInteger(minimo))throw new Error('Los mínimos en unidades deben ser números enteros.');
+    return {sector:input.dataset.stockMinimumSector,stock_id:input.dataset.stockMinimumId,minimo};
+  }).filter(Boolean);
+  const result=await db.rpc('guardar_minimos_stock_medrano',{p_minimos:values});
+  if(result.error)throw result.error;
+  closeDialog('medrano-stock-minimum-dialog');
+  state.medranoStockControl={loaded:false,loading:false,rows:[],error:null,checkedAt:null};
+  await loadMedranoStockControl(true);
+}
 function renderMedranoDashboard(medranoNav,bindModuleNav){
   if(currentRole()!=='administrador'){state.medranoView='stock';render();return}
   $('screen-title').textContent='Medrano';
@@ -3169,6 +3220,7 @@ function renderMedranoToday(medranoNav,bindModuleNav){
   const completedMarkup=completedCards.map(card=>`<button class="panel medrano-today-card completed" type="button" data-medrano-today-target="${escapeHtml(card.target)}"><span>${escapeHtml(card.label)}</span><strong>${card.count}</strong><small>Ver detalle</small></button>`).join('');
   app.innerHTML=`${medranoNav}<section class="panel stock-page-head medrano-today-head"><div><h2>Hoy en Medrano</h2><p class="muted">${parse(todayKey).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</p></div><span class="medrano-today-status ${pendingTotal?'has-pending':'is-clear'}">${pendingTotal?`${pendingTotal} pendiente${pendingTotal===1?'':'s'}`:'Todo al día'}</span></section>
     ${medranoIntegrityMarkup()}
+    ${medranoStockControlMarkup()}
     <section class="panel stock-detail-panel"><h3 class="${pendingTotal?'status-heading-pending':'status-heading-completed'}">${pendingTotal?'Acciones pendientes':'No hay acciones pendientes'}</h3><div class="medrano-today-grid">${pendingMarkup}</div></section>
     <section class="panel stock-detail-panel"><h3 class="status-heading-completed">Realizado hoy</h3><div class="medrano-today-grid completed-grid">${completedMarkup}</div></section>`;
   bindModuleNav();
@@ -3180,7 +3232,11 @@ function renderMedranoToday(medranoNav,bindModuleNav){
   });
   app.querySelectorAll('[data-integrity-refresh]').forEach(button=>button.onclick=()=>loadMedranoIntegrity(true));
   app.querySelectorAll('[data-integrity-target]').forEach(button=>button.onclick=()=>openMedranoIntegrityTarget(button.dataset.integrityTarget));
+  app.querySelectorAll('[data-stock-control-refresh]').forEach(button=>button.onclick=()=>loadMedranoStockControl(true));
+  app.querySelectorAll('[data-stock-minimum-config]').forEach(button=>button.onclick=openMedranoStockMinimumDialog);
+  app.querySelectorAll('[data-stock-control-target]').forEach(button=>button.onclick=()=>openMedranoIntegrityTarget(button.dataset.stockControlTarget));
   if(!state.medranoIntegrity.loaded&&!state.medranoIntegrity.loading)queueMicrotask(()=>loadMedranoIntegrity());
+  if(!state.medranoStockControl.loaded&&!state.medranoStockControl.loading)queueMicrotask(()=>loadMedranoStockControl());
 }
 function renderMedrano(){
   $('today-label').textContent=nice(today());
@@ -3277,6 +3333,8 @@ function renderAmendmentsView(){
   const back=$('back-cultivo-info');if(back)back.onclick=openCultivoInfo;
 }
 function bindMedranoDialogActions(){
+  $('medrano-stock-minimum-cancel').onclick=()=>closeDialog('medrano-stock-minimum-dialog');
+  $('medrano-stock-minimum-save').onclick=async()=>{const b=$('medrano-stock-minimum-save');b.disabled=true;try{await saveMedranoStockMinimums()}catch(e){console.error(e);alert(e.message||'No se pudieron guardar los mínimos.')}finally{b.disabled=false}};
   $('medrano-payment-dialog').onclose=()=>{if(state.pendingMedranoPayment){state.pendingMedranoPayment=null;render()}};
   $('medrano-payment-cancel').onclick=()=>{state.pendingMedranoPayment=null;closeDialog('medrano-payment-dialog');render()};
   $('medrano-payment-confirm').onclick=async()=>{const b=$('medrano-payment-confirm');b.disabled=true;try{await confirmMedranoPayment()}catch(e){console.error(e);alert(e.message||'No se pudo cobrar la comanda.')}finally{b.disabled=false}};
