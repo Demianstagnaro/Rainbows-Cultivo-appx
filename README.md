@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.54. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.55. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.55 — Backups cifrados y restauración segura
+
+- Completa el sistema de copias que ya aparecía en Config.
+- Genera automáticamente una copia lógica diaria de roles, esquema y datos mediante la CLI oficial de Supabase.
+- Cifra la copia con AES-256 antes de almacenarla como artefacto de GitHub durante 30 días.
+- Permite crear y descargar copias manuales desde la app, exclusivamente a administradores activos.
+- La restauración exige doble confirmación y bloquea cualquier URL que corresponda al proyecto productivo.
+- Requiere instalar dos workflows, desplegar la Edge Function `rainbows-backups` y configurar los secretos detallados en `INSTALACION_BACKUPS_V3.26.55.md`.
 
 ## V3.26.54 — Carga optimizada de Hoy
 

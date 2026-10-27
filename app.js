@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.54';
+const APP_VERSION='3.26.55';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -4450,7 +4450,7 @@ function renderHistory(){
 const BACKUP_FUNCTION='rainbows-backups';
 function backupDate(value){
   if(!value)return'—';
-  return new Date(value).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'});
+  return new Date(value).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Argentina/Buenos_Aires'});
 }
 function backupSize(bytes){
   const n=Number(bytes||0);
@@ -4571,11 +4571,11 @@ function renderSettings(){
   const permissions={administrador:'Acceso total a Palestina y Medrano. Puede gestionar usuarios, roles, empleados, genéticas, tareas, configuración, cosechas, stock y backups.',cultivo:'Acceso únicamente a Palestina. Tiene los mismos permisos operativos que el antiguo Encargado: puede crear, editar, completar y reprogramar tareas y trabajar con Hoy, Calendario, Salas y Genéticas. No accede a Medrano, Cosechas ni Stock Palestina.',medrano:'Acceso a toda la sección Medrano y acceso de consulta en Palestina a Hoy, Calendario, Genéticas, Salas y Stock. No puede modificar la operación de Palestina ni acceder a Cosechas o Config.'};
   app.innerHTML=`
     <section class="panel backup-panel">
-      <div class="backup-panel-head"><div><h3>Copias de seguridad</h3><p class="muted">Backup completo diario, conservación por 30 días y descarga local.</p></div><button id="refresh-backups" class="secondary compact-button">Actualizar</button></div>
+      <div class="backup-panel-head"><div><h3>Copias de seguridad</h3><p class="muted">Backup completo diario, cifrado antes de salir de Supabase y conservado durante 30 días.</p></div><button id="refresh-backups" class="secondary compact-button">Actualizar</button></div>
       <label class="field-label">Copia guardada<select id="backup-select" class="text-input"><option>Consultando…</option></select></label>
       <div class="backup-actions"><button id="create-backup" class="primary">Crear backup manual</button><button id="download-backup" class="secondary" disabled>Descargar backup</button><button id="restore-backup" class="danger" disabled>Restaurar backup</button></div>
       <p id="backup-status" class="backup-status" aria-live="polite">Consultando copias guardadas…</p>
-      <p class="backup-warning">La restauración requiere doble confirmación y se ejecuta del lado del servidor. Ninguna clave privada queda dentro de la app.</p>
+      <p class="backup-warning">Las descargas permanecen cifradas. La restauración requiere doble confirmación y sólo puede apuntar al proyecto vacío de recuperación; ninguna clave queda dentro de la app.</p>
     </section>
     <section class="panel"><h3>Empleados compartidos</h3><textarea id="emps" class="text-input" style="min-height:150px">${escapeHtml(state.empleados.map(e=>e.nombre).join('\n'))}</textarea></section>
     <button id="save-conf" class="primary">Guardar configuración</button>
