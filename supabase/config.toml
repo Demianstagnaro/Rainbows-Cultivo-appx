@@ -1,2 +1,5 @@
 [functions.rainbows-create-user]
 verify_jwt = false
+
+[functions.rainbows-backups]
+verify_jwt = false
