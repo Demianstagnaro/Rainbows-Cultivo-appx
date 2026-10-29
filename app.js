@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.55';
+const APP_VERSION='3.26.56';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -25,6 +25,7 @@ Object.assign(state,{medranoDashboardPeriod:'month',medranoDashboardMonth:''});
 Object.assign(state,{medranoIntegrity:{loaded:false,loading:false,issues:[],error:null,checkedAt:null}});
 Object.assign(state,{medranoStockControl:{loaded:false,loading:false,rows:[],error:null,checkedAt:null}});
 Object.assign(state,{medranoTodayControlsLoading:false});
+Object.assign(state,{medranoPhysicalControls:[],medranoPhysicalControlItems:[],medranoPhysicalControlReady:false,medranoPhysicalControlLoading:false,medranoPhysicalControlError:null,medranoPhysicalControlFilter:'criticos'});
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
 function requiredRoomId(name){
@@ -1421,6 +1422,119 @@ function renderMedranoStockHistory(medranoNav,bindModuleNav){
   $('screen-title').textContent='Historial de stock';
   const rows=medranoStockHistoryRows(scope.sector,scope.category).filter(row=>row.fecha<ymd(today()));
   renderMedranoDateHistory({key:'stock',title:'Historial de stock',description:`Movimientos de ${scope.category||scope.sector||'Medrano'}.`,rows,dateOf:row=>row.fecha,countLabel:count=>`${count} movimiento${count===1?'':'s'}`,emptyText:'Todavía no hay movimientos registrados en este inventario.',backLabel:'Volver al stock',backAction:()=>{state.medranoView=scope.view;render()},dayContent:(day,dayRows)=>`<section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Movimientos del día</h3><p class="muted">${dayRows.length} movimiento${dayRows.length===1?'':'s'}</p></div></div>${medranoStockMovementsTable(dayRows)}</section>`,medranoNav,bindModuleNav});
+}
+function medranoPhysicalStockQuantity(value){return Number(value||0).toLocaleString('es-AR',{maximumFractionDigits:3})}
+function medranoPhysicalStockCategory(row){
+  if(row.sector==='dispensario'&&row.category==='mostrador')return'Mostrador';
+  return medranoLabCategoryName(row.category);
+}
+function medranoPhysicalStockRows(){
+  const rows=[];
+  for(const lot of state.medranoDispensarioLots||[]){
+    const expected=Number(lot.gramos_actual)||0;
+    rows.push({sector:'dispensario',category:'flores',id:lot.id,name:medranoLotGeneticName(lot),lot:lot.codigo_lote||'—',unit:'g',expected,reserved:medranoTotalReserved('flores',lot.id),critical:true});
+  }
+  for(const item of state.medranoCounterItems||[]){
+    const expected=Number(item.cantidad)||0;
+    if(item.activo===false&&expected<=0)continue;
+    rows.push({sector:'dispensario',category:'mostrador',id:item.id,name:item.nombre,lot:'—',unit:'unidades',expected,reserved:medranoTotalReserved('mostrador',item.id),critical:false});
+  }
+  for(const item of state.medranoLabItems||[]){
+    const expected=Number(item.cantidad)||0;
+    if(item.activo===false&&expected<=0)continue;
+    const critical=item.categoria==='flores'||item.categoria==='resina'||(item.categoria==='aceites'&&item.es_aceite_base)||(item.categoria==='insumos'&&item.tipo_insumo!=='envase');
+    const genetic=item.genetica_id?medranoLabGeneticName(item):'';
+    const profile=['resina','aceites','cremas','capsulas'].includes(item.categoria)?medranoCannabinoidProfile(item):'';
+    const ratio=['resina','aceites','cremas','capsulas'].includes(item.categoria)?medranoCannabinoidRatio(item):'';
+    const name=[formatMeasurementText(item.nombre),profile&&profile!=='Sin definir'?profile:'',ratio&&ratio!=='—'&&ratio!=='Sin cargar'?`Ratio ${ratio}`:'',genetic&&genetic!=='Sin identificar'?`Genética ${genetic}`:''].filter(Boolean).join(' · ');
+    rows.push({sector:'laboratorio',category:item.categoria,id:item.id,name,lot:item.lote||'—',unit:item.unidad,expected,reserved:medranoTotalReserved(item.categoria,item.id),critical});
+  }
+  return rows.sort((a,b)=>Number(b.critical)-Number(a.critical)||a.sector.localeCompare(b.sector,'es')||a.category.localeCompare(b.category,'es')||a.name.localeCompare(b.name,'es',{sensitivity:'base'}));
+}
+function updateMedranoPhysicalStockRow(input){
+  const row=input.closest('[data-physical-stock-row]'),difference=row?.querySelector('[data-physical-stock-difference]');
+  if(!row||!difference)return;
+  if(input.value===''){difference.textContent='Sin contar';difference.className='stock-control-difference';return}
+  const actual=Number(input.value),expected=Number(row.dataset.expected),delta=actual-expected,unit=row.dataset.unit;
+  difference.textContent=Number.isFinite(actual)?`${delta>0?'+':''}${medranoPhysicalStockQuantity(delta)} ${unit}`:'Cantidad inválida';
+  difference.className=`stock-control-difference ${delta===0?'is-equal':'has-difference'}`;
+}
+function filterMedranoPhysicalStockRows(){
+  const term=String($('physical-stock-search')?.value||'').trim().toLocaleLowerCase('es');
+  const filter=$('physical-stock-filter')?.value||'criticos';
+  app.querySelectorAll('[data-physical-stock-row]').forEach(row=>{
+    const matchesFilter=filter==='todos'||row.dataset.critical==='true';
+    row.hidden=!matchesFilter||(term&&!row.textContent.toLocaleLowerCase('es').includes(term));
+  });
+}
+async function loadMedranoPhysicalControlData(force=false){
+  if(currentRole()!=='administrador'||state.medranoPhysicalControlLoading)return;
+  if(state.medranoPhysicalControlReady&&!force)return;
+  state.medranoPhysicalControlLoading=true;state.medranoPhysicalControlError=null;
+  try{
+    const [controls,items]=await Promise.all([loadMedranoStockTable('medrano_stock_controles',Infinity),loadMedranoStockTable('medrano_stock_control_items',Infinity)]);
+    if(controls.error)throw controls.error;if(items.error)throw items.error;
+    if(controls.missing||items.missing)throw new Error('Falta aplicar la migración V3.26.56 en Supabase.');
+    state.medranoPhysicalControls=controls.data||[];state.medranoPhysicalControlItems=items.data||[];state.medranoPhysicalControlReady=true;
+  }catch(error){state.medranoPhysicalControlReady=false;state.medranoPhysicalControlError=error}
+  finally{state.medranoPhysicalControlLoading=false}
+}
+async function openMedranoPhysicalControl(history=false){
+  if(currentRole()!=='administrador')return;
+  state.medranoView=history?'stock-control-history':'stock-control';
+  app.innerHTML='<section class="panel"><p class="muted">Cargando control físico de stock…</p></section>';
+  await loadMedranoPhysicalControlData();render();
+}
+async function saveMedranoPhysicalControl(){
+  if(currentRole()!=='administrador')throw new Error('Solamente Administración puede registrar controles físicos de stock.');
+  const items=[...app.querySelectorAll('[data-physical-stock-row]')].map(row=>{
+    const input=row.querySelector('[data-physical-stock-actual]');
+    if(!input||input.value==='')return null;
+    const actual=Number(input.value),unit=row.dataset.unit;
+    if(!Number.isFinite(actual)||actual<0)throw new Error('Revisá las cantidades contadas. No pueden ser negativas.');
+    if(unit==='unidades'&&!Number.isInteger(actual))throw new Error('Los productos medidos en unidades deben cargarse con números enteros.');
+    return{sector:row.dataset.sector,categoria:row.dataset.category,stock_id:row.dataset.stockId,cantidad_real:actual,cantidad_sistema:Number(row.dataset.expected)};
+  }).filter(Boolean);
+  if(!items.length)throw new Error('Contá al menos un producto antes de confirmar el control.');
+  const differences=items.filter(item=>item.cantidad_real!==item.cantidad_sistema),notes=$('physical-stock-notes').value.trim();
+  if(differences.length&&notes.length<5)throw new Error('Explicá en Observaciones el motivo de las diferencias (al menos 5 caracteres).');
+  const belowReserved=items.filter(item=>{const row=app.querySelector(`[data-physical-stock-row][data-stock-id="${item.stock_id}"]`);return item.cantidad_real<Number(row?.dataset.reserved||0)}).length;
+  const message=differences.length?`Se registrarán ${items.length} productos y ${differences.length} diferencias.${belowReserved?` ${belowReserved} quedarán pendientes de revisión porque el conteo es menor que lo reservado.`:''} ¿Confirmar el control físico?`:`Los ${items.length} productos coinciden con el sistema. ¿Registrar el control físico?`;
+  if(!confirm(message))return;
+  const query=await db.rpc('registrar_control_stock_medrano',{p_items:items,p_observaciones:notes||null});
+  if(query.error)throw query.error;
+  state.medranoPhysicalControlReady=false;
+  await Promise.all([refreshMedranoModules('inventory'),loadMedranoPhysicalControlData(true)]);
+  const result=query.data||{},adjusted=Number(result.productos_ajustados||0),review=Number(result.productos_pendientes_revision||0);
+  alert(`Control registrado. ${adjusted} diferencia${adjusted===1?'':'s'} ajustada${adjusted===1?'':'s'}${review?` y ${review} pendiente${review===1?'':'s'} de revisión`:''}.`);
+}
+function medranoPhysicalControlStatus(item){
+  if(item.estado==='requiere_revision')return'<span class="stock-control-status stock-control-status-review">Requiere revisión</span>';
+  if(item.estado==='ajustado')return'<span class="stock-control-status stock-control-status-adjusted">Ajustado</span>';
+  return'<span class="stock-control-status stock-control-status-ok">Coincide</span>';
+}
+function medranoPhysicalControlDayMarkup(dayControls){
+  return `<div class="stock-control-history-list">${dayControls.map(control=>{
+    const rows=(state.medranoPhysicalControlItems||[]).filter(item=>String(item.control_id)===String(control.id));
+    const differences=Number(control.productos_con_diferencia||rows.filter(item=>Number(item.diferencia)!==0).length),review=Number(control.productos_pendientes_revision||rows.filter(item=>item.estado==='requiere_revision').length);
+    return `<details class="stock-day-group"><summary><div><strong>${new Date(control.created_at).toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Argentina/Buenos_Aires'})}</strong><span>${escapeHtml(control.responsable_nombre||'Administración')} · ${rows.length} producto${rows.length===1?'':'s'}</span></div><div class="stock-day-total"><strong class="${differences?'stock-control-alert':'cash-balanced'}">${differences?`${differences} diferencia${differences===1?'':'s'}`:'Sin diferencias'}</strong>${review?`<span class="stock-control-alert">${review} requiere${review===1?'':'n'} revisión</span>`:''}</div></summary><div class="stock-day-detail">${control.observaciones?`<p><strong>Observaciones:</strong> ${escapeHtml(control.observaciones)}</p>`:''}<div class="stock-table-wrap"><table class="stock-table stock-control-history-table"><thead><tr><th>Sector</th><th>Producto</th><th>Lote</th><th>Registrado</th><th>Reservado</th><th>Disponible</th><th>Contado</th><th>Diferencia</th><th>Resultado</th></tr></thead><tbody>${rows.map(item=>`<tr><td>${escapeHtml(item.sector==='laboratorio'?'Laboratorio':'Dispensario')}<br><span class="muted">${escapeHtml(medranoPhysicalStockCategory({sector:item.sector,category:item.categoria}))}</span></td><td><strong>${escapeHtml(item.producto)}</strong></td><td>${escapeHtml(item.lote||'—')}</td><td>${medranoPhysicalStockQuantity(item.cantidad_sistema)} ${escapeHtml(item.unidad)}</td><td>${medranoPhysicalStockQuantity(item.cantidad_reservada)} ${escapeHtml(item.unidad)}</td><td>${medranoPhysicalStockQuantity(item.cantidad_disponible)} ${escapeHtml(item.unidad)}</td><td>${medranoPhysicalStockQuantity(item.cantidad_real)} ${escapeHtml(item.unidad)}</td><td class="${Number(item.diferencia)?'stock-control-alert':'cash-balanced'}">${Number(item.diferencia)>0?'+':''}${medranoPhysicalStockQuantity(item.diferencia)} ${escapeHtml(item.unidad)}</td><td>${medranoPhysicalControlStatus(item)}</td></tr>`).join('')}</tbody></table></div></div></details>`;
+  }).join('')}</div>`;
+}
+function renderMedranoPhysicalControlHistory(medranoNav,bindModuleNav){
+  $('screen-title').textContent='Historial de controles';
+  if(currentRole()!=='administrador'){state.medranoView='stock';render();return}
+  renderMedranoDateHistory({key:'control-fisico',title:'Historial de controles físicos',description:'Conteos, diferencias, ajustes y revisiones pendientes.',rows:state.medranoPhysicalControls||[],dateOf:row=>row.fecha,countLabel:count=>`${count} control${count===1?'':'es'}`,emptyText:'Todavía no hay controles físicos registrados.',backLabel:'Control físico',backAction:()=>{state.medranoView='stock-control';render()},dayContent:(day,rows)=>`<section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Controles del día</h3><p class="muted">${rows.length} control${rows.length===1?'':'es'}</p></div></div>${medranoPhysicalControlDayMarkup(rows)}</section>`,medranoNav,bindModuleNav});
+}
+function renderMedranoPhysicalControl(medranoNav,bindModuleNav){
+  $('screen-title').textContent='Control físico de stock';
+  if(currentRole()!=='administrador'){state.medranoView='stock';render();return}
+  if(state.medranoPhysicalControlError){
+    app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="physical-stock-back" class="secondary compact-button" type="button">← Stock Medrano</button><h2>Control físico de stock</h2></div></section><section class="panel error-panel"><strong>No se pudo abrir el control físico.</strong><p>${escapeHtml(state.medranoPhysicalControlError.message||'Aplicá la migración V3.26.56 en Supabase.')}</p><button id="physical-stock-retry" type="button" class="primary compact-button">Reintentar</button></section>`;
+    bindModuleNav();$('physical-stock-back').onclick=()=>{state.medranoView='stock';render()};$('physical-stock-retry').onclick=()=>{state.medranoPhysicalControlReady=false;state.medranoPhysicalControlError=null;openMedranoPhysicalControl(false)};return;
+  }
+  const rows=medranoPhysicalStockRows();
+  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="physical-stock-back" class="secondary compact-button" type="button">← Stock Medrano</button><h2>Control físico de stock</h2><p class="muted">Cargá solamente lo que contaste. Los productos no contados no se modifican.</p></div><button id="physical-stock-history" class="secondary compact-button" type="button">Historial</button></section><section class="panel stock-detail-panel"><div class="stock-control-tools"><input id="physical-stock-search" class="text-input" type="search" aria-label="Buscar producto para controlar" placeholder="Buscar producto, lote o categoría…"><select id="physical-stock-filter" class="text-input" aria-label="Filtrar productos"><option value="criticos" ${state.medranoPhysicalControlFilter==='criticos'?'selected':''}>Materias primas críticas</option><option value="todos" ${state.medranoPhysicalControlFilter==='todos'?'selected':''}>Todos los productos</option></select></div><div class="stock-table-wrap"><table class="stock-table stock-control-table"><thead><tr><th>Sector</th><th>Producto</th><th>Lote</th><th>Registrado</th><th>Reservado</th><th>Disponible</th><th>Conteo físico</th><th>Diferencia</th></tr></thead><tbody>${rows.length?rows.map(row=>{const available=row.expected-row.reserved;return `<tr data-physical-stock-row data-sector="${row.sector}" data-category="${row.category}" data-stock-id="${escapeHtml(row.id)}" data-unit="${escapeHtml(row.unit)}" data-expected="${row.expected}" data-reserved="${row.reserved}" data-critical="${row.critical}"><td>${escapeHtml(row.sector==='laboratorio'?'Laboratorio':'Dispensario')}<br><span class="muted">${escapeHtml(medranoPhysicalStockCategory(row))}</span>${row.critical?'<br><span class="stock-control-critical">Materia prima crítica</span>':''}</td><td><strong>${escapeHtml(row.name)}</strong></td><td>${escapeHtml(row.lot)}</td><td>${medranoPhysicalStockQuantity(row.expected)} ${escapeHtml(row.unit)}</td><td>${medranoPhysicalStockQuantity(row.reserved)} ${escapeHtml(row.unit)}</td><td class="${available<0?'stock-control-alert':''}">${medranoPhysicalStockQuantity(available)} ${escapeHtml(row.unit)}</td><td><input class="text-input stock-control-input" data-physical-stock-actual type="number" min="0" step="${row.unit==='unidades'?'1':'0.001'}" inputmode="${row.unit==='unidades'?'numeric':'decimal'}" placeholder="Sin contar" aria-label="Cantidad física de ${escapeHtml(row.name)}"></td><td><span class="stock-control-difference" data-physical-stock-difference>Sin contar</span></td></tr>`}).join(''):'<tr><td colspan="8" class="muted">No hay productos para controlar.</td></tr>'}</tbody></table></div><label class="field-label stock-control-notes">Observaciones<textarea id="physical-stock-notes" class="text-input" maxlength="1000" placeholder="Obligatorias si hay diferencias. Ej.: merma, rotura, error de carga…"></textarea></label><div class="stock-control-submit"><p class="muted">Las diferencias seguras ajustan el stock. Si el conteo queda por debajo de lo reservado, se registra para revisión sin afectar comandas ni producciones.</p><button id="physical-stock-save" class="primary" type="button">Confirmar control</button></div></section>`;
+  bindModuleNav();$('physical-stock-back').onclick=()=>{state.medranoView='stock';render()};$('physical-stock-history').onclick=()=>{resetMedranoDateHistory('control-fisico');state.medranoView='stock-control-history';render()};$('physical-stock-search').oninput=filterMedranoPhysicalStockRows;$('physical-stock-filter').onchange=event=>{state.medranoPhysicalControlFilter=event.target.value;filterMedranoPhysicalStockRows()};app.querySelectorAll('[data-physical-stock-actual]').forEach(input=>input.oninput=()=>updateMedranoPhysicalStockRow(input));$('physical-stock-save').onclick=async()=>{const button=$('physical-stock-save');button.disabled=true;try{await saveMedranoPhysicalControl()}catch(error){console.error(error);alert(error.message||'No se pudo registrar el control físico.')}finally{button.disabled=false}};filterMedranoPhysicalStockRows();
 }
 function openMedranoLabTransfer(){
   if(!canManageMedrano()||!state.medranoStockReady)return;
@@ -3312,11 +3426,14 @@ function renderMedrano(){
   if(mv==='laboratorio'){renderMedranoLaboratory(medranoNav,bindModuleNav);return}
   if(mv==='laboratorio-historial'){renderMedranoLaboratory(medranoNav,bindModuleNav,true);return}
   if(mv==='stock-historial'){renderMedranoStockHistory(medranoNav,bindModuleNav);return}
+  if(mv==='stock-control'){renderMedranoPhysicalControl(medranoNav,bindModuleNav);return}
+  if(mv==='stock-control-history'){renderMedranoPhysicalControlHistory(medranoNav,bindModuleNav);return}
   if(mv==='stock'){
     $('screen-title').textContent='Stock Medrano';
-    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Stock Medrano</h2><p class="muted">Elegí el sector de stock que querés consultar.</p></div>${medranoStockHistoryButton()}</div><div class="medrano-stock-grid"><button class="medrano-stock-card" data-medrano-stock="dispensario" type="button"><strong>Dispensario</strong><span>Stock de Dispensario</span></button><button class="medrano-stock-card" data-medrano-stock="laboratorio" type="button"><strong>Laboratorio</strong><span>Stock de Laboratorio</span></button></div></section>`;
+    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Stock Medrano</h2><p class="muted">Elegí el sector de stock que querés consultar.</p></div>${medranoStockHistoryButton()}</div><div class="medrano-stock-grid"><button class="medrano-stock-card" data-medrano-stock="dispensario" type="button"><strong>Dispensario</strong><span>Stock de Dispensario</span></button><button class="medrano-stock-card" data-medrano-stock="laboratorio" type="button"><strong>Laboratorio</strong><span>Stock de Laboratorio</span></button>${currentRole()==='administrador'?'<button class="medrano-stock-card stock-control-card" id="medrano-open-physical-stock" type="button"><strong>Control físico</strong><span>Conteo, diferencias e historial</span></button>':''}</div></section>`;
     bindModuleNav();bindMedranoStockHistoryButtons();
     document.querySelectorAll('[data-medrano-stock]').forEach(b=>b.onclick=()=>{state.medranoView=`stock-${b.dataset.medranoStock}`;state.medranoDispensarioSection=null;state.medranoDispensarioRoom=null;render()});
+    const physical=$('medrano-open-physical-stock');if(physical)physical.onclick=()=>openMedranoPhysicalControl(false);
     return;
   }
   const key=mv.replace('stock-','');

@@ -9,7 +9,17 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.55. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.56. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.56 — Control físico seguro de stock
+
+- Retoma el control físico de Medrano como una herramienta exclusiva para administradores dentro de `Stock`.
+- Permite contar solamente los productos revisados y prioriza materias primas críticas como flores, resinas, aceites base e insumos productivos.
+- Compara stock registrado, reservado, disponible y conteo físico antes de guardar.
+- Ajusta automáticamente las diferencias seguras y exige una observación que explique cualquier diferencia.
+- Si el conteo queda por debajo de lo reservado para comandas o producciones, no rompe esas reservas: registra el caso como `Requiere revisión`.
+- Conserva responsable, hora, cantidades y resultado en un historial organizado por año, mes y día.
+- Requiere ejecutar `Rainbows_V3.26.56_control_fisico_stock.sql` en Supabase.
 
 ## V3.26.55 — Backups cifrados y restauración segura
 
