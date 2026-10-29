@@ -35,7 +35,7 @@ test('Caja muestra los productos en una columna propia y escapa el contenido',()
   assert.match(app,/colspan="8"/);
 });
 
-test('la versión no incluye ni requiere el control físico pausado',()=>{
+test('la versión de detalle de caja fue independiente del control físico retomado después',()=>{
   assert.match(readme,/no incluye ni requiere el Control de stock V3\.26\.23 que quedó en pausa/i);
-  assert.doesNotMatch(app,/renderMedranoStockControl|registrar_control_stock_medrano/);
+  assert.match(app,/renderMedranoPhysicalControl|registrar_control_stock_medrano/);
 });

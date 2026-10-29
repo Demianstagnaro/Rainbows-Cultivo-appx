@@ -9,19 +9,20 @@ test('los historiales de Medrano comparten navegación por año, mes y día',()=
   assert.match(app,/data-medrano-history-year/);
   assert.match(app,/data-medrano-history-month/);
   assert.match(app,/data-medrano-history-day/);
-  for(const key of ['stock','dispensario','laboratorio','caja','comandas-eliminadas']){
+  for(const key of ['stock','dispensario','laboratorio','caja','comandas-eliminadas','control-fisico']){
     assert.match(app,new RegExp(`key:'${key}'`));
   }
 });
 
 test('cada historial reinicia su ruta al abrirse y muestra el detalle recién al elegir el día',()=>{
-  for(const key of ['stock','dispensario','laboratorio','caja','comandas-eliminadas']){
+  for(const key of ['stock','dispensario','laboratorio','caja','comandas-eliminadas','control-fisico']){
     assert.match(app,new RegExp(`resetMedranoDateHistory\\('${key}'\\)`));
   }
   assert.match(app,/dayRows===null\?/);
   assert.match(app,/:dayContent\(`/);
 });
 
-test('la mejora no activa el control físico de stock que quedó pausado',()=>{
-  assert.doesNotMatch(app,/renderMedranoStockControl/);
+test('el control físico usa el mismo historial por fecha',()=>{
+  assert.match(app,/function renderMedranoPhysicalControlHistory/);
+  assert.match(app,/key:'control-fisico'/);
 });
