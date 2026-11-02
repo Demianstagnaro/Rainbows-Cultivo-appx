@@ -9,7 +9,15 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.59. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.60. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.60 — Tabla de parámetros compacta
+
+- Recupera la vista comparativa en tabla para ver Vege y Flora S1 a S8 de un vistazo.
+- Conserva el estilo oscuro y los colores naranja/verde del resto de la app.
+- Reduce espaciado y tipografía para aprovechar el ancho sin desplazamiento lateral.
+- En pantallas chicas reorganiza cada fila automáticamente para mantenerla legible.
+- No requiere cambios en Supabase.
 
 ## V3.26.59 — Parámetros compactos y adaptables
 
