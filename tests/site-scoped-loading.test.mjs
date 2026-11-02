@@ -9,7 +9,7 @@ test('la carga separa los datos de Palestina y Medrano',()=>{
   assert.match(app,/const palestinaPage=!medranoPage/);
   assert.match(app,/palestinaPage\?db\.from\('tareas'\)\.select\('\*'\):empty\(\)/);
   assert.match(app,/medranoPage\?loadMedranoStockTable\('medrano_laboratorio_stock'\):empty\(\)/);
-  assert.match(app,/admin&&palestinaPage\?db\.from\('cosechas'\)/);
+  assert.match(app,/palestinaManager&&palestinaPage\?db\.from\('cosechas'\)/);
   assert.match(app,/medranoPage\?db\.from\('medrano_pacientes'\)/);
 });
 

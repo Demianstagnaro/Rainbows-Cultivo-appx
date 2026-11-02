@@ -94,7 +94,8 @@ test('la interfaz impide cambiar el rol o desactivar la cuenta propia',()=>{
 
 test('el frontend no concede permisos por roles históricos ni metadatos de Auth',()=>{
   const roleCode=between(app,'function normalizeRole(value){','function currentProfile');
-  assert.doesNotMatch(roleCode,/encargado|empleado|lectura/);
+  assert.match(roleCode,/encargado_p/);
+  assert.doesNotMatch(roleCode,/['"]encargado['"]|empleado|lectura/);
   assert.doesNotMatch(app,/user_metadata.*rol|app_metadata.*rol/);
   assert.match(app,/profile\?\.activo===true\?normalizeRole\(profile\.rol\):''/);
 });
