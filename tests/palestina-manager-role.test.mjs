@@ -13,6 +13,7 @@ test('Encargado P es un rol visible y asignable por Administración',()=>{
   assert.match(app,/\['administrador','encargado_p','cultivo','medrano'\]/);
   assert.match(edge,/\['administrador', 'encargado_p', 'cultivo', 'medrano'\]/);
   assert.match(sql,/rol_normalizado not in \('administrador','encargado_p','cultivo','medrano'\)/);
+  assert.match(sql,/constraint perfiles_rol_check[\s\S]*'encargado_p'/);
 });
 
 test('Encargado P administra Palestina completa',()=>{
