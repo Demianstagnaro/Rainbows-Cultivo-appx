@@ -41,7 +41,7 @@ Deno.serve(async request => {
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
   const rol = body.rol
   if (!nombre || nombre.length > 120 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 ||
-      !['administrador', 'cultivo', 'medrano'].includes(String(rol)))
+      !['administrador', 'encargado_p', 'cultivo', 'medrano'].includes(String(rol)))
     return reply(400, { error: 'Revisá el nombre, correo y rol.' })
 
   // The existing auth trigger creates an inactive profile by default.
