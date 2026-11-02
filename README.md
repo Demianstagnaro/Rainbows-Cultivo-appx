@@ -9,7 +9,16 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.56. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.57. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.57 — Rol Encargado P
+
+- Agrega el rol visible `Encargado P`, almacenado internamente como `encargado_p`.
+- Tiene acceso de gestión a todas las secciones de Palestina: tareas, salas, croquis, genéticas, cosechas y Stock Palestina.
+- Puede cargar y editar cosechas, agregar o editar genéticas y registrar, corregir o eliminar movimientos y partidas de stock dentro de las protecciones de trazabilidad existentes.
+- No ve el botón ni la ventana `Config`, no puede gestionar usuarios, empleados o backups y no tiene acceso a Medrano.
+- La separación se aplica tanto en la interfaz como mediante funciones y políticas RLS de Supabase.
+- Requiere ejecutar `Rainbows_V3.26.57_rol_encargado_palestina.sql` y actualizar la Edge Function `rainbows-create-user`.
 
 ## V3.26.56 — Control físico seguro de stock
 

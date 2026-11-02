@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.56';
+const APP_VERSION='3.26.57';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -303,7 +303,8 @@ async function load(){
   state.profile=selfProfile.data||null;
   const role=state.profile?.activo===true?normalizeRole(state.profile.rol):'';
   const admin=role==='administrador';
-  const stockAccess=['administrador','medrano'].includes(role);
+  const palestinaManager=['administrador','encargado_p'].includes(role);
+  const stockAccess=['administrador','encargado_p','medrano'].includes(role);
   const empty=()=>Promise.resolve({data:[],error:null});
   const medranoPage=state.site==='medrano'&&canAccessMedrano();
   const palestinaPage=!medranoPage;
@@ -317,8 +318,8 @@ async function load(){
     palestinaPage?db.from('camas').select('*'):empty(),
     palestinaPage?db.from('plantas').select('*'):empty(),
     db.from('geneticas').select('*').order('nombre'),
-    admin&&palestinaPage?db.from('cosechas').select('*').order('fecha',{ascending:false}):empty(),
-    admin&&palestinaPage?db.from('cosecha_geneticas').select('*'):empty(),
+    palestinaManager&&palestinaPage?db.from('cosechas').select('*').order('fecha',{ascending:false}):empty(),
+    palestinaManager&&palestinaPage?db.from('cosecha_geneticas').select('*'):empty(),
     stockAccess&&palestinaPage?db.from('stock_ciclos').select('*').order('sala').order('ciclo',{ascending:false}):empty(),
     stockAccess&&palestinaPage?db.from('stock_existencias').select('*').order('orden'):empty(),
     stockAccess&&palestinaPage?db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
@@ -387,7 +388,7 @@ async function load(){
   state.medranoLoadIssues=qs.slice(22).flatMap(q=>q.issue?[q.issue]:[]);
   applyMedranoOrderRows(legacyMedranoOrders,state.medranoMultiOrders,state.medranoMultiItems);
   state.medranoStockControl={loaded:false,loading:false,rows:[],error:null,checkedAt:null};
-  if(!admin){
+  if(!palestinaManager){
     state.cosechas=[];state.cosechaDetalles=[];state.selectedHarvest=null;state.editHarvest=null;
   }
   if(!stockAccess){
@@ -526,8 +527,9 @@ function findTask(id,d){return tasks(d).find(t=>String(t.id)===String(id))}
 
 function normalizeRole(value){
   const role=String(value||'').trim().toLowerCase();
-  return ['administrador','cultivo','medrano'].includes(role)?role:'';
+  return ['administrador','encargado_p','cultivo','medrano'].includes(role)?role:'';
 }
+function roleLabel(role){return({administrador:'Administrador',encargado_p:'Encargado P',cultivo:'Cultivo',medrano:'Medrano'})[normalizeRole(role)]||'Sin rol'}
 
 function currentProfile(){
   if(state.profile) return state.profile;
@@ -541,22 +543,25 @@ function currentRole(){
 }
 
 function canViewOperations(){
-  return Boolean(currentProfile()?.activo)&&['administrador','cultivo','medrano'].includes(currentRole());
+  return Boolean(currentProfile()?.activo)&&['administrador','encargado_p','cultivo','medrano'].includes(currentRole());
 }
 function canAccessMedrano(){
   return ['administrador','medrano'].includes(currentRole());
 }
+function canManagePalestina(){
+  return ['administrador','encargado_p'].includes(currentRole());
+}
 function canViewHarvests(){
-  return currentRole()==='administrador';
+  return canManagePalestina();
 }
 function canViewStock(){
-  return ['administrador','medrano'].includes(currentRole());
+  return ['administrador','encargado_p','medrano'].includes(currentRole());
 }
 function canComplete(){
-  return ['administrador','cultivo'].includes(currentRole());
+  return ['administrador','encargado_p','cultivo'].includes(currentRole());
 }
 function canEditTasks(){
-  return ['administrador','cultivo'].includes(currentRole());
+  return ['administrador','encargado_p','cultivo'].includes(currentRole());
 }
 function canModify(){
   return canComplete();
@@ -3830,7 +3835,7 @@ function formatGenotype(genetic){
 
 function renderGenetics(){
   $('screen-title').textContent='Genéticas';
-  const canManage=currentRole()==='administrador';
+  const canManage=canManagePalestina();
   const rows=[...state.geneticas].sort((a,b)=>{
     const activeDiff=Number(b.activa!==false)-Number(a.activa!==false);
     return activeDiff||String(a.nombre||'').localeCompare(String(b.nombre||''),'es',{sensitivity:'base'});
@@ -3852,7 +3857,7 @@ function renderGenetics(){
 }
 
 function openGenetic(id=null){
-  if(currentRole()!=='administrador')return;
+  if(!canManagePalestina())return;
   const genetic=id?state.geneticas.find(g=>String(g.id)===String(id)):null;
   state.editGenetic=genetic||null;
   $('genetic-dialog-title').textContent=genetic?'Editar genética':'Nueva genética';
@@ -3878,7 +3883,7 @@ function updateGenotypeFields(){
 }
 
 async function saveGeneticDialog(){
-  if(currentRole()!=='administrador')throw new Error('Solo un administrador puede modificar genéticas.');
+  if(!canManagePalestina())throw new Error('No tenés permiso para modificar genéticas.');
   const nombre=$('genetic-name').value.trim();
   if(!nombre)throw new Error('Completá el nombre de la genética.');
   const payload={
@@ -3940,7 +3945,7 @@ function groupedHarvestDetails(id){
 function renderHarvests(){
   syncAppNavigationHistory();
   $('screen-title').textContent='Cosechas';
-  const canManage=canEditTasks();
+  const canManage=canManagePalestina();
   const rooms=['Flora 1','Flora 2','Flora 3'];
   const selectedRoom=rooms.includes(state.harvestRoom)?state.harvestRoom:null;
   const roomHarvests=selectedRoom?state.cosechas.filter(h=>h.sala===selectedRoom):[];
@@ -4046,7 +4051,7 @@ async function handleHarvestSave(){
   }
 }
 async function saveHarvestDialog(){
-  if(!canViewHarvests())throw new Error('Solo un administrador puede editar cosechas.');
+  if(!canManagePalestina())throw new Error('No tenés permiso para editar cosechas.');
   const detailRows=[...$('harvest-lines').querySelectorAll('.harvest-line')];
   const calculatedTotal=detailRows.reduce((total,row)=>total+(Number(row.querySelector('.harvest-line-grams')?.value)||0),0);
   const useCalculatedTotal=!state.editHarvest||detailRows.length>0;
@@ -4093,7 +4098,7 @@ async function saveHarvestDialog(){
   harvestSaveCommitted=true;
   state.editHarvest=null;await refresh();state.view='harvests';render();
 }
-async function deleteHarvestDialog(){if(!canViewHarvests())throw new Error('Solo un administrador puede eliminar cosechas.');if(!state.editHarvest||!confirm(`¿Eliminar ${state.editHarvest.sala} · Ciclo ${state.editHarvest.ciclo}?`))return;const q=await db.from('cosechas').delete().eq('id',state.editHarvest.id);if(q.error)throw q.error;closeDialog('harvest-dialog');state.editHarvest=null;state.selectedHarvest=null;await refresh();state.view='harvests';render()}
+async function deleteHarvestDialog(){if(!canManagePalestina())throw new Error('No tenés permiso para eliminar cosechas.');if(!state.editHarvest||!confirm(`¿Eliminar ${state.editHarvest.sala} · Ciclo ${state.editHarvest.ciclo}?`))return;const q=await db.from('cosechas').delete().eq('id',state.editHarvest.id);if(q.error)throw q.error;closeDialog('harvest-dialog');state.editHarvest=null;state.selectedHarvest=null;await refresh();state.view='harvests';render()}
 
 
 function stockCycleItems(cycleId){return state.stockItems.filter(x=>String(x.ciclo_id)===String(cycleId))}
@@ -4271,7 +4276,7 @@ function renderMedranoMovementDays(){
 function renderStock(){
   syncAppNavigationHistory();
   $('screen-title').textContent='Stock Palestina';
-  const canManage=canEditTasks();
+  const canManage=canManagePalestina();
   const rooms=['Flora 1','Flora 2','Flora 3'];
   const total=state.stockCycles.reduce((sum,c)=>sum+stockCycleCurrent(c),0);
   const available=[];
@@ -4311,7 +4316,7 @@ function renderStock(){
     return;
   }
 
-  const canDeleteStockCycle=currentRole()==='administrador';
+  const canDeleteStockCycle=canManagePalestina();
   app.innerHTML=`<section class="panel stock-page-head"><div><button id="stock-back-room" class="secondary compact-button">← ${escapeHtml(state.stockRoom)}</button><h2>${escapeHtml(state.stockRoom)} · Ciclo ${selected.ciclo}</h2><p class="muted">Detalle de stock y movimientos del ciclo.</p></div><div class="stock-section-actions">${canDeleteStockCycle?'<button id="stock-delete-cycle" class="danger compact-button" type="button">Eliminar registro de stock</button>':''}${canManage?'<button id="stock-add-movement" class="primary compact-button">+ Registrar movimiento</button>':''}</div></section>
   ${renderStockCycleDetail(selected,canManage)}`;
   bindStockTableTools(app);
@@ -4327,7 +4332,7 @@ function renderStock(){
   }
 }
 async function deletePalestinaStockCycle(cycle){
-  if(currentRole()!=='administrador')return;
+  if(!canManagePalestina())return;
   const label=`${cycle.sala} · Ciclo ${cycle.ciclo}`;
   if(!confirm(`¿Eliminar el registro de stock de ${label}?\n\nLa cosecha no se elimina. Se quitarán los ingresos automáticos, pero la acción seguirá bloqueada si hubo salidas o movimientos operativos.`))return;
   const button=$('stock-delete-cycle');
@@ -4355,7 +4360,7 @@ function stockCorrectionNumber(raw){
   return Number(normalized);
 }
 async function correctPalestinaStockItem(itemId){
-  if(currentRole()!=='administrador')return;
+  if(!canManagePalestina())return;
   const item=state.stockItems.find(row=>String(row.id)===String(itemId));
   if(!item)return;
   const current=stockItemCurrent(item);
@@ -4377,7 +4382,7 @@ async function correctPalestinaStockItem(itemId){
   }catch(e){console.error(e);alert(e.message||'No se pudieron corregir las cantidades.')}
 }
 async function deletePalestinaStockItem(itemId){
-  if(currentRole()!=='administrador')return;
+  if(!canManagePalestina())return;
   const item=state.stockItems.find(row=>String(row.id)===String(itemId));
   if(!item)return;
   if(!confirm(`¿Eliminar únicamente ${item.nombre_historico} · lote ${item.numero_lote||'—'}?\n\nSe quitará esta genética y su ingreso automático. La cosecha original no se elimina.`))return;
@@ -4393,13 +4398,14 @@ async function deletePalestinaStockItem(itemId){
 function renderStockCycleDetail(cycle,canManage){
   const items=stockCycleItems(cycle.id);
   const movements=stockCycleMovements(cycle.id);
-  const canCorrect=currentRole()==='administrador';
+  const canCorrect=canManagePalestina();
   return `<section class="stock-kpis"><div class="panel"><span>Stock inicial</span><strong>${formatGrams(cycle.stock_inicial)}</strong></div><div class="panel"><span>Stock actual</span><strong>${formatGrams(stockCycleCurrent(cycle))}</strong></div><div class="panel"><span>Genéticas</span><strong>${items.length}</strong></div><div class="panel"><span>Movimientos</span><strong>${movements.length}</strong></div></section>
   <section class="panel stock-detail-panel" data-stock-table-tools><h3>Stock por genética</h3>${stockTableToolbar('Buscar por lote, genética, fecha, tamaño o peso...')}<div class="stock-table-wrap"><table class="stock-table"><thead><tr><th data-sort-type="text">Lote</th><th data-sort-type="text">Genética</th><th data-sort-type="date">Fecha</th><th data-sort-type="number">Stock inicial</th><th data-sort-type="number">Stock actual</th><th data-sort-type="text">Tamaño</th>${canCorrect?'<th>Acciones</th>':''}</tr></thead><tbody>${items.length?items.map(item=>`<tr><td><strong>${escapeHtml(item.numero_lote||'—')}</strong></td><td>${escapeHtml(item.nombre_historico)}</td><td data-sort-value="${escapeHtml(stockLotDateValue(item))}">${stockLotDateHtml(item)}</td><td data-sort-value="${Number(item.stock_inicial)||0}">${formatGrams(Number(item.stock_inicial)||0)}</td><td data-sort-value="${stockItemCurrent(item)}"><strong>${formatGrams(stockItemCurrent(item))}</strong></td><td>${stockLotSizeHtml('palestina',item.id,item.tamano,canManage)}</td>${canCorrect?`<td><div class="stock-section-actions"><button type="button" class="secondary compact-button" data-stock-correct-item="${item.id}">Corregir</button><button type="button" class="danger compact-button" data-stock-delete-item="${item.id}">Eliminar</button></div></td>`:''}</tr>`).join(''):`<tr data-empty-row="1"><td colspan="${canCorrect?7:6}">Sin detalle cargado.</td></tr>`}</tbody></table></div></section>
   <section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Registro de movimientos</h3><p class="muted">Agrupado por día. Abrí una fecha para ver el detalle completo.</p></div>${canManage?`<button class="primary compact-button" data-stock-add-cycle="${cycle.id}">+ Movimiento</button>`:''}</div>${renderPalestinaMovementDays(movements)}</section>`;
 }
 
 function openStockMovement(preselectedCycleId=null){
+  if(!canManagePalestina())return;
   const cycles=state.stockCycles.filter(c=>!state.stockRoom||c.sala===state.stockRoom).sort((a,b)=>a.sala.localeCompare(b.sala)||Number(b.ciclo)-Number(a.ciclo));
   const cycleId=preselectedCycleId||state.stockCycle||cycles[0]?.id||'';
   $('stock-movement-cycle').innerHTML=cycles.map(c=>`<option value="${c.id}" ${String(c.id)===String(cycleId)?'selected':''}>${escapeHtml(c.sala)} · Ciclo ${c.ciclo}</option>`).join('');
@@ -4506,6 +4512,7 @@ function updateStockMovementSummary(){
   summary.textContent=`${rows.length} genética${rows.length===1?'':'s'} seleccionada${rows.length===1?'':'s'} · Total cargado: ${formatGrams(total)}`;
 }
 async function saveStockMovement(){
+  if(!canManagePalestina())throw new Error('No tenés permiso para registrar movimientos de Stock Palestina.');
   const cycleId=$('stock-movement-cycle').value;
   const type=$('stock-movement-type').value;
   const rows=selectedStockMovementRows();
@@ -4685,7 +4692,7 @@ async function restoreBackup(){
 function renderSettings(){
   if(currentRole()!=='administrador'){state.view='today';render();return}
   $('screen-title').textContent='Config';
-  const permissions={administrador:'Acceso total a Palestina y Medrano. Puede gestionar usuarios, roles, empleados, genéticas, tareas, configuración, cosechas, stock y backups.',cultivo:'Acceso únicamente a Palestina. Tiene los mismos permisos operativos que el antiguo Encargado: puede crear, editar, completar y reprogramar tareas y trabajar con Hoy, Calendario, Salas y Genéticas. No accede a Medrano, Cosechas ni Stock Palestina.',medrano:'Acceso a toda la sección Medrano y acceso de consulta en Palestina a Hoy, Calendario, Genéticas, Salas y Stock. No puede modificar la operación de Palestina ni acceder a Cosechas o Config.'};
+  const permissions={administrador:'Acceso total a Palestina y Medrano. Puede gestionar usuarios, roles, empleados, genéticas, tareas, configuración, cosechas, stock y backups.',encargado_p:'Acceso de gestión a toda Palestina: tareas, salas, genéticas, cosechas y movimientos o correcciones de stock. No accede a Config ni a Medrano.',cultivo:'Acceso únicamente a Palestina. Puede crear, editar, completar y reprogramar tareas y trabajar con Hoy, Calendario, Salas y Genéticas. No accede a Medrano, Cosechas, Stock Palestina ni Config.',medrano:'Acceso a toda la sección Medrano y acceso de consulta en Palestina a Hoy, Calendario, Genéticas, Salas y Stock. No puede modificar la operación de Palestina ni acceder a Cosechas o Config.'};
   app.innerHTML=`
     <section class="panel backup-panel">
       <div class="backup-panel-head"><div><h3>Copias de seguridad</h3><p class="muted">Backup completo diario, cifrado antes de salir de Supabase y conservado durante 30 días.</p></div><button id="refresh-backups" class="secondary compact-button">Actualizar</button></div>
@@ -4696,10 +4703,10 @@ function renderSettings(){
     </section>
     <section class="panel"><h3>Empleados compartidos</h3><textarea id="emps" class="text-input" style="min-height:150px">${escapeHtml(state.empleados.map(e=>e.nombre).join('\n'))}</textarea></section>
     <button id="save-conf" class="primary">Guardar configuración</button>
-    <section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>{const safeId=escapeHtml(p.id),safeName=escapeHtml(p.nombre||'Sin nombre'),safeEmail=escapeHtml(p.email||''),safeDeleteName=escapeHtml(p.nombre||p.email||'este usuario'),self=p.id===state.session.user.id;return`<div class="user-row"><div><strong>${safeName}</strong><div class="user-email">${safeEmail}</div></div><select class="text-input user-role" data-role="${safeId}" ${self?'disabled aria-label="El rol de tu propia cuenta está protegido"':''}>${['administrador','cultivo','medrano'].map(r=>`<option value="${r}" ${normalizeRole(p.rol)===r?'selected':''}>${r.charAt(0).toUpperCase()+r.slice(1)}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${safeId}" ${p.activo?'checked':''} ${self?'disabled':''}> Activo</label>${self?'<span class="self-account">Tu cuenta protegida</span>':`<button class="danger user-delete" type="button" data-delete-user="${safeId}" data-delete-name="${safeDeleteName}">Eliminar cuenta</button>`}</div>`}).join('')}</div><p class="muted">Tu propia cuenta no puede cambiar de rol ni desactivarse desde la aplicación.</p><p><button id="save-users" class="primary">Guardar usuarios</button></p></section>
-    <section class="panel"><h3>Crear cuenta</h3><form id="create-user-form" class="create-user-form"><label class="field-label">Nombre<input id="new-user-name" class="text-input" autocomplete="off" maxlength="120" required></label><label class="field-label">Correo electrónico<input id="new-user-email" class="text-input" type="email" autocomplete="off" maxlength="254" required></label><label class="field-label">Rol<select id="new-user-role" class="text-input"><option value="cultivo">Cultivo</option><option value="medrano">Medrano</option><option value="administrador">Administrador</option></select></label><button id="create-user" class="primary" type="submit">Crear y enviar invitación</button><p id="create-user-status" class="muted" role="status" aria-live="polite">La persona recibirá un correo para configurar su acceso.</p></form></section>
-    <section class="panel"><h3>Permisos por rol</h3><div class="role-permissions">${Object.entries(permissions).map(([role,text])=>`<div class="role-permission"><strong>${role}</strong><p>${text}</p></div>`).join('')}</div></section>
-    <section class="panel account-summary"><p><strong>Usuario:</strong> ${escapeHtml(state.session.user.email)}</p><p><strong>Rol:</strong> ${currentRole().charAt(0).toUpperCase()+currentRole().slice(1)}</p><p><strong>Tus permisos:</strong> ${permissions[currentRole()]||''}</p><p><strong>Versión:</strong> ${APP_VERSION}</p></section>`;
+    <section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>{const safeId=escapeHtml(p.id),safeName=escapeHtml(p.nombre||'Sin nombre'),safeEmail=escapeHtml(p.email||''),safeDeleteName=escapeHtml(p.nombre||p.email||'este usuario'),self=p.id===state.session.user.id;return`<div class="user-row"><div><strong>${safeName}</strong><div class="user-email">${safeEmail}</div></div><select class="text-input user-role" data-role="${safeId}" ${self?'disabled aria-label="El rol de tu propia cuenta está protegido"':''}>${['administrador','encargado_p','cultivo','medrano'].map(r=>`<option value="${r}" ${normalizeRole(p.rol)===r?'selected':''}>${roleLabel(r)}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${safeId}" ${p.activo?'checked':''} ${self?'disabled':''}> Activo</label>${self?'<span class="self-account">Tu cuenta protegida</span>':`<button class="danger user-delete" type="button" data-delete-user="${safeId}" data-delete-name="${safeDeleteName}">Eliminar cuenta</button>`}</div>`}).join('')}</div><p class="muted">Tu propia cuenta no puede cambiar de rol ni desactivarse desde la aplicación.</p><p><button id="save-users" class="primary">Guardar usuarios</button></p></section>
+    <section class="panel"><h3>Crear cuenta</h3><form id="create-user-form" class="create-user-form"><label class="field-label">Nombre<input id="new-user-name" class="text-input" autocomplete="off" maxlength="120" required></label><label class="field-label">Correo electrónico<input id="new-user-email" class="text-input" type="email" autocomplete="off" maxlength="254" required></label><label class="field-label">Rol<select id="new-user-role" class="text-input"><option value="cultivo">Cultivo</option><option value="encargado_p">Encargado P</option><option value="medrano">Medrano</option><option value="administrador">Administrador</option></select></label><button id="create-user" class="primary" type="submit">Crear y enviar invitación</button><p id="create-user-status" class="muted" role="status" aria-live="polite">La persona recibirá un correo para configurar su acceso.</p></form></section>
+    <section class="panel"><h3>Permisos por rol</h3><div class="role-permissions">${Object.entries(permissions).map(([role,text])=>`<div class="role-permission"><strong>${roleLabel(role)}</strong><p>${text}</p></div>`).join('')}</div></section>
+    <section class="panel account-summary"><p><strong>Usuario:</strong> ${escapeHtml(state.session.user.email)}</p><p><strong>Rol:</strong> ${roleLabel(currentRole())}</p><p><strong>Tus permisos:</strong> ${permissions[currentRole()]||''}</p><p><strong>Versión:</strong> ${APP_VERSION}</p></section>`;
   $('save-conf').onclick=saveConfig;
   $('create-backup').onclick=createManualBackup;
   $('download-backup').onclick=downloadBackup;
@@ -6347,7 +6354,7 @@ function executeVoiceNavigation(rawText){
   const destination=destinations.find(item=>item.labels.some(label=>text.includes(label)));
   if(destination&&(text.includes('abrir')||text.includes('ir a')||text.includes('mostrar')||destination.labels.some(label=>text===label))){
     if(destination.view==='settings'&&currentRole()!=='administrador')return {ok:false,message:'La configuración solo está disponible para administradores.'};
-    if(destination.view==='harvests'&&!canViewHarvests())return {ok:false,message:`${destination.name} solo está disponible para administradores.`};
+    if(destination.view==='harvests'&&!canViewHarvests())return {ok:false,message:`Tu usuario no tiene acceso a ${destination.name}.`};
     if(destination.view==='stock'&&!canViewStock())return {ok:false,message:`Tu usuario no tiene acceso a ${destination.name}.`};
     setVoiceView(destination.view);
     return {ok:true,message:`Listo. Abrí ${destination.name}.`};
