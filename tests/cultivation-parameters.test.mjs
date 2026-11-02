@@ -5,6 +5,7 @@ import test from 'node:test';
 const read=name=>fs.readFileSync(new URL(`../${name}`,import.meta.url),'utf8');
 const app=read('app.js');
 const html=read('index.html');
+const styles=read('styles.css');
 const sql=read('Rainbows_V3.26.58_parametros_cultivo.sql');
 
 test('Parámetros cubre Vege y las ocho semanas de Flora',()=>{
@@ -14,7 +15,7 @@ test('Parámetros cubre Vege y las ocho semanas de Flora',()=>{
     assert.match(sql,new RegExp(`\\b${field}\\b`));
   }
   assert.match(app,/Parámetros objetivo por etapa/);
-  assert.match(app,/Luz PPFD/);
+  assert.match(app,/Luz[\s\S]*PPFD/);
 });
 
 test('las mediciones admiten sala completa o una cama y calculan la etapa',()=>{
@@ -40,4 +41,13 @@ test('los permisos separan objetivos y registros operativos',()=>{
   assert.match(sql,/registrar_medicion_cultivo[\s\S]*usuario_rainbows_operativo\(\)/);
   assert.match(app,/const canSetTargets=canManagePalestina\(\)/);
   assert.match(app,/const canRecord=canEditTasks\(\)/);
+});
+
+test('objetivos e historial se adaptan sin tablas horizontales',()=>{
+  assert.match(app,/class="parameter-stage-grid"/);
+  assert.match(app,/class="parameter-history-list"/);
+  assert.doesNotMatch(app,/class="parameter-matrix"|class="parameter-history-table"/);
+  assert.match(styles,/\.parameter-stage-grid\{display:grid/);
+  assert.match(styles,/@media\(max-width:700px\)[\s\S]*\.parameter-stage-grid,.parameter-history-list\{grid-template-columns:1fr\}/);
+  assert.doesNotMatch(styles,/\.parameter-matrix[\s\S]*min-width:1180px/);
 });
