@@ -43,11 +43,12 @@ test('los permisos separan objetivos y registros operativos',()=>{
   assert.match(app,/const canRecord=canEditTasks\(\)/);
 });
 
-test('objetivos e historial se adaptan sin tablas horizontales',()=>{
-  assert.match(app,/class="parameter-stage-grid"/);
-  assert.match(app,/class="parameter-history-list"/);
-  assert.doesNotMatch(app,/class="parameter-matrix"|class="parameter-history-table"/);
-  assert.match(styles,/\.parameter-stage-grid\{display:grid/);
-  assert.match(styles,/@media\(max-width:700px\)[\s\S]*\.parameter-stage-grid,.parameter-history-list\{grid-template-columns:1fr\}/);
-  assert.doesNotMatch(styles,/\.parameter-matrix[\s\S]*min-width:1180px/);
+test('objetivos e historial conservan la comparación completa sin desplazamiento lateral',()=>{
+  assert.match(app,/class="parameter-matrix parameter-responsive-table"/);
+  assert.match(app,/class="parameter-history-table parameter-responsive-table"/);
+  assert.match(styles,/\.parameter-table-wrap\{[^}]*overflow:hidden/);
+  assert.match(styles,/\.parameter-matrix,.parameter-history-table\{[^}]*table-layout:fixed/);
+  assert.match(styles,/@media\(max-width:900px\)[\s\S]*\.parameter-responsive-table tr\{display:grid/);
+  const parameterStyles=styles.slice(styles.indexOf('/* Parámetros y mediciones de cultivo */'));
+  assert.doesNotMatch(parameterStyles,/min-width:1180px/);
 });
