@@ -4,6 +4,14 @@
 
 begin;
 
+-- La tabla también debe aceptar el identificador interno del nuevo rol.
+-- Las funciones validan y guardan siempre los roles normalizados en minúsculas.
+alter table public.perfiles
+  drop constraint if exists perfiles_rol_check;
+alter table public.perfiles
+  add constraint perfiles_rol_check
+  check (lower(trim(rol)) in ('administrador','encargado_p','cultivo','medrano'));
+
 create or replace function public.usuario_rainbows_activo()
 returns boolean
 language sql

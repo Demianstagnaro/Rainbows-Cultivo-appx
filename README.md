@@ -9,7 +9,17 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.57. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.58. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+
+## V3.26.58 — Parámetros e historial del cultivo
+
+- `Info cultivo → Parámetros` muestra una matriz de objetivos para Vege y Flora S1 a S8.
+- Sala registra temperatura, luz PPFD, humedad relativa y CO₂.
+- Sustrato registra humedad, EC, pH y N/P/K.
+- Las mediciones pueden corresponder a toda una sala o a una cama específica.
+- El historial conserva fecha, etapa, ubicación, observaciones y responsable, con consulta mensual.
+- Administrador y Encargado P definen objetivos; Cultivo también puede registrar mediciones.
+- Requiere ejecutar `Rainbows_V3.26.58_parametros_cultivo.sql`.
 
 ## V3.26.57 — Rol Encargado P
 

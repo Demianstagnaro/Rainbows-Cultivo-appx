@@ -1073,3 +1073,30 @@ body{
 .stock-control-status{display:inline-flex;padding:.25rem .5rem;border-radius:999px;font-size:.75rem;font-weight:850;white-space:nowrap}
 .stock-control-status-ok{background:rgba(34,197,94,.12);color:#86efac}.stock-control-status-adjusted{background:rgba(59,130,246,.14);color:#93c5fd}.stock-control-status-review{background:rgba(239,68,68,.14);color:#fca5a5}
 @media(max-width:700px){.stock-control-tools{grid-template-columns:1fr}.stock-control-submit{align-items:stretch;flex-direction:column}.stock-control-submit button{width:100%}}
+/* Parámetros y mediciones de cultivo */
+.parameter-page-head,.parameter-section-head,.parameter-history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+.parameter-page-head h2,.parameter-section-head h3,.parameter-history-head h3{margin-top:0}
+.parameter-table-wrap{width:100%;overflow:auto;border:1px solid var(--line,#d8dee8);border-radius:12px}
+.parameter-matrix,.parameter-history-table{width:100%;border-collapse:separate;border-spacing:0;min-width:1180px;background:#fff}
+.parameter-matrix th,.parameter-matrix td,.parameter-history-table th,.parameter-history-table td{padding:10px 12px;border-right:1px solid #e5e7eb;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top;white-space:nowrap}
+.parameter-matrix thead th,.parameter-history-table thead th{background:#f3f6fa;color:#334155;font-size:.82rem;position:sticky;top:0;z-index:1}
+.parameter-matrix thead tr:first-child th{text-align:center;color:#0f5132;background:#e9f7ef}
+.parameter-matrix thead tr:first-child th:first-child{text-align:left}
+.parameter-matrix tbody th{position:sticky;left:0;background:#fff;z-index:1;color:#111827}
+.parameter-matrix tr:last-child td,.parameter-matrix tr:last-child th,.parameter-history-table tr:last-child td{border-bottom:0}
+.parameter-matrix th:last-child,.parameter-matrix td:last-child,.parameter-history-table th:last-child,.parameter-history-table td:last-child{border-right:0}
+.parameter-history-table td small{display:block;color:#64748b;margin-top:3px}
+.parameter-history-table td:nth-child(14){white-space:normal;min-width:220px}
+.parameter-history-filters{display:flex;gap:10px;flex-wrap:wrap}
+.parameter-history-filters label{display:grid;gap:5px;font-size:.82rem;font-weight:700;color:#475569}
+.cultivation-parameter-dialog{width:min(820px,calc(100vw - 24px))}
+.cultivation-parameter-dialog fieldset{border:1px solid #d8dee8;border-radius:12px;margin:14px 0;padding:14px}
+.cultivation-parameter-dialog legend{padding:0 8px;font-weight:800;color:#0f5132}
+.cultivation-parameter-form-grid,.cultivation-measurement-location{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media(max-width:700px){
+  .parameter-page-head,.parameter-history-head{display:grid}
+  .parameter-page-head .primary{width:100%}
+  .parameter-history-filters{display:grid;grid-template-columns:1fr 1fr}
+  .cultivation-parameter-form-grid,.cultivation-measurement-location{grid-template-columns:1fr}
+  .parameter-table-wrap{margin-inline:0}
+}
