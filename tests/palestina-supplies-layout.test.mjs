@@ -21,3 +21,19 @@ test('Vege reutiliza macetas de Flora y Esquejes separa genética y conteo',()=>
  assert.ok(!code.includes("clone?'Vacío'"));
  assert.ok(css.includes('.clone-tray-slot{display:flex;flex-direction:column;'));
 });
+test('los almácigos admiten fecha real sin inventar fechas históricas',()=>{
+ assert.ok(app.includes('name="fecha_inicio"'));
+ assert.ok(app.includes("fecha_inicio:f.get('fecha_inicio')||null"));
+ assert.ok(app.includes('clone-start'));
+ const sql=fs.readFileSync(new URL('../Palestina_V32664.sql',import.meta.url),'utf8');
+ assert.ok(sql.includes('add column if not exists fecha_inicio date'));
+ assert.ok(!sql.includes('default'));
+});
+test('la cantidad a reponer es editable e independiente del mínimo',()=>{
+ assert.ok(app.includes('<th>Stock mínimo</th><th>A reponer</th>'));
+ assert.ok(app.includes("input('reponer','A reponer (cantidad que se debe comprar)',true)"));
+ assert.ok(app.includes('fmt(x.reponer)'));
+ assert.ok(!app.includes('fmt(Math.max(0,Number(x.minimo)-Number(x.stock)))'));
+ const sql=fs.readFileSync(new URL('../Palestina_V32664.sql',import.meta.url),'utf8');
+ assert.ok(sql.includes('add column if not exists reponer numeric(14,3)'));
+});
