@@ -1074,7 +1074,20 @@ body{
 .stock-control-status-ok{background:rgba(34,197,94,.12);color:#86efac}.stock-control-status-adjusted{background:rgba(59,130,246,.14);color:#93c5fd}.stock-control-status-review{background:rgba(239,68,68,.14);color:#fca5a5}
 @media(max-width:700px){.stock-control-tools{grid-template-columns:1fr}.stock-control-submit{align-items:stretch;flex-direction:column}.stock-control-submit button{width:100%}}
 /* Parámetros y mediciones de cultivo */
-.nursery-slot.secondary{min-width:0;width:100%;padding:4px 1px;font-size:clamp(9px,1.4vw,14px);overflow-wrap:anywhere;border-radius:5px}
+.nursery-grid{margin:16px 0}
+.nursery-grid .plant-position{cursor:pointer}
+.clone-tray-slot{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;width:100%;min-height:76px;margin-top:8px;border:1px dashed var(--line);border-radius:10px;background:rgba(255,255,255,.02);color:var(--muted);padding:8px}
+.clone-tray-slot.occupied{border:1px solid var(--plant-color);background:color-mix(in srgb,var(--plant-color) 16%,var(--card));color:var(--text)}
+.clone-genetic{font-size:12px;font-weight:850;overflow-wrap:anywhere}
+.clone-count{font-size:16px;font-variant-numeric:tabular-nums}
+.supplies-head{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.supplies-head h2{margin:0}
+.supplies-tools{display:grid;grid-template-columns:2fr 1fr 1fr;gap:12px}
+.supplies-category{margin:20px 0}
+.supplies-category h3{color:var(--accent2);font-size:16px}
+.supplies-table{width:100%;font-size:13px}
+.supplies-table td:nth-child(3),.supplies-table td:nth-child(4),.supplies-table td:nth-child(5){font-variant-numeric:tabular-nums}
+@media(max-width:600px){.supplies-tools{grid-template-columns:1fr}.supplies-tools .field-label{margin:4px 0}.clone-tray-slot{padding:4px;min-height:64px}.clone-genetic{font-size:10px}.clone-count{font-size:13px}.nursery-grid .bed-card-head strong{font-size:9px}}
 .parameter-page-head,.parameter-section-head,.parameter-history-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
 .parameter-page-head h2,.parameter-section-head h3,.parameter-history-head h3{margin-top:0}
 .parameter-table-wrap{width:100%;margin-top:12px;overflow:hidden;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.018)}
