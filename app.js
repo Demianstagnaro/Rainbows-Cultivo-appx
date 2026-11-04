@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.65';
+const APP_VERSION='3.26.66';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -3540,7 +3540,7 @@ function renderParameters(){
   }).join('');
   const historyRows=measurements.map(row=>{
     const author=state.perfiles.find(profile=>String(profile.id)===String(row.created_by));
-    return `<tr><td data-label="Fecha">${escapeHtml(formatCultivationMeasurementDate(row.fecha))}</td><td data-label="Ubicación"><strong>${escapeHtml(row.sala_nombre||'Sala')}</strong><small>${row.cama_numero?`Cama ${escapeHtml(String(row.cama_numero))}`:'Toda la sala'}</small></td><td data-label="Etapa">${escapeHtml(cultivationStageLabel(row.etapa))}</td><td data-label="Temp.">${formatCultivationValue(row.temperatura,'°C')}</td><td data-label="PPFD">${formatCultivationValue(row.luz,'')}</td><td data-label="HR">${formatCultivationValue(row.humedad_ambiente,'%')}</td><td data-label="CO₂">${formatCultivationValue(row.co2,'ppm')}</td><td data-label="Hum. sustrato">${formatCultivationValue(row.humedad_sustrato,'%')}</td><td data-label="EC">${formatCultivationValue(row.ec,'')}</td><td data-label="pH">${formatCultivationValue(row.ph,'')}</td><td data-label="N">${formatCultivationValue(row.n,'')}</td><td data-label="P">${formatCultivationValue(row.p,'')}</td><td data-label="K">${formatCultivationValue(row.k,'')}</td><td data-label="Observaciones">${escapeHtml(row.observaciones||'—')}</td><td data-label="Registró">${escapeHtml(author?.nombre||'Usuario')}</td></tr>`;
+    return `<tr><td data-label="Fecha">${escapeHtml(formatCultivationMeasurementDate(row.fecha))}</td><td data-label="Ubicación"><strong>${escapeHtml(row.sala_nombre||'Sala')}</strong><small>${row.cama_numero?`Cama ${escapeHtml(String(row.cama_numero))}`:'Toda la sala'}</small></td><td data-label="Etapa">${escapeHtml(cultivationStageLabel(row.etapa))}</td><td data-label="Temp.">${formatCultivationValue(row.temperatura,'°C')}</td><td data-label="PPFD">${formatCultivationValue(row.luz,'')}</td><td data-label="HR">${formatCultivationValue(row.humedad_ambiente,'%')}</td><td data-label="CO₂">${formatCultivationValue(row.co2,'ppm')}</td><td data-label="Hum. sustrato">${formatCultivationValue(row.humedad_sustrato,'%')}</td><td data-label="EC">${formatCultivationValue(row.ec,'')}</td><td data-label="pH">${formatCultivationValue(row.ph,'')}</td><td data-label="N">${formatCultivationValue(row.n,'')}</td><td data-label="P">${formatCultivationValue(row.p,'')}</td><td data-label="K">${formatCultivationValue(row.k,'')}</td><td data-label="Observaciones">${escapeHtml(row.observaciones||'—')}</td><td data-label="Registró">${escapeHtml(author?.nombre||'Usuario')}</td><td data-label="Acciones">${canCorrectCultivationMeasurement(row)?`<button type="button" class="secondary compact-button" data-edit-measurement="${escapeHtml(row.id)}">Editar</button> <button type="button" class="danger compact-button" data-delete-measurement="${escapeHtml(row.id)}">Eliminar</button>`:'—'}</td></tr>`;
   }).join('');
   app.innerHTML=`
     <button id="back-cultivo-info" class="secondary cultivo-info-back" type="button">← Info cultivo</button>
@@ -3550,10 +3550,12 @@ function renderParameters(){
       <div class="parameter-table-wrap"><table class="parameter-matrix parameter-responsive-table"><thead><tr><th rowspan="2">Etapa</th><th colspan="4">Sala</th><th colspan="6">Sustrato</th>${canSetTargets?'<th rowspan="2">Acción</th>':''}</tr><tr><th>Temp.<small>°C</small></th><th>Luz<small>PPFD</small></th><th>Humedad<small>%</small></th><th>CO₂<small>ppm</small></th><th>Humedad<small>%</small></th><th>EC<small>mS/cm</small></th><th>pH</th><th>N<small>ppm</small></th><th>P<small>ppm</small></th><th>K<small>ppm</small></th></tr></thead><tbody>${targetRows}</tbody></table></div>
     </section>
     <section class="panel"><div class="parameter-history-head"><div><h3>Historial de mediciones</h3><p class="muted">Cada registro conserva fecha, sala, cama y responsable.</p></div><div class="parameter-history-filters"><label>Mes<input id="cultivation-parameter-month" class="text-input" type="month" value="${escapeHtml(state.cultivationParameterMonth)}"></label><label>Sala<select id="cultivation-parameter-room" class="text-input"><option value="todas">Todas</option>${parameterRooms().map(room=>`<option value="${escapeHtml(String(room.id))}" ${roomFilter===String(room.id)?'selected':''}>${escapeHtml(room.nombre)}</option>`).join('')}</select></label></div></div>
-      ${state.cultivationParametersLoading?'<p class="muted">Cargando mediciones…</p>':measurements.length?`<div class="parameter-table-wrap"><table class="parameter-history-table parameter-responsive-table"><thead><tr><th>Fecha</th><th>Ubicación</th><th>Etapa</th><th>Temp.</th><th>PPFD</th><th>HR</th><th>CO₂</th><th>Hum. sustrato</th><th>EC</th><th>pH</th><th>N</th><th>P</th><th>K</th><th>Observaciones</th><th>Registró</th></tr></thead><tbody>${historyRows}</tbody></table></div>`:'<div class="empty-state"><strong>Sin mediciones en este período</strong><p>Elegí otro mes o registrá la primera medición.</p></div>'}
+      ${state.cultivationParametersLoading?'<p class="muted">Cargando mediciones…</p>':measurements.length?`<div class="parameter-table-wrap"><table class="parameter-history-table parameter-responsive-table"><thead><tr><th>Fecha</th><th>Ubicación</th><th>Etapa</th><th>Temp.</th><th>PPFD</th><th>HR</th><th>CO₂</th><th>Hum. sustrato</th><th>EC</th><th>pH</th><th>N</th><th>P</th><th>K</th><th>Observaciones</th><th>Registró</th><th>Acciones</th></tr></thead><tbody>${historyRows}</tbody></table></div>`:'<div class="empty-state"><strong>Sin mediciones en este período</strong><p>Elegí otro mes o registrá la primera medición.</p></div>'}
     </section>`;
   $('back-cultivo-info').onclick=openCultivoInfo;
-  if($('new-cultivation-measurement'))$('new-cultivation-measurement').onclick=openCultivationMeasurementDialog;
+  if($('new-cultivation-measurement'))$('new-cultivation-measurement').onclick=()=>openCultivationMeasurementDialog();
+  app.querySelectorAll('[data-edit-measurement]').forEach(button=>button.onclick=()=>openCultivationMeasurementDialog(button.dataset.editMeasurement));
+  app.querySelectorAll('[data-delete-measurement]').forEach(button=>button.onclick=()=>deleteCultivationMeasurement(button.dataset.deleteMeasurement,button));
   app.querySelectorAll('[data-edit-parameter-target]').forEach(button=>button.onclick=()=>openCultivationTargetDialog(button.dataset.editParameterTarget));
   $('cultivation-parameter-room').onchange=event=>{state.cultivationParameterRoom=event.target.value;renderParameters()};
   $('cultivation-parameter-month').onchange=async event=>{state.cultivationParameterMonth=event.target.value||ymd(new Date()).slice(0,7);state.cultivationParametersReady=false;await loadCultivationParameterData()};
@@ -3618,12 +3620,38 @@ function stepMeasurementTemperature(direction){
     input.dispatchEvent(new Event('input',{bubbles:true}));
   }catch(error){input.focus();alert(error.message)}
 }
-function openCultivationMeasurementDialog(){
+function canCorrectCultivationMeasurement(row){
+  return canEditTasks()&&(canManagePalestina()||row.created_by===state.session?.user?.id);
+}
+async function deleteCultivationMeasurement(id,button){
+  const row=state.cultivationMeasurements.find(item=>item.id===id);
+  if(!row||!canCorrectCultivationMeasurement(row))return;
+  if(!confirm(`¿Eliminar la medición de ${row.sala_nombre} del ${formatCultivationMeasurementDate(row.fecha)}? Esta acción no se puede deshacer.`))return;
+  button.disabled=true;
+  try{const result=await db.rpc('eliminar_medicion_cultivo',{p_id:id});if(result.error)throw result.error;state.cultivationParametersReady=false;await loadCultivationParameterData()}
+  catch(error){alert(error.message||'No se pudo eliminar la medición.')}
+  finally{button.disabled=false}
+}
+function openCultivationMeasurementDialog(id=null){
   if(!canEditTasks())return;
+  const row=id?state.cultivationMeasurements.find(item=>item.id===id):null;
+  if(id&&(!row||!canCorrectCultivationMeasurement(row)))return;
+  state.editCultivationMeasurement=row?.id||null;
+  $('cultivation-measurement-dialog').querySelector('h3').textContent=row?'Editar medición':'Registrar medición';
   const rooms=parameterRooms();$('cultivation-measurement-room').innerHTML=rooms.map(room=>`<option value="${escapeHtml(String(room.id))}">${escapeHtml(room.nombre)}</option>`).join('');
   $('cultivation-measurement-date').value=localDateTimeValue();
   for(const key of ['temperatura','luz','humedad-ambiente','co2','humedad-sustrato','ec','ph','n','p','k'])$(`cultivation-measurement-${key}`).value='';
-  $('cultivation-measurement-notes').value='';updateCultivationMeasurementLocation();$('cultivation-measurement-dialog').showModal();
+  $('cultivation-measurement-notes').value='';updateCultivationMeasurementLocation();
+  if(row){
+    $('cultivation-measurement-date').value=localDateTimeValue(new Date(row.fecha));
+    $('cultivation-measurement-room').value=row.sala_id;
+    updateCultivationMeasurementLocation();
+    $('cultivation-measurement-bed').value=row.cama_id||'';
+    $('cultivation-measurement-stage').value=row.etapa;
+    for(const key of ['temperatura','luz','humedad_ambiente','co2','humedad_sustrato','ec','ph','n','p','k'])$(`cultivation-measurement-${key.replaceAll('_','-')}`).value=row[key]===null||row[key]===undefined?'':String(row[key]).replace('.',',');
+    $('cultivation-measurement-notes').value=row.observaciones||'';
+  }
+  $('cultivation-measurement-dialog').showModal();
 }
 async function saveCultivationMeasurementDialog(){
   if(!canEditTasks())return;
@@ -3637,7 +3665,8 @@ async function saveCultivationMeasurementDialog(){
   const button=$('save-cultivation-measurement');button.disabled=true;
   try{
     if(!roomId||!dateValue)throw new Error('Elegí la sala y la fecha de la medición.');
-    const result=await db.rpc('registrar_medicion_cultivo',{p_sala_id:roomId,p_cama_id:bedId,p_etapa:$('cultivation-measurement-stage').value,p_fecha:new Date(dateValue).toISOString(),p_valores:values,p_observaciones:$('cultivation-measurement-notes').value.trim()||null});
+    const editing=state.editCultivationMeasurement;
+    const result=await db.rpc(editing?'editar_medicion_cultivo':'registrar_medicion_cultivo',{...(editing?{p_id:editing}:{}),p_sala_id:roomId,p_cama_id:bedId,p_etapa:$('cultivation-measurement-stage').value,p_fecha:new Date(dateValue).toISOString(),p_valores:values,p_observaciones:$('cultivation-measurement-notes').value.trim()||null});
     if(result.error)throw result.error;closeDialog('cultivation-measurement-dialog');state.cultivationParametersReady=false;await loadCultivationParameterData();
   }catch(error){console.error(error);alert(error.message||'No se pudo registrar la medición.')}
   finally{button.disabled=false}
