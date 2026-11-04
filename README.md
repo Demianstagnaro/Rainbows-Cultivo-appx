@@ -29,7 +29,7 @@ La versión actual es V3.26.60. El registro público permanece deshabilitado. Lo
 ## V3.26.58 — Parámetros e historial del cultivo
 
 - `Info cultivo → Parámetros` muestra una matriz de objetivos para Vege y Flora S1 a S8.
-- Sala registra temperatura, luz PPFD, humedad relativa y CO₂.
+- Sala registra temperatura, luz lux, humedad relativa y CO₂.
 - Sustrato registra humedad, EC, pH y N/P/K.
 - Las mediciones pueden corresponder a toda una sala o a una cama específica.
 - El historial conserva fecha, etapa, ubicación, observaciones y responsable, con consulta mensual.
