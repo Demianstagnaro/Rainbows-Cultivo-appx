@@ -1,6 +1,6 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.64';
+const APP_VERSION='3.26.65';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -1219,6 +1219,7 @@ $('cultivation-measurement-date').onchange=()=>{
   $('cultivation-measurement-stage').value=parameterStageForRoom(room?.nombre,date);
 };
 $('save-cultivation-measurement').onclick=saveCultivationMeasurementDialog;
+document.querySelectorAll('[data-temperature-step]').forEach(button=>button.onclick=()=>stepMeasurementTemperature(Number(button.dataset.temperatureStep)));
 
 
 function setSite(site){
@@ -3601,6 +3602,22 @@ function updateCultivationMeasurementLocation(){
   bedSelect.innerHTML=`<option value="">Toda la sala</option>${roomBeds.map(bed=>`<option value="${escapeHtml(String(bed.id))}">Cama ${escapeHtml(String(bed.numero))}</option>`).join('')}`;bedSelect.disabled=!roomBeds.length;
   const measurementDate=new Date($('cultivation-measurement-date').value||Date.now());$('cultivation-measurement-stage').value=parameterStageForRoom(room?.nombre,measurementDate);
 }
+function parseMeasurementDecimal(value,min,max){
+  const text=String(value??'').trim();
+  if(!text)return null;
+  if(!/^-?\d+(?:[.,]\d+)?$/.test(text))throw new Error('Ingresá un número con coma o punto decimal, sin separadores de miles.');
+  const number=Number(text.replace(',','.'));
+  if(!Number.isFinite(number)||number<min||number>max)throw new Error(`El valor debe estar entre ${min} y ${max}.`);
+  return number;
+}
+function stepMeasurementTemperature(direction){
+  const input=$('cultivation-measurement-temperatura');
+  try{
+    const value=parseMeasurementDecimal(input.value,-10,60)??0;
+    input.value=String(Math.max(-10,Math.min(60,Math.round((value+direction*0.1)*10)/10))).replace('.',',');
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+  }catch(error){input.focus();alert(error.message)}
+}
 function openCultivationMeasurementDialog(){
   if(!canEditTasks())return;
   const rooms=parameterRooms();$('cultivation-measurement-room').innerHTML=rooms.map(room=>`<option value="${escapeHtml(String(room.id))}">${escapeHtml(room.nombre)}</option>`).join('');
@@ -3612,7 +3629,11 @@ async function saveCultivationMeasurementDialog(){
   if(!canEditTasks())return;
   const roomId=$('cultivation-measurement-room').value,bedId=$('cultivation-measurement-bed').value||null,dateValue=$('cultivation-measurement-date').value;
   const keys={temperatura:'temperatura',luz:'luz','humedad-ambiente':'humedad_ambiente',co2:'co2','humedad-sustrato':'humedad_sustrato',ec:'ec',ph:'ph',n:'n',p:'p',k:'k'},values={};
-  for(const [inputKey,dataKey] of Object.entries(keys))values[dataKey]=$(`cultivation-measurement-${inputKey}`).value;
+  for(const [inputKey,dataKey] of Object.entries(keys)){
+    const input=$(`cultivation-measurement-${inputKey}`);
+    try{values[dataKey]=parseMeasurementDecimal(input.value,Number(input.min),Number(input.max))}
+    catch(error){input.focus();alert(`${input.closest('label')?.firstChild?.textContent||inputKey}: ${error.message}`);return}
+  }
   const button=$('save-cultivation-measurement');button.disabled=true;
   try{
     if(!roomId||!dateValue)throw new Error('Elegí la sala y la fecha de la medición.');
