@@ -15,7 +15,7 @@ test('Parámetros cubre Vege y las ocho semanas de Flora',()=>{
     assert.match(sql,new RegExp(`\\b${field}\\b`));
   }
   assert.match(app,/Parámetros objetivo por etapa/);
-  assert.match(app,/Luz[\s\S]*PPFD/);
+  assert.match(app,/Luz[\s\S]*lux/);
 });
 
 test('las mediciones admiten sala completa o una cama y calculan la etapa',()=>{
@@ -51,4 +51,24 @@ test('objetivos e historial conservan la comparación completa sin desplazamient
   assert.match(styles,/@media\(max-width:900px\)[\s\S]*\.parameter-responsive-table tr\{display:grid/);
   const parameterStyles=styles.slice(styles.indexOf('/* Parámetros y mediciones de cultivo */'));
   assert.doesNotMatch(parameterStyles,/min-width:1180px/);
+});
+
+
+test('luz admite 90000 lux al registrar y editar sin convertir el valor',()=>{
+  const input=html.match(/<input id="cultivation-measurement-luz"[^>]*>/)[0];
+  const min=Number(input.match(/min="([^" ]+)"/)[1]);
+  const max=Number(input.match(/max="([^" ]+)"/)[1]);
+  const code=app.slice(app.indexOf('function parseMeasurementDecimal('),app.indexOf('function stepMeasurementTemperature('));
+  const parse=Function(code+';return parseMeasurementDecimal')();
+  assert.equal(parse('90000',min,max),90000);
+  assert.equal(parse('200000',min,max),200000);
+  assert.throws(()=>parse('200001',min,max));
+  assert.throws(()=>parse('-1',min,max));
+  assert.equal(parse('',min,max),null);
+  assert.doesNotMatch(app+html,/PPFD|PPDF/);
+  assert.ok(app.includes("formatCultivationValue(row.luz,'lux')"));
+  const migration=read('Palestina_V32667_luz_lux.sql');
+  assert.match(migration,/luz between 0 and 200000/);
+  assert.match(migration,/public\.cultivo_parametros_objetivo\.luz/);
+  assert.doesNotMatch(migration,/update\s+public\./i);
 });
