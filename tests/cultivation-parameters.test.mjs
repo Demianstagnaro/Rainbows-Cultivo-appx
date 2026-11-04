@@ -22,7 +22,7 @@ test('las mediciones admiten sala completa o una cama y calculan la etapa',()=>{
   assert.match(html,/id="cultivation-measurement-bed"[\s\S]*Toda la sala/);
   assert.match(app,/state\.camas\.filter\(bed=>String\(bed\.sala_id\)===String\(room\?\.id\)\)/);
   assert.match(app,/parameterStageForRoom/);
-  assert.match(app,/db\.rpc\('registrar_medicion_cultivo'/);
+  assert.ok(app.includes("editing?'editar_medicion_cultivo':'registrar_medicion_cultivo'"));
   assert.match(sql,/v_cama public\.camas%rowtype/);
   assert.match(sql,/v_cama\.numero/);
 });
