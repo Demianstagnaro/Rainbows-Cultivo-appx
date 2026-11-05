@@ -1169,3 +1169,12 @@ main:has(.parameter-matrix){max-width:1500px}
   .voice-panel{max-height:calc(100dvh - 110px);overflow:auto;bottom:calc(82px + env(safe-area-inset-bottom,0px))}
 }
 /* Las posiciones del croquis conservan su tamaño para respetar la distribución. */
+
+/* Confirmación de enmiendas y KNF */
+.supply-application-dialog{width:min(94vw,760px)}
+.supply-application-dialog>form{display:grid;gap:12px;max-height:85dvh;overflow:auto;min-width:0}
+.supply-material{display:grid;gap:8px;padding:12px;margin-block:10px;border:1px solid var(--line);border-radius:12px;min-width:0;overflow-wrap:anywhere}
+.supply-material .text-input{width:100%;min-width:0;box-sizing:border-box}
+.supply-application-dialog menu{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;padding:0}
+.supply-application-dialog [data-feedback]{overflow-wrap:anywhere}
+.supply-application-dialog .worker-options label{display:flex;gap:8px;align-items:center;padding:10px}

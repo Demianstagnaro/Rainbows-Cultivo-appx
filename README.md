@@ -1,3 +1,7 @@
+## v3.26.68
+
+Confirmación de enmiendas y KNF con recetas precargadas, consumo atómico de stock e historial de aplicaciones. Instalación: `INSTRUCCIONES_V32668.md`.
+
 # Rainbows
 
 Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.

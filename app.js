@@ -1,6 +1,8 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-const APP_VERSION='3.26.67';
+import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.68';
+
+const APP_VERSION='3.26.68';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -227,6 +229,7 @@ async function ensure(t){
   return q.data;
 }
 async function complete(t,ids,continueTomorrow=false){
+  if(isSupplyApplicationTask(t)&&!real(t))throw new Error('Confirmá esta tarea desde la ventana de aplicación de insumos.');
   const row=t.custom&&!t.chain?t.db:await ensure(t);
   const baseDetail=cleanContinuationDetail(row.detalle||t.detail);
   const storedDetail=isContinuable(t)&&continueTomorrow
@@ -244,6 +247,12 @@ async function complete(t,ids,continueTomorrow=false){
   await refresh();
 }
 async function undo(t){
+  if(isSupplyApplicationTask(t)){
+    if(!confirm('¿Anular la aplicación? La tarea quedará pendiente y se devolverán al stock únicamente los insumos de esta aplicación.'))return;
+    const q=await db.rpc('anular_aplicacion_cultivo',{p_tarea_id:t.db?.id||t.id});
+    if(q.error)throw q.error;
+    await refresh();return;
+  }
   const row=t.db||await ensure(t);
   const realization=directRealByTaskId(row.id);
   if(realization)await db.from('realizaciones_tarea').delete().eq('id',realization.id);
@@ -581,6 +590,7 @@ function openWorker(t,kind='dated',preselected=[]){
     return;
   }
 
+  if(kind!=='general'&&isSupplyApplicationTask(t)&&!real(t)){openSupplyApplication(t,preselected);return;}
   state.pending=t;
   state.pendingKind=kind;
   state.selected=new Set(preselected);
@@ -695,6 +705,7 @@ function showDialog(id){
 }
 
 async function deleteTask(task){
+  if(isSupplyApplicationTask(task)&&real(task))throw new Error('Primero anulá la aplicación para devolver sus insumos al stock; después podés eliminar la tarea.');
   const hasCompletion=!!real(task);
   const message=hasCompletion
     ? `Esta tarea ya fue completada.\n\nSi la eliminás, también se eliminará el registro de realización y los responsables asignados.\n\n¿Querés continuar?`
@@ -704,7 +715,7 @@ async function deleteTask(task){
   let row=task.db||null;
 
   // Las tareas automáticas y las continuaciones se cancelan solo en esa fecha.
-  if(!task.custom){
+  if(!task.custom||isSupplyApplicationTask(task)){
     row=row||await ensure(task);
     const realization=directRealByTaskId(row.id);
     if(realization){
@@ -3495,6 +3506,87 @@ function resumenGeneticas(rows){
  const totals=new Map();for(const r of rows)totals.set(r.genetica_id,(totals.get(r.genetica_id)||0)+Number(r.cantidad));
  return '<section class="panel"><h3>Plantas por genética</h3>'+([...totals].map(([id,n])=>[state.geneticas.find(g=>g.id===id)?.nombre||'Sin genética asignada',n]).sort((a,b)=>a[0].localeCompare(b[0],'es')).map(([g,n])=>'<div class="kv"><span>'+escapeHtml(g)+'</span><strong>'+n+'</strong></div>').join('')||'Sin plantas registradas.')+'</section>';
 }
+function isSupplyApplicationTask(t){
+  return /^Enmienda(?: Org[aá]nica)?(?:\s+\d+)?$/i.test(t?.task||'')||t?.task==='KNF'||(t?.task==='Trasplante'&&rr(t.room)?.type==='vege');
+}
+function supplyRecipeContext(t){
+  const room=rr(t.room),d=parse(t.date),knf=t.task==='KNF';
+  const section=room?.type==='flora'?(t.room==='Flora 3'?'Flora 3':'Flora 1 y 2'):room?.type==='vege'?'Veges':room?.type==='madres'?'Madres':null;
+  if(!section)throw new Error('Esta sala no tiene una receta de enmiendas configurada.');
+  let column=1;
+  if(room.type==='flora'){
+    const c=cycle(room,d);column=c.stage==='flora'?c.week+3:c.week||1;
+  }else if(room.type==='madres')column=Number(t.task.match(/\d+/)?.[0])||((Math.floor(diff(d,parse('2026-07-28'))/14)%3+3)%3+1);
+  else if(t.task!=='Trasplante')column=/2ª|28 días/.test(t.detail||'')?3:2;
+  return {section,column,knf,room:room.type==='vege'?'Veges (Vege 1 y Vege 2)':t.room};
+}
+async function openSupplyApplication(t,preselected=[]){
+  if(document.querySelector('#supply-application-dialog'))return;
+  let context,recipes;
+  try{context=supplyRecipeContext(t);recipes=window.rainbowsAmendmentRecipes?.();if(!recipes)throw new Error('No se pudo cargar la tabla de enmiendas. Recargá la app.')}catch(error){alert(error.message);return}
+  const section=recipes[context.section],dlg=document.createElement('dialog');
+  dlg.id='supply-application-dialog';dlg.className='dialog supply-application-dialog';
+  dlg.innerHTML=`<form><h3>${context.knf?'Aplicar KNF':'Aplicar enmienda'}</h3><p class="muted">${escapeHtml(context.room)} · ${escapeHtml(t.task)} · ${escapeHtml(nice(parse(t.date)))}</p><p class="muted">${context.section==='Veges'?'Las cantidades de la tabla son el total de Veges. Registrá en esta tarea lo usado entre ambas salas.':'Cantidades totales de la tabla para esta sala.'} Podés ajustar las cantidades o poner cero si no se usó un producto.</p><label class="field-label">Receta / etapa<select class="text-input" name="stage">${section.headers.slice(1).map((label,index)=>`<option value="${index+1}" ${context.column===index+1?'selected':''}>${escapeHtml(label)}</option>`).join('')}</select></label>${context.knf?'<label class="field-label">Litros de agua preparados<input class="text-input" name="liters" type="text" inputmode="decimal" placeholder="Ej.: 100" autocomplete="off" required></label>':''}<div data-materials><p>Cargando stock…</p></div><h4>¿Quiénes la realizaron?</h4><div class="worker-options">${state.empleados.map(e=>`<label><input type="checkbox" name="worker" value="${escapeHtml(e.id)}" ${preselected.includes(e.id)?'checked':''}> ${escapeHtml(e.nombre)}</label>`).join('')||'<p>No hay empleados activos. Agregalos desde Config.</p>'}</div><label class="field-label">Observaciones / cambios a la receta<textarea class="text-input" name="notes" maxlength="1000" placeholder="Indicá cualquier cambio o producto que no se aplicó"></textarea></label><p data-feedback role="status" aria-live="polite"></p><menu><button type="button" class="secondary" data-cancel>Cancelar</button><button type="submit" class="primary" disabled>Confirmar aplicación</button></menu></form>`;
+  document.body.append(dlg);dlg.onclose=()=>{dlg.remove();render()};dlg.showModal();
+  const form=dlg.querySelector('form'),materials=dlg.querySelector('[data-materials]'),feedback=dlg.querySelector('[data-feedback]'),submit=dlg.querySelector('[type=submit]');
+  let supplies=[],rows=[],saving=false,committed=false,selectedColumn=context.column;
+  dlg.querySelector('[data-cancel]').onclick=()=>{if(!saving)dlg.close()};dlg.oncancel=e=>{if(saving)e.preventDefault()};
+  const readRows=()=>[...materials.querySelectorAll('[data-material]')].map((el,index)=>({...rows[index],id:el.querySelector('select').value,quantity:el.querySelector('input').value}));
+  const updatePreview=()=>{
+    try{
+      if(context.knf&&!(supplyNumber(form.elements.liters.value)>0))throw new Error('Ingresá los litros de agua preparados.');
+      const payload=consumptionPayload(readRows(),supplies);
+      feedback.className='muted';feedback.textContent=payload.length?'Se descontará: '+payload.map(p=>{const item=supplies.find(x=>x.id===p.insumo_id);return `${p.cantidad.toLocaleString('es-AR',{maximumFractionDigits:3})} ${item.unidad} de ${item.nombre}`}).join(' · '):'No se descontarán insumos. Explicá el motivo en Observaciones.';
+      submit.disabled=false;
+    }catch(error){feedback.textContent=error.message;feedback.className='error-message';submit.disabled=true}
+  };
+  function buildMaterials(){
+    rows=recipeMaterials(section,Number(form.elements.stage.value),context.knf,supplyNumber(form.elements.liters?.value||'0'));
+    materials.innerHTML=rows.map(row=>{
+      const candidates=supplies.filter(x=>x.categoria==='Cultivo'&&convertSupply(1,row.unit,x.unidad)!==null);
+      const matches=candidates.filter(x=>supplyName(x.nombre)===supplyName(row.name));const matched=matches.length===1?matches[0]:null;
+      return `<div data-material class="supply-material"><strong>${escapeHtml(row.name)}</strong><small class="muted">Receta: ${escapeHtml(row.dose)}</small><label class="field-label">Cantidad (${escapeHtml(row.unit)})<input class="text-input" type="text" inputmode="decimal" autocomplete="off" value="${Number.isFinite(row.quantity)?row.quantity:0}"></label><label class="field-label">Insumo del stock<select class="text-input"><option value="">Elegí el insumo…</option>${candidates.map(x=>`<option value="${escapeHtml(x.id)}" ${x.id===matched?.id?'selected':''}>${escapeHtml(x.nombre)} · ${Number(x.stock).toLocaleString('es-AR')} ${escapeHtml(x.unidad)}</option>`).join('')}</select></label></div>`;
+    }).join('')||'<p class="muted">La tabla no indica productos para esta etapa. Explicá el motivo si confirmás la tarea sin consumo.</p>';
+    materials.oninput=updatePreview;materials.onchange=updatePreview;updatePreview();
+  }
+  form.elements.stage.onchange=()=>{if(!rows.length||confirm('¿Cargar las cantidades de esta etapa? Se reemplazarán los ajustes de la ventana.')){selectedColumn=Number(form.elements.stage.value);buildMaterials()}else form.elements.stage.value=String(selectedColumn)};
+  if(context.knf)form.elements.liters.oninput=buildMaterials;
+  form.onsubmit=async event=>{
+    event.preventDefault();if(saving||committed||submit.disabled)return;
+    try{
+      const workers=[...form.querySelectorAll('[name=worker]:checked')].map(x=>x.value);
+      if(!workers.length)throw new Error('Elegí al menos una persona que realizó la tarea.');
+      if(context.knf&&!(supplyNumber(form.elements.liters.value)>0))throw new Error('Ingresá los litros de agua preparados.');
+      const actual=readRows(),payload=consumptionPayload(actual,supplies),notes=form.elements.notes.value.trim();
+      if((!payload.length||actual.some((r,i)=>supplyNumber(r.quantity)!==rows[i].quantity))&&!notes)throw new Error('Explicá en Observaciones los cambios o por qué se confirmó sin consumo.');
+      saving=true;submit.disabled=true;dlg.querySelector('[data-cancel]').disabled=true;
+      const q=await db.rpc('confirmar_aplicacion_cultivo',{
+        p_tarea:{id:t.db?.id||(t.custom?t.id:null),clave_externa:t.key||null,sala_id:requiredRoomId(t.room),fecha:t.date,nombre:t.task,detalle:t.detail||'',tipo:t.type||'rutina'},
+        p_insumos:payload,p_empleados:workers,p_receta:`${context.room} · ${context.section} · ${section.headers[Number(form.elements.stage.value)]}`,
+        p_litros:context.knf?supplyNumber(form.elements.liters.value):null,p_observaciones:notes
+      });
+      if(q.error)throw q.error;
+      committed=true;dlg.close();
+      try{await refresh()}catch(error){alert('La aplicación se guardó. No se pudo actualizar la pantalla; recargá la app.');}
+    }catch(error){feedback.textContent=error.message||'No se pudo confirmar la aplicación.';feedback.className='error-message'}
+    finally{saving=false;if(dlg.isConnected){submit.disabled=false;dlg.querySelector('[data-cancel]').disabled=false}}
+  };
+  try{
+    const q=await db.from('palestina_insumos').select('*').eq('categoria','Cultivo').order('nombre');if(q.error)throw q.error;
+    if(!dlg.isConnected)return;supplies=q.data;buildMaterials();
+  }catch(error){if(dlg.isConnected){materials.textContent='No se pudo cargar el stock: '+error.message;submit.disabled=true}}
+}
+async function openSupplyHistory(){
+  const dlg=document.createElement('dialog');dlg.className='dialog supply-application-dialog';
+  dlg.innerHTML='<h3>Aplicaciones y consumo de insumos</h3><div data-history>Cargando…</div><menu><button class="secondary">Cerrar</button></menu>';
+  document.body.append(dlg);dlg.onclose=()=>dlg.remove();dlg.querySelector('button').onclick=()=>dlg.close();dlg.showModal();
+  try{
+    const q=await db.from('palestina_aplicaciones').select('*,palestina_aplicacion_insumos(*)').order('created_at',{ascending:false}).limit(100);if(q.error)throw q.error;
+    if(!dlg.isConnected)return;
+    dlg.querySelector('[data-history]').innerHTML='<p class="muted">Últimas 100 aplicaciones. Las anuladas conservan su detalle.</p>'+(q.data.map(a=>`<article class="supply-material"><strong>${escapeHtml(a.sala_nombre)} · ${escapeHtml(a.tarea_nombre)} · ${escapeHtml(a.fecha)}</strong><span>${a.anulada_at?'Anulada · stock devuelto':'Aplicada'} · ${escapeHtml(new Date(a.created_at).toLocaleString('es-AR'))}</span><span>${escapeHtml(a.receta)}${a.litros!==null?` · ${Number(a.litros)} L de agua`:''}</span><span>Registrado por: ${escapeHtml(a.actor_nombre)} · Realizaron: ${escapeHtml(a.empleados_nombres.join(', '))}</span>${a.palestina_aplicacion_insumos.map(i=>`<span>${Number(i.cantidad).toLocaleString('es-AR')} ${escapeHtml(i.unidad)} · ${escapeHtml(i.nombre)}</span>`).join('')||'<span>Sin consumo registrado</span>'}${a.observaciones?`<p>${escapeHtml(a.observaciones)}</p>`:''}${a.anulada_at?`<small>Anulada: ${escapeHtml(new Date(a.anulada_at).toLocaleString('es-AR'))} · ${escapeHtml(a.anulada_nombre||'Usuario')}</small>`:''}</article>`).join('')||'Todavía no hay aplicaciones registradas.');
+  }catch(error){if(dlg.isConnected)dlg.querySelector('[data-history]').textContent=error.message}
+}
+
 function localEditor(title,fields,save){
  const dlg=document.createElement('dialog');dlg.className='dialog';dlg.innerHTML='<form><h3>'+escapeHtml(title)+'</h3>'+fields+'<menu><button type="button" class="secondary">Cancelar</button><button class="primary">Guardar</button></menu></form>';document.body.append(dlg);dlg.onclose=()=>dlg.remove();dlg.querySelector('button').onclick=()=>dlg.close();dlg.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=dlg.querySelector('.primary');if(btn.disabled)return;btn.disabled=true;try{await save(new FormData(e.target));dlg.close()}catch(err){alert(err.message)}finally{btn.disabled=false}};dlg.showModal();
 }
@@ -3519,11 +3611,12 @@ async function renderInsumos(){
  const {data:rows,error}=await db.from('palestina_insumos').select('*').order('nombre');if(!host.isConnected)return;if(error){host.textContent=error.message;return}
  const fmt=n=>Number(n).toLocaleString('es-AR',{maximumFractionDigits:3});
  const low=rows.filter(x=>Number(x.stock)<=Number(x.minimo)).length;
- host.innerHTML='<div class="supplies-head"><div><h2>Stock de insumos</h2><p class="muted">'+rows.length+' productos · '+low+' para reponer</p></div>'+(canModify()?'<button class="primary" data-new>+ Agregar insumo</button>':'')+'</div><div class="supplies-tools"><label class="field-label">Buscar producto<input class="text-input" type="search" id="supply-search" placeholder="Nombre del insumo…"></label><label class="field-label">Categoría<select class="text-input" id="supply-category"><option value="">Todas</option>'+cats.map(c=>'<option>'+c+'</option>').join('')+'</select></label><label class="field-label">Estado<select class="text-input" id="supply-status"><option value="">Todos</option><option value="low">Para reponer</option><option value="ok">Stock suficiente</option></select></label></div>'+cats.map(cat=>'<section class="supplies-category" data-supply-category="'+cat+'"><h3>'+cat+'</h3><div class="stock-table-wrap"><table class="stock-table supplies-table"><thead><tr><th>Producto</th><th>Unidad</th><th>Stock actual</th><th>Stock mínimo</th><th>A reponer</th><th>Estado</th>'+(canModify()?'<th>Acciones</th>':'')+'</tr></thead><tbody>'+rows.filter(x=>x.categoria===cat).map(x=>{const low=Number(x.stock)<=Number(x.minimo);return '<tr data-supply-name="'+escapeHtml(x.nombre.toLocaleLowerCase('es'))+'" data-supply-low="'+low+'"><td><strong>'+escapeHtml(x.nombre)+'</strong></td><td>'+escapeHtml(x.unidad)+'</td><td>'+fmt(x.stock)+'</td><td>'+fmt(x.minimo)+'</td><td>'+(x.reponer===null||x.reponer===undefined?'Sin definir':fmt(x.reponer))+'</td><td><span class="payment-badge '+(low?'pending':'paid')+'">'+(low?'Reponer':'Suficiente')+'</span></td>'+(canModify()?'<td><button class="secondary compact-button" data-id="'+escapeHtml(x.id)+'">Editar / stock</button></td>':'')+'</tr>'}).join('')+'</tbody></table></div><p class="muted supply-empty" '+(rows.some(x=>x.categoria===cat)?'hidden':'')+'>Sin productos para mostrar.</p></section>').join('')+'<p class="muted">A reponer es la cantidad de compra definida por vos. Ejemplo: al llegar al mínimo de 10 kg, comprar 80 kg. Se configura desde “Editar / stock”; no se calcula ni se suma al stock automáticamente.</p>';
+ host.innerHTML='<button class="secondary" type="button" data-supply-history>Historial de aplicaciones</button><div class="supplies-head"><div><h2>Stock de insumos</h2><p class="muted">'+rows.length+' productos · '+low+' para reponer</p></div>'+(canModify()?'<button class="primary" data-new>+ Agregar insumo</button>':'')+'</div><div class="supplies-tools"><label class="field-label">Buscar producto<input class="text-input" type="search" id="supply-search" placeholder="Nombre del insumo…"></label><label class="field-label">Categoría<select class="text-input" id="supply-category"><option value="">Todas</option>'+cats.map(c=>'<option>'+c+'</option>').join('')+'</select></label><label class="field-label">Estado<select class="text-input" id="supply-status"><option value="">Todos</option><option value="low">Para reponer</option><option value="ok">Stock suficiente</option></select></label></div>'+cats.map(cat=>'<section class="supplies-category" data-supply-category="'+cat+'"><h3>'+cat+'</h3><div class="stock-table-wrap"><table class="stock-table supplies-table"><thead><tr><th>Producto</th><th>Unidad</th><th>Stock actual</th><th>Stock mínimo</th><th>A reponer</th><th>Estado</th>'+(canModify()?'<th>Acciones</th>':'')+'</tr></thead><tbody>'+rows.filter(x=>x.categoria===cat).map(x=>{const low=Number(x.stock)<=Number(x.minimo);return '<tr data-supply-name="'+escapeHtml(x.nombre.toLocaleLowerCase('es'))+'" data-supply-low="'+low+'"><td><strong>'+escapeHtml(x.nombre)+'</strong></td><td>'+escapeHtml(x.unidad)+'</td><td>'+fmt(x.stock)+'</td><td>'+fmt(x.minimo)+'</td><td>'+(x.reponer===null||x.reponer===undefined?'Sin definir':fmt(x.reponer))+'</td><td><span class="payment-badge '+(low?'pending':'paid')+'">'+(low?'Reponer':'Suficiente')+'</span></td>'+(canModify()?'<td><button class="secondary compact-button" data-id="'+escapeHtml(x.id)+'">Editar / stock</button></td>':'')+'</tr>'}).join('')+'</tbody></table></div><p class="muted supply-empty" '+(rows.some(x=>x.categoria===cat)?'hidden':'')+'>Sin productos para mostrar.</p></section>').join('')+'<p class="muted">A reponer es la cantidad de compra definida por vos. Ejemplo: al llegar al mínimo de 10 kg, comprar 80 kg. Se configura desde “Editar / stock”; no se calcula ni se suma al stock automáticamente.</p>';
  const filter=()=>{const query=$('supply-search').value.trim().toLocaleLowerCase('es'),category=$('supply-category').value,status=$('supply-status').value;host.querySelectorAll('[data-supply-category]').forEach(section=>{section.hidden=Boolean(category&&category!==section.dataset.supplyCategory);let visible=0;section.querySelectorAll('tbody tr').forEach(tr=>{tr.hidden=!tr.dataset.supplyName.includes(query)||(status==='low'&&tr.dataset.supplyLow!=='true')||(status==='ok'&&tr.dataset.supplyLow==='true');if(!tr.hidden)visible++});section.querySelector('.supply-empty').hidden=visible>0})};
  $('supply-search').oninput=filter;$('supply-category').onchange=filter;$('supply-status').onchange=filter;
  host.querySelectorAll('[data-new],[data-id]').forEach(btn=>btn.onclick=()=>{const x=rows.find(r=>r.id===btn.dataset.id)||{};const input=(key,label,num)=>'<label class="field-label">'+label+'<input required class="text-input" name="'+key+'" '+(num?'type="number" min="0" step="0.001"':'maxlength="'+(key==='nombre'?120:30)+'"')+' value="'+escapeHtml(x[key]??'')+'"></label>';
  localEditor(x.id?'Editar insumo':'Nuevo insumo','<label>Categoría<select class="text-input" name="categoria">'+cats.map(c=>'<option '+(c===x.categoria?'selected':'')+'>'+c+'</option>').join('')+'</select></label>'+input('nombre','Producto')+input('unidad','Unidad (ej.: litros)')+input('stock','Stock actual',true)+input('minimo','Stock mínimo (avisar al llegar a)',true)+input('reponer','A reponer (cantidad que se debe comprar)',true),async f=>{const payload=Object.fromEntries(f);const q=await (x.id?db.from('palestina_insumos').update(payload).eq('id',x.id).eq('stock',x.stock).select('id').single():db.from('palestina_insumos').insert(payload));if(q.error)throw q.error;if(host.isConnected)renderInsumos()})});
+ host.querySelector('[data-supply-history]').onclick=openSupplyHistory;
 }
 function renderParameters(){
   $('screen-title').textContent='Parámetros';
