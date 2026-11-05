@@ -1178,3 +1178,14 @@ main:has(.parameter-matrix){max-width:1500px}
 .supply-application-dialog menu{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;padding:0}
 .supply-application-dialog [data-feedback]{overflow-wrap:anywhere}
 .supply-application-dialog .worker-options label{display:flex;gap:8px;align-items:center;padding:10px}
+
+/* Listado de Madres y períodos de ocupación de los croquis. */
+.croquis-room-controls{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-block:14px}
+.croquis-room-controls p{margin:6px 0 0}.croquis-room-actions{display:flex;gap:8px;flex-wrap:wrap}
+.croquis-management-dialog{width:min(94vw,720px);max-height:88dvh;overflow:auto;overflow-wrap:anywhere}
+.croquis-management-dialog form{display:grid;gap:12px}.croquis-management-dialog menu{display:flex;flex-wrap:wrap;gap:10px;justify-content:flex-end;padding:0}
+.croquis-period{display:grid;gap:8px;padding:14px;border:1px solid var(--line);border-radius:12px;margin-block:12px}
+.mother-genetics-list{display:grid;gap:10px;margin-block:16px}.mother-genetic{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:12px}
+.mother-genetic>div{display:grid;gap:4px;flex:1;min-width:0;overflow-wrap:anywhere}.mother-genetic small{color:var(--muted)}.mother-genetic-color{width:12px;height:36px;border-radius:8px;flex-shrink:0}
+.plant-fill-option{display:flex;gap:10px;align-items:flex-start;margin-block:14px}.plant-fill-option input{width:20px;height:20px;flex-shrink:0}
+@media(max-width:600px){.croquis-room-actions{width:100%}.croquis-room-actions button{flex:1 1 130px}.mother-genetic{padding:10px}}
