@@ -1,3 +1,7 @@
+## v3.26.69
+
+Madres como lista de genéticas en Croquis; vaciado de salas con períodos de ocupación e historial; completado de macetas vacías de una pileta con la genética elegida. Ejecutar `Palestina_V32669_croquis_salas.sql`. Ver `INSTRUCCIONES_V32669.md`.
+
 ## v3.26.68
 
 Confirmación de enmiendas y KNF con recetas precargadas, consumo atómico de stock e historial de aplicaciones. Instalación: `INSTRUCCIONES_V32668.md`.

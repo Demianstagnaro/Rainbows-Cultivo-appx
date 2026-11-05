@@ -1,8 +1,8 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.68';
+import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.69';
 
-const APP_VERSION='3.26.68';
+const APP_VERSION='3.26.69';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -642,6 +642,7 @@ function openWorker(t,kind='dated',preselected=[]){
 }
 
 function bind(d){
+  bindCroquisSalaControls();
   app.querySelectorAll('input[data-task-id]').forEach(input=>{
     const task=findTask(input.dataset.taskId,d);
     if(!task) return;
@@ -1087,6 +1088,9 @@ function openPlant(id){
     select.appendChild(option);
   });
   $('plant-notes').value=plant.observaciones||plant.notas||'';
+  $('plant-fill-bed').checked=false;
+  $('plant-fill-bed').disabled=$('plant-status').value!=='occupied';
+  $('plant-status').onchange=()=>{const empty=$('plant-status').value!=='occupied';$('plant-fill-bed').disabled=empty;if(empty)$('plant-fill-bed').checked=false};
   $('plant-dialog').showModal();
 }
 
@@ -1101,7 +1105,11 @@ async function savePlantDialog(){
   if(Object.prototype.hasOwnProperty.call(state.editPlant,'observaciones')) payload.observaciones=$('plant-notes').value.trim();
   else if(Object.prototype.hasOwnProperty.call(state.editPlant,'notas')) payload.notas=$('plant-notes').value.trim();
 
-  const q=await db.from('plantas').update(payload).eq('id',state.editPlant.id);
+  const fill=occupied&&$('plant-fill-bed').checked;
+  if(fill&&!payload.genetica_id)throw new Error('Elegí una genética para completar la pileta.');
+  const q=fill
+    ?await db.rpc('completar_pileta_croquis',{p_planta_id:state.editPlant.id,p_genetica_id:payload.genetica_id,p_observaciones:$('plant-notes').value.trim()})
+    :await db.from('plantas').update(payload).eq('id',state.editPlant.id);
   if(q.error) throw q.error;
   closeDialog('plant-dialog');
   state.editPlant=null;
@@ -1195,7 +1203,8 @@ $('cancel-plant').onclick=()=>{
   closeDialog('plant-dialog');
 };
 $('save-plant').onclick=async()=>{
-  try{await savePlantDialog()}catch(error){console.error(error);alert(error.message||'No se pudo guardar la planta.')}
+  const button=$('save-plant');if(button.disabled)return;button.disabled=true;
+  try{await savePlantDialog()}catch(error){console.error(error);alert(error.message||'No se pudo guardar la planta.')}finally{button.disabled=false}
 };
 
 
@@ -3587,6 +3596,72 @@ async function openSupplyHistory(){
   }catch(error){if(dlg.isConnected)dlg.querySelector('[data-history]').textContent=error.message}
 }
 
+function croquisSalaControlsMarkup(sala){
+ return `<section class="panel croquis-room-controls" data-croquis-management="${escapeHtml(sala)}"><p class="muted">Cargando período de ocupación…</p></section>`;
+}
+function croquisDate(value){return value?escapeHtml(parse(value).toLocaleDateString('es-AR')):'Sin registrar'}
+function croquisInventorySummary(rows,sala){
+ const totals=new Map();for(const row of rows||[]){const key=row.genetica_id||'sin';const previous=totals.get(key)||{name:row.genetica||'Sin genética',quantity:0};previous.quantity+=Number(row.cantidad)||0;totals.set(key,previous)}
+ return [...totals.values()].sort((a,b)=>a.name.localeCompare(b.name,'es')).map(x=>`${x.name}${sala==='Madres'?'':` (${x.quantity})`}`).join(' · ')||'Sala vacía';
+}
+async function bindCroquisSalaControls(){
+ for(const host of app.querySelectorAll('[data-croquis-management]')){
+   if(host.dataset.loading==='1')continue;host.dataset.loading='1';const sala=host.dataset.croquisManagement;
+   try{
+     const q=await db.rpc('estado_croquis_sala',{p_sala:sala});if(q.error)throw q.error;if(!host.isConnected)continue;
+     const data=q.data,period=data.periodo,occupied=data.detalle.length>0;
+     host.innerHTML=`<div><strong>${occupied?'Sala ocupada':'Sala vacía'}</strong><p class="muted">${occupied?`Fecha de ingreso: ${croquisDate(period?.fecha_ingreso)}`:'El próximo ingreso abrirá un nuevo período.'}</p></div><div class="croquis-room-actions">${canModify()&&occupied&&period?'<button class="secondary" type="button" data-edit-entry>Fecha de ingreso</button>':''}<button class="secondary" type="button" data-room-history>Historial</button>${canModify()?`<button class="danger" type="button" data-empty-room ${!occupied||!period?'disabled':''}>Vaciar sala</button>`:''}</div>`;
+     host.querySelector('[data-room-history]').onclick=()=>openCroquisRoomHistory(sala);
+     const entry=host.querySelector('[data-edit-entry]');if(entry)entry.onclick=()=>localEditor('Fecha de ingreso · '+sala,`<label class="field-label">Fecha real de ingreso<input class="text-input" type="date" name="fecha" value="${escapeHtml(period.fecha_ingreso||'')}" max="${ymd(today())}" required></label>`,async f=>{const r=await db.rpc('fecha_ingreso_croquis',{p_sala:sala,p_periodo_id:period.id,p_fecha:f.get('fecha')});if(r.error)throw r.error;render()});
+     const empty=host.querySelector('[data-empty-room]');if(empty)empty.onclick=()=>openEmptyCroquisRoom(sala);
+   }catch(error){if(host.isConnected)host.innerHTML='<p class="muted">Para usar el historial y vaciar salas, ejecutá el SQL de la versión 3.26.69 en Supabase.</p><small>'+escapeHtml(error.message||'No se pudo cargar el período.')+'</small>'}
+ }
+}
+async function openEmptyCroquisRoom(sala){
+ if(!canModify()||document.getElementById('empty-croquis-room-dialog'))return;
+ const dlg=document.createElement('dialog');dlg.id='empty-croquis-room-dialog';dlg.className='dialog croquis-management-dialog';
+ dlg.innerHTML='<form><h3>Vaciar '+escapeHtml(sala)+'</h3><div data-empty-preview>Cargando contenido actual…</div><label class="field-label">Fecha de vaciado<input class="text-input" name="fecha" type="date" max="'+ymd(today())+'" value="'+ymd(today())+'" required></label><label class="field-label">Motivo<select class="text-input" name="motivo"><option>Cosecha</option><option>Traslado</option><option>Otro</option></select></label><label class="field-label">Observaciones<textarea class="text-input" name="observaciones" maxlength="1000" placeholder="Ej.: destino del traslado"></textarea></label><p data-empty-error role="status"></p><menu><button type="button" class="secondary" data-cancel>Cancelar</button><button type="submit" class="danger" disabled>Vaciar sala y guardar historial</button></menu></form>';
+ document.body.append(dlg);dlg.onclose=()=>dlg.remove();dlg.showModal();const form=dlg.querySelector('form'),submit=dlg.querySelector('[type=submit]'),cancel=dlg.querySelector('[data-cancel]'),error=dlg.querySelector('[data-empty-error]');let data=null,saving=false;
+ cancel.onclick=()=>{if(!saving)dlg.close()};dlg.oncancel=e=>{if(saving)e.preventDefault()};
+ form.onsubmit=async e=>{e.preventDefault();if(saving||!data||submit.disabled)return;saving=true;submit.disabled=true;cancel.disabled=true;
+ try{
+   const q=await db.rpc('vaciar_sala_croquis',{p_sala:sala,p_periodo_id:data.periodo.id,p_firma:data.firma,p_fecha:form.elements.fecha.value,p_motivo:form.elements.motivo.value,p_observaciones:form.elements.observaciones.value.trim()});if(q.error)throw q.error;
+   dlg.close();try{await refresh()}catch(e){alert('La sala se vació y el historial quedó guardado. Recargá la app para actualizar la pantalla.')}
+ }catch(e){error.textContent=e.message||'No se pudo vaciar la sala.'}finally{saving=false;submit.disabled=false;cancel.disabled=false}};
+ try{
+   const q=await db.rpc('estado_croquis_sala',{p_sala:sala});if(q.error)throw q.error;if(!dlg.isConnected)return;data=q.data;
+   if(!data.periodo||!data.detalle.length)throw new Error('La sala ya está vacía.');
+   const count=data.detalle.reduce((n,row)=>n+Number(row.cantidad),0);
+   dlg.querySelector('[data-empty-preview]').innerHTML=`<p><strong>${count} ${sala==='Madres'?'genéticas registradas':'plantas'}</strong> · Ingreso: ${croquisDate(data.periodo.fecha_ingreso)}</p><p>${escapeHtml(croquisInventorySummary(data.detalle,sala))}</p><p class="muted">Se guardará este contenido en el historial y se quitarán sus registros actuales. ${sala==='Madres'?'La lista quedará lista para una nueva carga.':'El croquis conservará sus camas y posiciones.'}</p>`;
+   if(data.periodo.fecha_ingreso)form.elements.fecha.min=data.periodo.fecha_ingreso;
+   if(sala!=='Flora 1'&&sala!=='Flora 2'&&sala!=='Flora 3')form.elements.motivo.value='Traslado';
+   submit.disabled=false;
+ }catch(e){error.textContent=e.message;data=null}
+}
+async function openCroquisRoomHistory(sala){
+ const dlg=document.createElement('dialog');dlg.className='dialog croquis-management-dialog';dlg.innerHTML='<h3>Historial · '+escapeHtml(sala)+'</h3><div data-history>Cargando…</div><menu><button class="secondary" type="button">Cerrar</button></menu>';document.body.append(dlg);dlg.onclose=()=>dlg.remove();dlg.querySelector('button').onclick=()=>dlg.close();dlg.showModal();
+ try{
+   const q=await db.from('palestina_sala_periodos').select('*').eq('sala',sala).order('creado_at',{ascending:false}).limit(100);if(q.error)throw q.error;if(!dlg.isConnected)return;
+   dlg.querySelector('[data-history]').innerHTML='<p class="muted">Últimos 100 períodos de esta sala.</p>'+(q.data.map(p=>`<article class="croquis-period"><strong>${croquisDate(p.fecha_ingreso)} → ${p.fecha_vaciado?croquisDate(p.fecha_vaciado):'Ocupación actual'}</strong><span>${escapeHtml(croquisInventorySummary(p.detalle,sala))}</span>${p.motivo?`<span>${escapeHtml(p.motivo)}</span>`:''}${p.observaciones?`<p>${escapeHtml(p.observaciones)}</p>`:''}${p.cerrado_nombre?`<small>Vaciado registrado por: ${escapeHtml(p.cerrado_nombre)}</small>`:''}</article>`).join('')||'<p>Todavía no hay períodos registrados.</p>');
+ }catch(e){if(dlg.isConnected)dlg.querySelector('[data-history]').textContent=e.message}
+}
+async function renderMadresCroquis(){
+ $('screen-title').textContent='Madres';app.innerHTML='<button class="secondary" data-madres-back>← Croquis</button><section class="panel" data-madres-list>Cargando…</section>';
+ app.querySelector('[data-madres-back]').onclick=()=>{state.room=null;render()};const host=app.querySelector('[data-madres-list]');
+ try{
+   const q=await db.from('palestina_madres').select('*').order('created_at');if(q.error)throw q.error;if(!host.isConnected)return;
+   const rows=q.data.map(row=>({...row,g:state.geneticas.find(g=>g.id===row.genetica_id)})).sort((a,b)=>(a.g?.nombre||'').localeCompare(b.g?.nombre||'','es'));
+   host.innerHTML='<div class="supplies-head"><div><h2>Genéticas en Madres</h2><p class="muted">'+rows.length+' genéticas registradas</p></div>'+(canModify()?'<button class="primary" type="button" data-add-mother>+ Agregar genética</button>':'')+'</div><div class="mother-genetics-list">'+(rows.map(row=>'<article class="mother-genetic"><span class="mother-genetic-color" style="background:'+croquisGeneticColor(row.g)+'"></span><div><strong>'+escapeHtml(row.g?.nombre||'Genética no disponible')+'</strong>'+(row.g?.nomenclatura?'<small>'+escapeHtml(row.g.nomenclatura)+'</small>':'')+'</div>'+(canModify()?'<button class="secondary compact-button" type="button" data-remove-mother="'+escapeHtml(row.genetica_id)+'">Quitar</button>':'')+'</article>').join('')||'<p class="muted">Todavía no hay genéticas registradas en esta sala.</p>')+'</div>'+croquisSalaControlsMarkup('Madres');
+   const add=host.querySelector('[data-add-mother]');if(add)add.onclick=()=>{
+     const available=state.geneticas.filter(g=>g.activa!==false&&!rows.some(x=>x.genetica_id===g.id));
+     if(!available.length){alert('No hay otras genéticas activas para agregar. Podés crearlas desde Info cultivo → Genéticas.');return}
+     localEditor('Agregar genética a Madres','<label class="field-label">Genética<select class="text-input" name="genetica" required><option value="">Elegí una genética…</option>'+available.map(g=>'<option value="'+escapeHtml(g.id)+'">'+escapeHtml((g.nomenclatura?g.nomenclatura+' — ':'')+g.nombre)+'</option>').join('')+'</select></label>',async f=>{const r=await db.rpc('guardar_madre_croquis',{p_genetica_id:f.get('genetica'),p_presente:true});if(r.error)throw r.error;renderMadresCroquis()});
+   };
+   host.querySelectorAll('[data-remove-mother]').forEach(button=>button.onclick=async()=>{if(!confirm('¿Quitar esta genética de la lista de Madres?'))return;button.disabled=true;try{const r=await db.rpc('guardar_madre_croquis',{p_genetica_id:button.dataset.removeMother,p_presente:false});if(r.error)throw r.error;await renderMadresCroquis()}catch(e){button.disabled=false;alert(e.message)}});
+   bindCroquisSalaControls();
+ }catch(e){if(host.isConnected)host.innerHTML='<h2>Madres</h2><p>Ejecutá el SQL de la versión 3.26.69 en Supabase para habilitar la lista.</p><small>'+escapeHtml(e.message)+'</small>'}
+}
+
 function localEditor(title,fields,save){
  const dlg=document.createElement('dialog');dlg.className='dialog';dlg.innerHTML='<form><h3>'+escapeHtml(title)+'</h3>'+fields+'<menu><button type="button" class="secondary">Cancelar</button><button class="primary">Guardar</button></menu></form>';document.body.append(dlg);dlg.onclose=()=>dlg.remove();dlg.querySelector('button').onclick=()=>dlg.close();dlg.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=dlg.querySelector('.primary');if(btn.disabled)return;btn.disabled=true;try{await save(new FormData(e.target));dlg.close()}catch(err){alert(err.message)}finally{btn.disabled=false}};dlg.showModal();
 }
@@ -3602,7 +3677,8 @@ async function renderSemillero(sala){
    const label=g?(g.nomenclatura||g.nombre):'', color=g?croquisGeneticColor(g):'#64748b';
    return '<button class="'+(clone?'clone-tray-slot':'plant-position')+(r?' occupied':'')+'" data-tray="'+tray+'" data-pos="'+(j+1)+'" '+(!canModify()?'disabled':'')+' style="--plant-color:'+color+'" title="'+escapeHtml(g?.nombre||unit+' '+tray+', posición '+(j+1))+'" aria-label="'+escapeHtml(unit+' '+tray+', posición '+(j+1)+(g?' · '+g.nombre:''))+'">'+(clone?(r?'<span class="clone-genetic">'+escapeHtml(label)+'</span>':'')+'<strong class="clone-count">'+(r?.cantidad||0)+'/36</strong>'+(r?.fecha_inicio?'<small class="clone-start">Inicio: '+escapeHtml(parse(r.fecha_inicio).toLocaleDateString('es-AR'))+'</small>':''):(r?'<span class="plant-code">'+escapeHtml(croquisGeneticCode(g))+'</span>':''))+'</button>';
   }).join('')+'</div></article>';
- }).join('')+'</div>'+resumenGeneticas(rows);
+ }).join('')+'</div>'+resumenGeneticas(rows)+croquisSalaControlsMarkup(sala);
+ bindCroquisSalaControls();
  host.querySelectorAll('[data-tray]').forEach(btn=>btn.onclick=()=>{const bandeja=+btn.dataset.tray,posicion=+btn.dataset.pos,r=rows.find(x=>x.bandeja===bandeja&&x.posicion===posicion);
  localEditor(unit+' '+bandeja+(clone?'':' · Maceta '+posicion),'<label>Genética<select class="text-input" name="g"><option value="">Vacío</option>'+state.geneticas.filter(g=>g.activa!==false||g.id===r?.genetica_id).map(g=>'<option value="'+escapeHtml(g.id)+'" '+(g.id===r?.genetica_id?'selected':'')+'>'+escapeHtml(g.nombre)+'</option>').join('')+'</select></label>'+(clone?'<label>Esquejes<input class="text-input" type="number" min="1" max="36" name="n" required value="'+(r?.cantidad||36)+'"></label><label class="field-label">Fecha de inicio<input class="text-input" type="date" name="fecha_inicio" max="'+ymd(today())+'" value="'+escapeHtml(r?.fecha_inicio||'')+'"></label>':''),async f=>{const key={sala,bandeja,posicion},genetica_id=f.get('g');const q=await (genetica_id?db.from('palestina_semillero').upsert({...key,genetica_id,cantidad:clone?Number(f.get('n')):1,...(clone?{fecha_inicio:f.get('fecha_inicio')||null}:{})}):db.from('palestina_semillero').delete().match(key));if(q.error)throw q.error;if(host.isConnected)renderSemillero(sala)})});
 }
@@ -4084,23 +4160,25 @@ function renderCroquisView(){
   $('screen-title').textContent='Croquis';
   const floraRooms=rules.filter(rule=>rule.type==='flora');
   if(!state.room){
-    app.innerHTML=`<button id="back-cultivo-info" class="secondary cultivo-info-back" type="button">← Info cultivo</button><section class="panel cultivo-info-head"><h2>Croquis</h2><p class="muted">Elegí una sala para abrir directamente la distribución actual de camas y plantas.</p></section><section class="harvest-room-selector" aria-label="Salas con croquis">${floraRooms.map(room=>{const roomBeds=beds(room.name),roomPlants=roomBeds.flatMap(plants),occupied=roomPlants.filter(plant=>plant.ocupada).length;return`<button class="panel harvest-room-button" type="button" data-croquis-room="${room.name}"><span>${room.name}</span><strong>${roomBeds.length} camas · ${occupied}/${roomPlants.length} plantas</strong></button>`}).join('')}${['Vege 1','Vege 2','Esquejes'].map(n=>`<button class="panel harvest-room-button" data-croquis-room="${n}"><span>${n}</span><strong>${n==='Esquejes'?'26 almácigos de 36':'11 bandejas de 9'}</strong></button>`).join('')}</section>`;
+    app.innerHTML=`<button id="back-cultivo-info" class="secondary cultivo-info-back" type="button">← Info cultivo</button><section class="panel cultivo-info-head"><h2>Croquis</h2><p class="muted">Elegí una sala para abrir directamente la distribución actual de camas y plantas.</p></section><section class="harvest-room-selector" aria-label="Salas con croquis">${floraRooms.map(room=>{const roomBeds=beds(room.name),roomPlants=roomBeds.flatMap(plants),occupied=roomPlants.filter(plant=>plant.ocupada).length;return`<button class="panel harvest-room-button" type="button" data-croquis-room="${room.name}"><span>${room.name}</span><strong>${roomBeds.length} camas · ${occupied}/${roomPlants.length} plantas</strong></button>`}).join('')}${['Vege 1','Vege 2','Esquejes','Madres'].map(n=>`<button class="panel harvest-room-button" data-croquis-room="${n}"><span>${n}</span><strong>${n==='Madres'?'Lista de genéticas':n==='Esquejes'?'26 almácigos de 36':'11 bandejas de 9'}</strong></button>`).join('')}</section>`;
     $('back-cultivo-info').onclick=openCultivoInfo;
     app.querySelectorAll('[data-croquis-room]').forEach(button=>button.onclick=()=>{state.room=button.dataset.croquisRoom;state.tab='croquis';render()});
     return;
   }
   const room=rr(state.room);
+  if(state.room==='Madres'){renderMadresCroquis();return}
   if(['Vege 1','Vege 2','Esquejes'].includes(state.room)){renderSemillero(state.room);return}
   if(!room||room.type!=='flora'){state.room=null;renderCroquisView();return}
   app.innerHTML=`<button id="back-croquis-rooms" class="secondary cultivo-info-back" type="button">← Croquis</button><section class="panel room-detail-header"><div class="room-head"><div><h2>${room.name}</h2><p class="muted">Distribución actual de camas, plantas y genéticas.</p></div></div></section>${renderCroquis(room)}`;
   $('back-croquis-rooms').onclick=()=>{state.room=null;state.tab='summary';render()};
   app.querySelectorAll('[data-bed]').forEach(button=>button.onclick=()=>openBed(button.dataset.bed));
   app.querySelectorAll('[data-plant]').forEach(button=>button.onclick=()=>openPlant(button.dataset.plant));
+  bindCroquisSalaControls();
 }
 function renderCroquis(r){
   const bs=beds(r.name),ps=bs.flatMap(plants),occ=ps.filter(p=>p.ocupada),cols=r.name==='Flora 3'?4:5;
   const readOnly=!canModify();
-  return`<section class="panel"><div class="croquis-metrics"><div><span>Plantas</span><strong>${occ.length}</strong></div><div><span>Capacidad</span><strong>${ps.length}</strong></div><div><span>Camas</span><strong>${bs.length}</strong></div></div></section><section class="croquis-shell"><div class="side-aisle"><span>Pasillo lateral</span></div><div class="beds-grid" style="--bed-columns:${cols}">${bs.map(b=>{const pp=plants(b),n=pp.filter(p=>p.ocupada).length,safeBedId=escapeHtml(b.id);return`<article class="bed-card"><button class="bed-edit-button" type="button" data-bed="${safeBedId}" ${readOnly?'disabled':''}><div class="bed-card-head"><strong>Cama ${String(b.numero).padStart(2,'0')}</strong><span>${n}/${b.capacidad}</span></div></button><div class="plant-grid">${Array.from({length:9},(_,i)=>{const p=pp.find(x=>x.posicion===i+1);if(!p)return'<span class="plant-position plant-spacer"></span>';const genetic=state.geneticas.find(x=>String(x.id)===String(p.genetica_id));const g=genetic?(genetic.nomenclatura?`${genetic.nomenclatura} — ${genetic.nombre}`:genetic.nombre):'Sin genética asignada';const code=croquisGeneticCode(genetic);const style=p.ocupada?` style="--plant-color:${croquisGeneticColor(genetic)}"`:'';const label=p.ocupada?`Planta ${p.posicion}: ${g}`:`Posición ${p.posicion} vacía`;return`<button class="plant-position ${p.ocupada?'occupied':''}" type="button" data-plant="${escapeHtml(p.id)}" title="${escapeHtml(p.ocupada?g:'Vacía')}" aria-label="${escapeHtml(label)}" ${readOnly?'disabled':''}${style}>${p.ocupada?`<span class="plant-code">${escapeHtml(code)}</span>`:''}</button>`}).join('')}</div></article>`}).join('')}</div><div class="side-aisle"><span>Pasillo lateral</span></div></section>${resumenGeneticas(occ.map(p=>({...p,cantidad:1})))}`;
+  return`${croquisSalaControlsMarkup(r.name)}<section class="panel"><div class="croquis-metrics"><div><span>Plantas</span><strong>${occ.length}</strong></div><div><span>Capacidad</span><strong>${ps.length}</strong></div><div><span>Camas</span><strong>${bs.length}</strong></div></div></section><section class="croquis-shell"><div class="side-aisle"><span>Pasillo lateral</span></div><div class="beds-grid" style="--bed-columns:${cols}">${bs.map(b=>{const pp=plants(b),n=pp.filter(p=>p.ocupada).length,safeBedId=escapeHtml(b.id);return`<article class="bed-card"><button class="bed-edit-button" type="button" data-bed="${safeBedId}" ${readOnly?'disabled':''}><div class="bed-card-head"><strong>Cama ${String(b.numero).padStart(2,'0')}</strong><span>${n}/${b.capacidad}</span></div></button><div class="plant-grid">${Array.from({length:9},(_,i)=>{const p=pp.find(x=>x.posicion===i+1);if(!p)return'<span class="plant-position plant-spacer"></span>';const genetic=state.geneticas.find(x=>String(x.id)===String(p.genetica_id));const g=genetic?(genetic.nomenclatura?`${genetic.nomenclatura} — ${genetic.nombre}`:genetic.nombre):'Sin genética asignada';const code=croquisGeneticCode(genetic);const style=p.ocupada?` style="--plant-color:${croquisGeneticColor(genetic)}"`:'';const label=p.ocupada?`Planta ${p.posicion}: ${g}`:`Posición ${p.posicion} vacía`;return`<button class="plant-position ${p.ocupada?'occupied':''}" type="button" data-plant="${escapeHtml(p.id)}" title="${escapeHtml(p.ocupada?g:'Vacía')}" aria-label="${escapeHtml(label)}" ${readOnly?'disabled':''}${style}>${p.ocupada?`<span class="plant-code">${escapeHtml(code)}</span>`:''}</button>`}).join('')}</div></article>`}).join('')}</div><div class="side-aisle"><span>Pasillo lateral</span></div></section>${resumenGeneticas(occ.map(p=>({...p,cantidad:1})))}`;
 }
 
 
