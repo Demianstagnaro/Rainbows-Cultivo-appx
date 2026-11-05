@@ -51,3 +51,30 @@ jobs:
       - run: psql -v ON_ERROR_STOP=1 -f Rainbows_V3.19.0_stock_medrano.sql
       - run: psql -f tests/sql/schema_assertions.sql
       - run: psql -v ON_ERROR_STOP=1 -f tests/sql/stock_medrano_assertions.sql
+
+  cultivation-consumption:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - run: psql -v ON_ERROR_STOP=1 -f tests/sql/cultivation-consumption-fixture.sql
+      - run: psql -v ON_ERROR_STOP=1 -f Palestina_V32668_consumo_enmiendas.sql
+      - run: psql -v ON_ERROR_STOP=1 -f tests/sql/cultivation-consumption-assertions.sql
