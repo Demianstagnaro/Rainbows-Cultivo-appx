@@ -6,13 +6,13 @@ import test from 'node:test';
 function loadCalendar(){
   const source=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
   const prefix=source.slice(0,source.indexOf("const CONTINUE_MARKER="))
-    .replace(/^import .*;$/m,'const createClient=()=>({});');
+    .replace(/^import .*;$/gm,'');
   const context={
     console,Date,Intl,Map,Set,Math,
     document:{getElementById:()=>({})},
     localStorage:{getItem:()=>null,setItem:()=>{}}
   };
-  vm.runInNewContext(`${prefix}\nglobalThis.calendar={rules,parse,ymd,add,diff,cycle,cycleNumber,roomStatus,compactCycleLabel,harvest,harvestCycleNumber,upcomingHarvestDates,routine,cloneTransfer,vegesOccupied};`,context);
+  vm.runInNewContext(`const createClient=()=>({});\n${prefix}\nglobalThis.calendar={rules,parse,ymd,add,diff,cycle,cycleNumber,roomStatus,compactCycleLabel,harvest,harvestCycleNumber,upcomingHarvestDates,routine,cloneTransfer,vegesOccupied};`,context);
   return context.calendar;
 }
 
