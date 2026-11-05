@@ -16,4 +16,3 @@ insert into public.perfiles values ('00000000-0000-0000-0000-000000000001','Oper
 insert into public.salas values('00000000-0000-0000-0000-000000000011','Flora 1');
 insert into public.empleados values('00000000-0000-0000-0000-000000000021','Empleado',true);
 insert into public.palestina_insumos values('00000000-0000-0000-0000-000000000031','Cultivo','Pescado','kg',20,0),('00000000-0000-0000-0000-000000000032','Cultivo','Compost','L',100,0);
-select set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',false);

@@ -5,6 +5,8 @@ declare
  workers uuid[] := array['00000000-0000-0000-0000-000000000021'::uuid];
  a uuid; b uuid; tid uuid; msg text;
 begin
+ -- Cada invocación de psql abre una conexión: la identidad pertenece a esta prueba.
+ perform set_config('request.jwt.claim.sub','00000000-0000-0000-0000-000000000001',true);
  a:=public.confirmar_aplicacion_cultivo(t,items,workers,'Flora 1 trasplante');
  select tarea_id into tid from public.palestina_aplicaciones where id=a;
  if (select stock from public.palestina_insumos where nombre='Pescado')<>15.5 then raise exception 'Consumo incorrecto'; end if;

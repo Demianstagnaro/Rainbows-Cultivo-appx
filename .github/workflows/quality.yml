@@ -9,17 +9,17 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
       - run: npm test
 
   sql-migration:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     services:
       postgres:
@@ -40,7 +40,7 @@ jobs:
       PGPASSWORD: postgres
       PGDATABASE: postgres
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: psql -f tests/sql/schema_fixture.sql
       - run: psql -f Rainbows_V3.17.0_seguridad_integral.sql
       - run: psql -f Rainbows_V3.18.1_eliminar_comandas.sql
@@ -53,7 +53,7 @@ jobs:
       - run: psql -v ON_ERROR_STOP=1 -f tests/sql/stock_medrano_assertions.sql
 
   cultivation-consumption:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     services:
       postgres:
@@ -74,7 +74,7 @@ jobs:
       PGPASSWORD: postgres
       PGDATABASE: postgres
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - run: psql -v ON_ERROR_STOP=1 -f tests/sql/cultivation-consumption-fixture.sql
       - run: psql -v ON_ERROR_STOP=1 -f Palestina_V32668_consumo_enmiendas.sql
       - run: psql -v ON_ERROR_STOP=1 -f tests/sql/cultivation-consumption-assertions.sql
