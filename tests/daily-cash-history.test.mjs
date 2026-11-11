@@ -17,7 +17,7 @@ test('Caja separa apertura, ingresos, egresos y cierre por medio',()=>{
   assert.match(app,/medranoCashBalanceCard\('Digital'/);
 });
 
-test('el cierre anterior pasa sin duplicarse a la apertura siguiente',()=>{
+test('el efectivo continúa y Digital vuelve a cero en la apertura siguiente',()=>{
   const start=app.indexOf('function medranoCashMovementDay(');
   const end=app.indexOf('function openMedranoCashDialog(',start);
   const code=app.slice(start,end);
@@ -32,15 +32,16 @@ test('el cierre anterior pasa sin duplicarse a la apertura siguiente',()=>{
   assert.equal(previous.efectivo.final,1000);
   assert.equal(previous.digital.final,3000);
   assert.equal(next.efectivo.initial,previous.efectivo.final);
-  assert.equal(next.digital.initial,previous.digital.final);
+  assert.equal(next.digital.initial,0);
+  assert.equal(next.digital.final,0);
   assert.equal(next.efectivo.final,750);
 });
 
 test('la pantalla principal muestra sólo los movimientos del día actual',()=>{
-  assert.match(app,/const todayKey=ymd\(today\(\)\),summary=medranoCashDaySummary\(todayKey\)/);
+  assert.match(app,/const todayKey=medranoCashTodayKey\(\),summary=medranoCashDaySummary\(todayKey\)/);
   assert.match(app,/Caja de hoy/);
   assert.match(app,/medranoCashMovementTable\(summary\.rows\)/);
-  assert.match(app,/El saldo inicial continúa automáticamente el cierre anterior/);
+  assert.match(app,/Efectivo acumulado · Digital del día desde \$0/);
 });
 
 test('el historial agrupa por año, mes y día y conserva el responsable',()=>{
