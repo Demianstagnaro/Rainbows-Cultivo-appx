@@ -12,7 +12,7 @@ function loadCalendar(){
     document:{getElementById:()=>({})},
     localStorage:{getItem:()=>null,setItem:()=>{}}
   };
-  vm.runInNewContext(`const createClient=()=>({});\n${prefix}\nglobalThis.calendar={rules,parse,ymd,add,diff,cycle,cycleNumber,roomStatus,compactCycleLabel,harvest,harvestCycleNumber,upcomingHarvestDates,routine,cloneTransfer,vegesOccupied};`,context);
+  vm.runInNewContext(`const createClient=()=>({});\n${prefix}\nglobalThis.calendar={rules,parse,ymd,add,diff,cycle,cycleNumber,roomStatus,compactCycleLabel,harvest,harvestCycleNumber,upcomingHarvestDates,routine,cloneTransfer,vegesOccupied,vegeCalendarCycle,calendarRoomState};`,context);
   return context.calendar;
 }
 
@@ -108,4 +108,25 @@ test('Madres alterna Enmienda 1, 2 y 3 cada 14 días',()=>{
     assert.equal(amendment?.id,`${date}|Madres|Enmienda`);
   }
   assert.equal(calendar.routine(calendar.parse('2026-09-29')).some(task=>task.room==='Madres'&&task.task.startsWith('Enmienda')),false);
+});
+
+
+test('Vege cuenta semanas desde el ingreso y muestra el ciclo de Flora de destino',()=>{
+  const cases=[['2026-10-02',11,1],['2026-10-08',11,1],['2026-10-09',11,2],['2026-11-10',11,6],['2026-11-13',12,1]];
+  for(const [date,number,week] of cases){
+    const current=calendar.vegeCalendarCycle(calendar.parse(date));
+    assert.equal(current.number,number,date);assert.equal(current.week,week,date);
+    for(const name of ['Vege 1','Vege 2'])assert.equal(calendar.calendarRoomState(room(name),calendar.parse(date)),`${name.replace('Vege ','V')}: C${number} · S${week}`);
+  }
+  assert.equal(calendar.vegeCalendarCycle(calendar.parse('2026-10-02')).destinations.join(','),'Flora 2');
+  assert.equal(calendar.vegeCalendarCycle(calendar.parse('2026-11-13')).destinations.join(','),'Flora 1,Flora 3');
+});
+test('Vege queda vacía al trasladar a Flora y reinicia la semana con el nuevo ingreso',()=>{
+  for(const day of ['2026-11-11','2026-11-12','2026-12-16','2026-12-17']){
+    assert.equal(calendar.vegeCalendarCycle(calendar.parse(day)),null,day);
+    assert.equal(calendar.calendarRoomState(room('Vege 1'),calendar.parse(day)),'V1: Vacía');
+  }
+  assert.equal(calendar.vegeCalendarCycle(calendar.parse('2026-12-18')).week,1);
+  assert.equal(calendar.vegeCalendarCycle(calendar.parse('2026-12-18')).number,12);
+  assert.equal(calendar.calendarRoomState(room('Flora 1'),calendar.parse('2026-11-11')),'F1: C11 · F S4');
 });
