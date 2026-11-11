@@ -1,8 +1,8 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.71';
+import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.72';
 
-const APP_VERSION='3.26.71';
+const APP_VERSION='3.26.72';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2648,27 +2648,29 @@ function medranoMoneyInputNumber(value){
 }
 function formatMedranoMoneyInput(input){input.value=medranoMoneyInputFormat(input.value)}
 function setMedranoMoneyInput(input,value){input.value=Number(value||0).toLocaleString('es-AR',{minimumFractionDigits:0,maximumFractionDigits:2})}
+function medranoCashTodayKey(){return medranoJobDay(new Date().toISOString())}
 function medranoCashMovementDay(movement){return medranoJobDay(movement?.created_at)}
 function medranoTokenMovementDay(movement){return medranoJobDay(movement?.created_at)}
 function medranoTokenMovementsForDay(day){return (state.medranoTokenMovements||[]).filter(movement=>medranoTokenMovementDay(movement)===day)}
 function medranoCashSigned(movement){return (movement?.tipo==='ingreso'?1:-1)*Number(movement?.monto||0)}
-function medranoCashBalance(medium){return state.medranoCajaMovements.filter(m=>m.medio===medium).reduce((sum,m)=>sum+medranoCashSigned(m),0)}
+function medranoCashBalance(medium){if(medium==='digital')return medranoCashDaySummary(medranoCashTodayKey()).digital.final;return state.medranoCajaMovements.filter(m=>m.medio===medium).reduce((sum,m)=>sum+medranoCashSigned(m),0)}
 function medranoCashDaySummary(day){
   const rows=state.medranoCajaMovements.filter(m=>medranoCashMovementDay(m)===day);
   const medium=medio=>{
-    const initial=state.medranoCajaMovements.filter(m=>m.medio===medio&&medranoCashMovementDay(m)<day).reduce((sum,m)=>sum+medranoCashSigned(m),0);
-    const income=rows.filter(m=>m.medio===medio&&m.tipo==='ingreso').reduce((sum,m)=>sum+Number(m.monto||0),0);
-    const expense=rows.filter(m=>m.medio===medio&&m.tipo==='egreso').reduce((sum,m)=>sum+Number(m.monto||0),0);
+    const initial=medio==='digital'?0:state.medranoCajaMovements.filter(m=>m.medio===medio&&medranoCashMovementDay(m)<day).reduce((sum,m)=>sum+medranoCashSigned(m),0);
+    const dailyRows=rows.filter(m=>medio!=='digital'||m.origen!=='arqueo');
+    const income=dailyRows.filter(m=>m.medio===medio&&m.tipo==='ingreso').reduce((sum,m)=>sum+Number(m.monto||0),0);
+    const expense=dailyRows.filter(m=>m.medio===medio&&m.tipo==='egreso').reduce((sum,m)=>sum+Number(m.monto||0),0);
     return {initial,income,expense,final:initial+income-expense};
   };
   return {day,rows,efectivo:medium('efectivo'),digital:medium('digital')};
 }
-function medranoCashBalanceCard(label,balance){
-  return `<div class="panel caja-balance-card"><span>${escapeHtml(label)}</span><dl><div><dt>Saldo inicial</dt><dd>${formatMoney(balance.initial)}</dd></div><div><dt>Ingresos</dt><dd class="cash-positive">+ ${formatMoney(balance.income)}</dd></div><div><dt>Egresos</dt><dd class="cash-negative">− ${formatMoney(balance.expense)}</dd></div><div class="caja-final-row"><dt>Saldo final</dt><dd>${formatMoney(balance.final)}</dd></div></dl></div>`;
+function medranoCashBalanceCard(label,balance,daily=false){
+  return `<div class="panel caja-balance-card"><span>${escapeHtml(label)}</span>${daily?'<small class="muted">Control del día · inicia en $0</small>':''}<dl><div><dt>Saldo inicial</dt><dd>${formatMoney(balance.initial)}</dd></div><div><dt>Ingresos</dt><dd class="cash-positive">+ ${formatMoney(balance.income)}</dd></div><div><dt>Egresos</dt><dd class="cash-negative">− ${formatMoney(balance.expense)}</dd></div><div class="caja-final-row"><dt>${daily?'Total digital del día':'Saldo final'}</dt><dd>${formatMoney(balance.final)}</dd></div></dl></div>`;
 }
 function medranoCashBalanceMarkup(summary){
   const total={initial:summary.efectivo.initial+summary.digital.initial,income:summary.efectivo.income+summary.digital.income,expense:summary.efectivo.expense+summary.digital.expense,final:summary.efectivo.final+summary.digital.final};
-  return `<section class="stock-kpis caja-kpis">${medranoCashBalanceCard('Efectivo',summary.efectivo)}${medranoCashBalanceCard('Digital',summary.digital)}${medranoCashBalanceCard('Total Caja',total)}</section>`;
+  return `<section class="stock-kpis caja-kpis">${medranoCashBalanceCard('Efectivo',summary.efectivo)}${medranoCashBalanceCard('Digital',summary.digital,true)}${medranoCashBalanceCard('Total de control',total)}</section>`;
 }
 function medranoCashMovementDetail(movement){
   const lines=String(movement?.detalle||'').split(/\r?\n/).map(line=>line.trim()).filter(Boolean);
@@ -2692,32 +2694,34 @@ function medranoCashDifference(value){
 function medranoCashClosingMarkup(closing){
   if(!closing)return '';
   const user=(state.perfiles||[]).find(profile=>String(profile.id)===String(closing.cerrado_por));
-  return `<section class="panel caja-closing-card"><div class="stock-section-head"><div><h3 class="status-heading-completed">Arqueo realizado</h3><p class="muted">${new Date(closing.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})} · ${escapeHtml(user?.nombre||user?.email||'Administrador')}</p></div><span class="preparation-badge preparation-listo">Caja cerrada</span></div><div class="stock-table-wrap"><table class="stock-table caja-closing-table"><thead><tr><th>Medio</th><th>Esperado</th><th>Real</th><th>Diferencia</th></tr></thead><tbody><tr><td>Efectivo</td><td>${formatMoney(closing.efectivo_esperado)}</td><td><strong>${formatMoney(closing.efectivo_real)}</strong></td><td>${medranoCashDifference(closing.diferencia_efectivo)}</td></tr><tr><td>Digital</td><td>${formatMoney(closing.digital_esperado)}</td><td><strong>${formatMoney(closing.digital_real)}</strong></td><td>${medranoCashDifference(closing.diferencia_digital)}</td></tr></tbody></table></div>${closing.observaciones?`<p class="caja-closing-notes"><strong>Observaciones:</strong> ${escapeHtml(closing.observaciones)}</p>`:''}</section>`;
+  return `<section class="panel caja-closing-card"><div class="stock-section-head"><div><h3 class="status-heading-completed">Arqueo realizado</h3><p class="muted">${new Date(closing.created_at).toLocaleString('es-AR',{timeZone:'America/Argentina/Buenos_Aires'})} · ${escapeHtml(user?.nombre||user?.email||'Administrador')}</p></div><span class="preparation-badge preparation-listo">Caja cerrada</span></div><div class="stock-table-wrap"><table class="stock-table caja-closing-table"><thead><tr><th>Medio</th><th>Esperado</th><th>Real</th><th>Diferencia</th></tr></thead><tbody><tr><td>Efectivo</td><td>${formatMoney(closing.efectivo_esperado)}</td><td><strong>${formatMoney(closing.efectivo_real)}</strong></td><td>${medranoCashDifference(closing.diferencia_efectivo)}</td></tr><tr><td>${closing.digital_diario?'Digital del día':'Digital (arqueo anterior)'}</td><td>${formatMoney(closing.digital_esperado)}</td><td><strong>${formatMoney(closing.digital_real)}</strong></td><td>${medranoCashDifference(closing.diferencia_digital)}</td></tr></tbody></table></div>${closing.observaciones?`<p class="caja-closing-notes"><strong>Observaciones:</strong> ${escapeHtml(closing.observaciones)}</p>`:''}</section>`;
 }
 function openMedranoCashDialog(){
   $('medrano-cash-type').value='ingreso';$('medrano-cash-method').value='efectivo';$('medrano-cash-amount').value='';$('medrano-cash-concept').value='';$('medrano-cash-dialog').showModal();
 }
 function updateMedranoCashClosingDifference(){
-  const expected=medranoCashDaySummary(ymd(today()));
+  const expected=medranoCashDaySummary(medranoCashTodayKey());
   const cash=medranoMoneyInputNumber($('medrano-cash-closing-cash').value),digital=medranoMoneyInputNumber($('medrano-cash-closing-digital').value);
   const cashDifference=Number.isFinite(cash)?cash-expected.efectivo.final:0;
   const digitalDifference=Number.isFinite(digital)?digital-expected.digital.final:0;
-  $('medrano-cash-closing-difference').innerHTML=`Diferencia de Efectivo: <strong>${medranoCashDifference(cashDifference)}</strong><br>Diferencia Digital: <strong>${medranoCashDifference(digitalDifference)}</strong>`;
+  $('medrano-cash-closing-difference').innerHTML=`Diferencia de Efectivo: <strong>${medranoCashDifference(cashDifference)}</strong><br>Diferencia Digital del día: <strong>${medranoCashDifference(digitalDifference)}</strong>`;
 }
 function openMedranoCashClosingDialog(){
   if(currentRole()!=='administrador')return;
-  const todayKey=ymd(today()),summary=medranoCashDaySummary(todayKey);
+  const todayKey=medranoCashTodayKey(),summary=medranoCashDaySummary(todayKey);
+  state.medranoCashClosingDay=todayKey;
   if(medranoCashClosingForDay(todayKey)){alert('La Caja de hoy ya fue cerrada.');return}
-  $('medrano-cash-closing-expected').innerHTML=`Esperado en Efectivo: <strong>${formatMoney(summary.efectivo.final)}</strong><br>Esperado en Digital: <strong>${formatMoney(summary.digital.final)}</strong>`;
+  $('medrano-cash-closing-expected').innerHTML=`Esperado en Efectivo: <strong>${formatMoney(summary.efectivo.final)}</strong><br>Digital esperado del día: <strong>${formatMoney(summary.digital.final)}</strong>`;
   setMedranoMoneyInput($('medrano-cash-closing-cash'),Math.max(summary.efectivo.final,0));
   setMedranoMoneyInput($('medrano-cash-closing-digital'),Math.max(summary.digital.final,0));
   $('medrano-cash-closing-notes').value='';updateMedranoCashClosingDifference();$('medrano-cash-closing-dialog').showModal();
 }
 async function saveMedranoCashClosing(){
+  if(state.medranoCashClosingDay!==medranoCashTodayKey())throw new Error('Cambió el día. Cerrá esta ventana y volvé a abrir el arqueo.');
   const cash=medranoMoneyInputNumber($('medrano-cash-closing-cash').value),digital=medranoMoneyInputNumber($('medrano-cash-closing-digital').value);
   if(!Number.isFinite(cash)||cash<0||!Number.isFinite(digital)||digital<0)throw new Error('Ingresá los montos reales de Efectivo y Digital.');
   if(!confirm('¿Confirmar el arqueo y cerrar la Caja de hoy? Después no podrán registrarse más movimientos durante esta jornada.'))return;
-  const q=await db.rpc('cerrar_caja_medrano',{p_efectivo_real:cash,p_digital_real:digital,p_observaciones:$('medrano-cash-closing-notes').value.trim()||null});
+  const q=await db.rpc('cerrar_caja_medrano_diaria_digital',{p_efectivo_real:cash,p_digital_real:digital,p_fecha:state.medranoCashClosingDay,p_observaciones:$('medrano-cash-closing-notes').value.trim()||null});
   if(q.error)throw q.error;closeDialog('medrano-cash-closing-dialog');await refreshMedranoModules('cash');
 }
 async function saveMedranoCashMovement(){
@@ -2781,9 +2785,9 @@ function renderMedranoPriceList(medranoNav,bindModuleNav){
 function renderMedranoCaja(medranoNav,bindModuleNav){
   $('screen-title').textContent='Caja';
   if(!state.medranoCajaReady){const migration=state.medranoCajaBaseReady?'V3.26.22':'V3.24.0';app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-caja-back" class="secondary compact-button" type="button">← Administración</button><h2>Caja</h2></div></section><section class="panel error-panel"><strong>Falta actualizar Caja.</strong><p>Aplicá la migración ${migration} en Supabase y luego tocá Reintentar.</p><button id="medrano-retry-load" class="primary compact-button" type="button">Reintentar</button></section>`;bindModuleNav();$('medrano-caja-back').onclick=()=>{state.medranoView='administracion';render()};bindMedranoLoadRetry();return}
-  const todayKey=ymd(today()),summary=medranoCashDaySummary(todayKey),tokenRows=medranoTokenMovementsForDay(todayKey);
+  const todayKey=medranoCashTodayKey(),summary=medranoCashDaySummary(todayKey),tokenRows=medranoTokenMovementsForDay(todayKey);
   const closing=medranoCashClosingForDay(todayKey),admin=currentRole()==='administrador';
-  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-caja-back" class="secondary compact-button" type="button">← Administración</button><h2>Caja de hoy</h2><p class="muted">${parse(todayKey).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} · El saldo inicial continúa automáticamente el cierre anterior · 1 Token = $1.000</p></div><div class="dispensary-head-actions"><button id="medrano-cash-history" class="secondary compact-button" type="button">Historial</button>${closing?'<span class="preparation-badge preparation-listo">Caja cerrada</span>':`<button id="medrano-credit-open" class="secondary compact-button" type="button">+ Acreditar Tokens</button><button id="medrano-cash-open" class="primary compact-button" type="button">+ Movimiento</button>${admin?'<button id="medrano-cash-closing-open" class="primary compact-button cash-closing-button" type="button">Arqueo y cierre</button>':''}`}</div></section>
+  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="medrano-caja-back" class="secondary compact-button" type="button">← Administración</button><h2>Caja de hoy</h2><p class="muted">${parse(todayKey).toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})} · Efectivo acumulado · Digital del día desde $0 · Total de control = efectivo acumulado + digital del día · 1 Token = $1.000</p></div><div class="dispensary-head-actions"><button id="medrano-cash-history" class="secondary compact-button" type="button">Historial</button>${closing?'<span class="preparation-badge preparation-listo">Caja cerrada</span>':`<button id="medrano-credit-open" class="secondary compact-button" type="button">+ Acreditar Tokens</button><button id="medrano-cash-open" class="primary compact-button" type="button">+ Movimiento</button>${admin?'<button id="medrano-cash-closing-open" class="primary compact-button cash-closing-button" type="button">Arqueo y cierre</button>':''}`}</div></section>
   ${medranoCashBalanceMarkup(summary)}
   ${medranoCashClosingMarkup(closing)}
   <section class="panel stock-detail-panel"><h3 class="${summary.rows.length?'status-heading-pending':'status-heading-completed'}">Movimientos de hoy</h3>${medranoCashMovementTable(summary.rows)}</section>
@@ -2794,7 +2798,7 @@ function renderMedranoCajaHistory(medranoNav,bindModuleNav){
   $('screen-title').textContent='Historial de Caja';
   const days=[...new Set([...state.medranoCajaMovements.map(medranoCashMovementDay),...(state.medranoTokenMovements||[]).map(medranoTokenMovementDay),...(state.medranoCashClosings||[]).map(closing=>closing.fecha)].filter(Boolean))].sort().reverse();
   const rows=days.map(fecha=>({fecha}));
-  renderMedranoDateHistory({key:'caja',title:'Historial de Caja',description:'Movimientos de dinero y Tokens, arqueos y saldos. Cada apertura continúa el cierre del día anterior.',rows,dateOf:row=>row.fecha,countLabel:count=>`${count} día${count===1?'':'s'} con movimientos`,emptyText:'Todavía no hay movimientos registrados.',backLabel:'Caja',backAction:()=>{state.medranoView='administracion-caja';app.innerHTML='<section class="panel"><p class="muted">Cargando Caja…</p></section>';refreshMedranoModules('cash')},dayContent:day=>{const summary=medranoCashDaySummary(day),closing=medranoCashClosingForDay(day),tokenRows=medranoTokenMovementsForDay(day);return `${medranoCashBalanceMarkup(summary)}${medranoCashClosingMarkup(closing)}<section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Movimientos de dinero del día</h3><p class="muted">${summary.rows.length} movimiento${summary.rows.length===1?'':'s'}</p></div></div>${medranoCashMovementTable(summary.rows)}</section><section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Movimientos de Tokens del día</h3><p class="muted">${tokenRows.length} movimiento${tokenRows.length===1?'':'s'}</p></div></div>${medranoTokenMovementTable(tokenRows)}</section>`},medranoNav,bindModuleNav});
+  renderMedranoDateHistory({key:'caja',title:'Historial de Caja',description:'Movimientos y arqueos por fecha. Efectivo acumulado; Digital comienza en $0 cada día (hora de Buenos Aires).',rows,dateOf:row=>row.fecha,countLabel:count=>`${count} día${count===1?'':'s'} con movimientos`,emptyText:'Todavía no hay movimientos registrados.',backLabel:'Caja',backAction:()=>{state.medranoView='administracion-caja';app.innerHTML='<section class="panel"><p class="muted">Cargando Caja…</p></section>';refreshMedranoModules('cash')},dayContent:day=>{const summary=medranoCashDaySummary(day),closing=medranoCashClosingForDay(day),tokenRows=medranoTokenMovementsForDay(day);return `${medranoCashBalanceMarkup(summary)}${medranoCashClosingMarkup(closing)}<section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Movimientos de dinero del día</h3><p class="muted">${summary.rows.length} movimiento${summary.rows.length===1?'':'s'}</p></div></div>${medranoCashMovementTable(summary.rows)}</section><section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Movimientos de Tokens del día</h3><p class="muted">${tokenRows.length} movimiento${tokenRows.length===1?'':'s'}</p></div></div>${medranoTokenMovementTable(tokenRows)}</section>`},medranoNav,bindModuleNav});
 }
 
 const medranoLaboratoryCategories=[
@@ -4024,7 +4028,9 @@ function scheduleDayChangeRefresh(){
   if(state.dayChangeTimer)clearTimeout(state.dayChangeTimer);
   const now=new Date();
   const next=new Date(now.getFullYear(),now.getMonth(),now.getDate()+1,0,0,1);
-  state.dayChangeTimer=setTimeout(()=>{state.dayChangeTimer=null;if(state.session)refresh()},next-now);
+  const cashView=state.site==='medrano'&&String(state.medranoView).startsWith('administracion-caja');
+  const cashNext=new Date(`${medranoCashTodayKey()}T00:00:01-03:00`).getTime()+86400000;
+  state.dayChangeTimer=setTimeout(()=>{state.dayChangeTimer=null;if(state.session)refresh()},(cashView?cashNext:next.getTime())-now.getTime());
 }
 function render(){scheduleDayChangeRefresh();const isPalestina=renderSiteShell();syncAppNavigationHistory();bindMedranoDialogActions();const cb=$('header-config');if(cb&&isPalestina){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';state.room=null;state.roomDay=null;state.day=null;render()}}const hb=$('header-help');if(hb&&isPalestina){hb.onclick=()=>{state.view='help';state.room=null;state.roomDay=null;state.day=null;render()}}if(!isPalestina){renderMedrano();return} $('today-label').textContent=nice(today());
 $('cancel-stock-movement').onclick=()=>closeDialog('stock-movement-dialog');

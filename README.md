@@ -1,3 +1,7 @@
+## v3.26.72
+
+Caja Digital usa sólo los movimientos del día y reinicia su apertura en cero (hora de Buenos Aires). Efectivo conserva el saldo acumulado. El cierre registra la diferencia digital sin crear movimientos. Requiere `Rainbows_V3.26.72_caja_digital_diaria.sql`; instalación en `INSTRUCCIONES_V32672.md`.
+
 ## v3.26.71
 
 El ingreso permite mostrar u ocultar la contraseña sin cambiar lo escrito. Instalación: `INSTRUCCIONES_V32671.md`. No requiere SQL.
