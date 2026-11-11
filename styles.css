@@ -1189,3 +1189,9 @@ main:has(.parameter-matrix){max-width:1500px}
 .mother-genetic>div{display:grid;gap:4px;flex:1;min-width:0;overflow-wrap:anywhere}.mother-genetic small{color:var(--muted)}.mother-genetic-color{width:12px;height:36px;border-radius:8px;flex-shrink:0}
 .plant-fill-option{display:flex;gap:10px;align-items:flex-start;margin-block:14px}.plant-fill-option input{width:20px;height:20px;flex-shrink:0}
 @media(max-width:600px){.croquis-room-actions{width:100%}.croquis-room-actions button{flex:1 1 130px}.mother-genetic{padding:10px}}
+
+/* Mostrar u ocultar la contraseña de ingreso, también con teclado y en celular. */
+.auth-password-field{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:stretch}
+.auth-password-field .text-input{min-width:0}
+.auth-password-field button{min-height:44px;min-width:78px;padding:10px;white-space:nowrap;touch-action:manipulation}
+.auth-password-field button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}

@@ -1,3 +1,7 @@
+## v3.26.71
+
+El ingreso permite mostrar u ocultar la contraseña sin cambiar lo escrito. Instalación: `INSTRUCCIONES_V32671.md`. No requiere SQL.
+
 ## v3.26.70
 
 El calendario muestra V1 y V2 con semana desde el ingreso, ciclo de Flora de destino y estado Vacía según el cronograma. Instalación: `INSTRUCCIONES_V32670.md`. No requiere SQL.
