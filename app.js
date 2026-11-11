@@ -1,8 +1,8 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.70';
+import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.71';
 
-const APP_VERSION='3.26.70';
+const APP_VERSION='3.26.71';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -5111,8 +5111,18 @@ $('harvest-total').oninput=updateHarvestLineTotal;
 $('save-harvest').onclick=handleHarvestSave;
 $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
 
+function setAuthPasswordVisibility(visible){
+  const input=$('auth-password'),button=$('toggle-auth-password');
+  input.type=visible?'text':'password';
+  button.textContent=visible?'Ocultar':'Mostrar';
+  button.setAttribute('aria-label',visible?'Ocultar contraseña':'Mostrar contraseña');
+  button.setAttribute('aria-pressed',String(visible));
+}
+$('toggle-auth-password').onclick=()=>setAuthPasswordVisibility($('auth-password').type==='password');
+
 $('site-palestina').onclick=()=>setSite('palestina');$('site-medrano').onclick=()=>setSite('medrano');
 document.querySelectorAll('.top-nav button').forEach(b=>b.onclick=()=>{const target=b.dataset.view;if(target==='harvests'&&!canViewHarvests()){state.view='today';render();return}if(target==='stock'&&!canViewStock()){state.view='today';render();return}state.view=target;state.room=null;state.roomDay=null;state.day=null;if(state.view!=='stock'){state.stockRoom=null;state.stockCycle=null}render()});$('sign-out').onclick=()=>db.auth.signOut();$('sign-in').onclick=async()=>{
+  setAuthPasswordVisibility(false);
   const message=$('auth-message');
   message.textContent='Ingresando…';
   try{
@@ -5264,6 +5274,7 @@ async function start(session){
 }
 
 db.auth.onAuthStateChange((event,session)=>{
+  setAuthPasswordVisibility(false);
   if((event==='PASSWORD_RECOVERY'||acceptingInvitation)&&session){
     state.session=session;
     $('auth-screen').hidden=true;$('auth-screen').style.display='none';
