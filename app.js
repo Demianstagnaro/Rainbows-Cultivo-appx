@@ -1,8 +1,8 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.69';
+import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.70';
 
-const APP_VERSION='3.26.69';
+const APP_VERSION='3.26.70';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -90,6 +90,31 @@ function cycleNumber(r,d){
 }function roomStatus(r,d){const n=cycleNumber(r,d),label=r.type==='flora'?cycle(r,d).label:stage(r,d);return n?`Ciclo ${n} · ${label}`:label}
 function stage(r,d){if(r.type==='trabajo')return'Área operativa';return r.type==='esquejes'?cut(d).label:(cycle(r,d).week?`Semana ${cycle(r,d).week}`:cycle(r,d).label)}function startWeek(r,d,w){const c=cycle(r,d);return c.stage==='flora'&&c.week===w&&diff(d,c.fl)%7===0}function transplant(r,d){const c=cycle(r,d);return r.type==='flora'&&diff(d,c.tr)===0}function harvest(r,d){if(r.type!=='flora')return false;const base=parse(r.floraStart),days=diff(d,base);return days>=56&&(days-56)%77===0}function harvestCycleNumber(r,d){return cycleNumber(r,add(d,-1))}
 function compactCycleLabel(r,d){const c=cycle(r,d);return c.stage==='vege'?`V S${c.week}`:c.stage==='flora'?`F S${c.week}`:c.label}
+const vegeCalendarCache=new Map();
+function vegeCalendarCycle(date){
+  const key=ymd(date);
+  if(vegeCalendarCache.has(key))return vegeCalendarCache.get(key);
+  if(!vegesOccupied(date)){vegeCalendarCache.set(key,null);return null}
+  let entry=null;
+  for(let offset=0;offset<77;offset++){
+    const candidate=add(date,-offset);
+    if(cloneTransfer(candidate)){entry=candidate;break}
+  }
+  const next=rules.filter(room=>room.type==='flora').map(room=>{
+    const current=cycle(room,date),transfer=diff(current.tr,date)>0?current.tr:add(current.tr,77);
+    return {room,transfer};
+  }).sort((a,b)=>a.transfer-b.transfer);
+  const transfer=next[0].transfer,destinations=next.filter(item=>same(item.transfer,transfer));
+  const result={entry,week:Math.floor(diff(date,entry)/7)+1,number:cycleNumber(destinations[0].room,transfer),destinations:destinations.map(item=>item.room.name),transfer};
+  vegeCalendarCache.set(key,result);return result;
+}
+function calendarRoomState(room,date){
+  if(room.type==='vege'){
+    const current=vegeCalendarCycle(date),name=room.name.replace('Vege ','V');
+    return current?`${name}: C${current.number} · S${current.week}`:`${name}: Vacía`;
+  }
+  return `${room.name.replace('Flora ','F')}: C${cycleNumber(room,date)} · ${compactCycleLabel(room,date)}`;
+}
 function upcomingHarvestDates(r,from=today(),count=10){
   if(r?.type!=='flora'||count<=0)return[];
   const base=add(parse(r.floraStart),56),periods=Math.max(0,Math.ceil(diff(from,base)/77)),first=add(base,periods*77);
@@ -4126,7 +4151,7 @@ function renderToday(){
   bind(d);
   bindGeneralTasks();
 }
-function renderCalendar(){ $('screen-title').textContent='Calendario';if(state.day){renderDay(state.day);return}const m=state.month,now=today(),currentMonth=m.getFullYear()===now.getFullYear()&&m.getMonth()===now.getMonth(),first=new Date(m.getFullYear(),m.getMonth(),1),start=add(first,-((first.getDay()+6)%7)),days=Array.from({length:42},(_,i)=>add(start,i));app.innerHTML=`<div class="calendar-today-action"><button id="back-today" class="secondary" ${currentMonth?'disabled':''}>Volver a hoy</button></div><div class="toolbar"><button id="prev">‹</button><strong>${monthName(m)}</strong><button id="next">›</button></div><div class="calendar">${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(x=>`<div class="dow">${x}</div>`).join('')}${days.map(d=>{const x=tasks(d),n=x.filter(done).length,hasPastPending=diff(d,now)<0&&x.some(t=>!done(t)),hasHarvest=x.some(t=>t.task==='Cosecha');return`<div class="day-cell ${same(d,now)?'today':''} ${hasPastPending?'past-pending':''} ${hasHarvest?'harvest-day':''} ${d.getMonth()===m.getMonth()?'':'dim'}" data-date="${ymd(d)}"><div class="day-num">${d.getDate()}</div>${hasHarvest?'<div class="calendar-harvest-badge">COSECHA</div>':''}<div class="day-state">${rules.filter(r=>r.type==='flora').map(r=>`${r.name.replace('Flora ','F')}: C${cycleNumber(r,d)} · ${compactCycleLabel(r,d)}`).join('<br>')}</div><div class="day-done">${taskCounter(n,x.length)}</div></div>`}).join('')}</div>`;$('back-today').onclick=()=>{state.day=null;state.month=new Date(now.getFullYear(),now.getMonth(),1);render()};$('prev').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()-1,1);render()};$('next').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()+1,1);render()};app.querySelectorAll('[data-date]').forEach(x=>x.onclick=()=>{state.day=parse(x.dataset.date);render()})}
+function renderCalendar(){ $('screen-title').textContent='Calendario';if(state.day){renderDay(state.day);return}const m=state.month,now=today(),currentMonth=m.getFullYear()===now.getFullYear()&&m.getMonth()===now.getMonth(),first=new Date(m.getFullYear(),m.getMonth(),1),start=add(first,-((first.getDay()+6)%7)),days=Array.from({length:42},(_,i)=>add(start,i));app.innerHTML=`<div class="calendar-today-action"><button id="back-today" class="secondary" ${currentMonth?'disabled':''}>Volver a hoy</button></div><div class="toolbar"><button id="prev">‹</button><strong>${monthName(m)}</strong><button id="next">›</button></div><p class="muted calendar-vege-legend">V1 y V2: semana desde el ingreso a Vege; C indica el ciclo de Flora de destino.</p><div class="calendar">${['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'].map(x=>`<div class="dow">${x}</div>`).join('')}${days.map(d=>{const x=tasks(d),n=x.filter(done).length,hasPastPending=diff(d,now)<0&&x.some(t=>!done(t)),hasHarvest=x.some(t=>t.task==='Cosecha');return`<div class="day-cell ${same(d,now)?'today':''} ${hasPastPending?'past-pending':''} ${hasHarvest?'harvest-day':''} ${d.getMonth()===m.getMonth()?'':'dim'}" data-date="${ymd(d)}"><div class="day-num">${d.getDate()}</div>${hasHarvest?'<div class="calendar-harvest-badge">COSECHA</div>':''}<div class="day-state">${rules.filter(r=>r.type==='flora'||r.type==='vege').map(r=>calendarRoomState(r,d)).join('<br>')}</div><div class="day-done">${taskCounter(n,x.length)}</div></div>`}).join('')}</div>`;$('back-today').onclick=()=>{state.day=null;state.month=new Date(now.getFullYear(),now.getMonth(),1);render()};$('prev').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()-1,1);render()};$('next').onclick=()=>{state.month=new Date(m.getFullYear(),m.getMonth()+1,1);render()};app.querySelectorAll('[data-date]').forEach(x=>x.onclick=()=>{state.day=parse(x.dataset.date);render()})}
 function renderDay(d){
   const ts=tasks(d),n=ts.filter(done).length;
   const completedGeneral=generalTasksForDate(d);

@@ -1,3 +1,7 @@
+## v3.26.70
+
+El calendario muestra V1 y V2 con semana desde el ingreso, ciclo de Flora de destino y estado Vacía según el cronograma. Instalación: `INSTRUCCIONES_V32670.md`. No requiere SQL.
+
 ## v3.26.69
 
 Madres como lista de genéticas en Croquis; vaciado de salas con períodos de ocupación e historial; completado de macetas vacías de una pileta con la genética elegida. Ejecutar `Palestina_V32669_croquis_salas.sql`. Ver `INSTRUCCIONES_V32669.md`.
