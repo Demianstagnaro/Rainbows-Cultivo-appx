@@ -1,3 +1,7 @@
+## v3.26.73
+
+Nueva sección Palestina → Administración → Caja. Planilla mensual con ingresos y egresos, efectivo acumulado, transferencias, categorías, artículos sugeridos, edición y anulación con historial. Acceso para Administración y Encargado de Palestina. Requiere el SQL de instalación incluido en la entrega; ver `INSTRUCCIONES_V32673.md`. La migración de esquema `Palestina_V32673_administracion_caja.sql` se conserva en el repositorio para las verificaciones automáticas.
+
 ## v3.26.72
 
 Caja Digital usa sólo los movimientos del día y reinicia su apertura en cero (hora de Buenos Aires). Efectivo conserva el saldo acumulado. El cierre registra la diferencia digital sin crear movimientos. Requiere `Rainbows_V3.26.72_caja_digital_diaria.sql`; instalación en `INSTRUCCIONES_V32672.md`.
@@ -29,7 +33,7 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.60. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.73. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
 
 ## V3.26.60 — Tabla de parámetros compacta
 

@@ -1,10 +1,10 @@
 {
   "name": "rainbows-app",
-  "version": "3.26.72",
+  "version": "3.26.73",
   "private": true,
   "type": "module",
   "scripts": {
-    "check:syntax": "node --check app.js && node --check rainbows-overrides.js && node --check sw.js && node --check supply-consumption.js",
+    "check:syntax": "node --check app.js && node --check rainbows-overrides.js && node --check sw.js && node --check supply-consumption.js && node --check palestina-cash.js",
     "test": "npm run check:syntax && node --test tests/*.test.mjs"
   }
 }
