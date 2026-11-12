@@ -163,4 +163,6 @@ jobs:
       - run: psql -v ON_ERROR_STOP=1 -f Palestina_V32673_administracion_caja.sql
       - run: psql -v ON_ERROR_STOP=1 -f Palestina_V32673_administracion_caja.sql
       - run: psql -v ON_ERROR_STOP=1 -f tests/sql/palestina-cash-assertions.sql
-
+      - run: psql -v ON_ERROR_STOP=1 -f Palestina_V32674_articulos_caja.sql
+      - run: psql -v ON_ERROR_STOP=1 -f Palestina_V32674_articulos_caja.sql
+      - run: psql -v ON_ERROR_STOP=1 -f tests/sql/palestina-cash-articles-assertions.sql
