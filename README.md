@@ -1,3 +1,7 @@
+## v3.26.74
+
+Caja Palestina: importes con formato argentino al escribir, «Efectivo al comenzar» para identificar la apertura original y botón Nuevo artículo. Los movimientos sólo aceptan artículos existentes; el alta es explícita, confirma el nombre y detecta duplicados por mayúsculas, acentos y espacios. Instalar `Palestina_V32674_articulos_caja.sql` después de V3.26.73. Ver `INSTRUCCIONES_V32674.md`.
+
 ## v3.26.73
 
 Nueva sección Palestina → Administración → Caja. Planilla mensual con ingresos y egresos, efectivo acumulado, transferencias, categorías, artículos sugeridos, edición y anulación con historial. Acceso para Administración y Encargado de Palestina. Requiere el SQL de instalación incluido en la entrega; ver `INSTRUCCIONES_V32673.md`. La migración de esquema `Palestina_V32673_administracion_caja.sql` se conserva en el repositorio para las verificaciones automáticas.
@@ -33,7 +37,7 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.73. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.74. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
 
 ## V3.26.60 — Tabla de parámetros compacta
 
