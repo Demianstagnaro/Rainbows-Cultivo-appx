@@ -1,3 +1,7 @@
+## v3.26.75
+
+Caja Palestina: botones Movimiento y Nuevo artículo dentro de Movimientos del mes. Se aclara que el saldo inicial de cada mes es el saldo final de efectivo del anterior. No requiere SQL; ver `INSTRUCCIONES_V32675.md`.
+
 ## v3.26.74
 
 Caja Palestina: importes con formato argentino al escribir, «Efectivo al comenzar» para identificar la apertura original y botón Nuevo artículo. Los movimientos sólo aceptan artículos existentes; el alta es explícita, confirma el nombre y detecta duplicados por mayúsculas, acentos y espacios. Instalar `Palestina_V32674_articulos_caja.sql` después de V3.26.73. Ver `INSTRUCCIONES_V32674.md`.
@@ -37,7 +41,7 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.74. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.75. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
 
 ## V3.26.60 — Tabla de parámetros compacta
 
