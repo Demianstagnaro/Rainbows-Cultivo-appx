@@ -13,3 +13,16 @@ test('cantidad no multiplica el costo total y la suma respeta centavos',()=>{
 test('selector mensual cambia de año en ambos sentidos',()=>{
  assert.equal(palestinaCashMonthShift('2026-12',1),'2027-01');assert.equal(palestinaCashMonthShift('2026-01',-1),'2025-12');
 });
+
+test('formato argentino al escribir importes conserva centavos y agrupa miles',async()=>{
+ const {palestinaCashMoneyInput:format}=await import('../palestina-cash.js');
+ assert.equal(format('1234567'),'1.234.567');assert.equal(format('1234567,89'),'1.234.567,89');
+ assert.equal(format('1.234.567,89'),'1.234.567,89');assert.equal(format('0,05'),'0,05');
+ assert.equal(format(',5'),'0,5');assert.equal(format(''),'');assert.equal(format('-1000'),'-1.000');
+});
+test('artículos existentes admiten mayúsculas, acentos y espacios sin crear variantes',async()=>{
+ const {palestinaCashFindArticle:find}=await import('../palestina-cash.js');const article={id:'a',nombre:'Artículo de prueba'};
+ assert.equal(find([article],'  ARTICULO  DE PRUEBA '),article);
+ assert.equal(find([article],'Artculo de prueba'),undefined);
+ assert.equal(find([article],'Otro artículo'),undefined);
+});
