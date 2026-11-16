@@ -1,4 +1,4 @@
-const RAINBOWS_OVERRIDES_VERSION='3.26.75';
+const RAINBOWS_OVERRIDES_VERSION='3.26.76';
 
 const harvestStarts={F1:'2026-05-20',F2:'2026-07-01',F3:'2026-05-20'};
 function utcDay(value){const [y,m,d]=String(value).split('-').map(Number);return Date.UTC(y,m-1,d)/86400000}
@@ -27,7 +27,7 @@ function markCalendarHarvests(){
 
 const floraAmendmentHeaders=['Producto','Trasplante / V1','Vege 2','Vege 3','Semana 1','Semana 2','Semana 3','Semana 4','Semana 5','Semana 6','Semana 7','Semana 8'];
 const shortAmendmentHeaders={
-  Veges:['Producto','Trasplante','Semana 3','Semana 5'],
+  Veges:['Producto','Trasplante','Cada 10 días'],
   Madres:['Producto','Enmienda 1','Enmienda 2','Enmienda 3']
 };
 const amendments={
@@ -38,7 +38,7 @@ const amendments={
     ['Compost','55L','-','-','25L','-','-','10L','-','-','-','-'],['Turba','55L','-','-','25L','-','-','10L','-','-','-','-'],['Harina de hueso','6500g','-','-','-','-','-','-','-','-','-','-'],['Harina de pescado','2250g','-','-','2500g','-','-','5500g','-','-','-','-'],['Basalto','7500g','-','-','-','-','-','-','-','-','-','-'],['Bokashi','500g','-','-','200g','-','-','200g','-','-','-','-'],['Harina de dolomita','1150g','-','-','-','-','-','-','-','-','-','-'],['Azufre agrícola','1500g','-','-','-','-','-','-','-','-','-','-'],['Tierra de diatomeas','1250g','-','-','-','-','-','-','-','-','-','-'],['Harina de alfalfa (top dress)','-','-','-','2 L','-','-','2 L','-','-','-','-'],['FPJ','5ml x L','2,5ml x L','2,5ml x L','2,5ml x L','2,5ml x L','-','-','-','-','-','-'],['FFJ','-','-','-','-','-','5ml x L','2,5ml x L','5ml x L','-','-','-'],['FRJ','-','-','-','-','-','-','2,5ml x L','5ml x L','-','-','-'],['LAB','5ml x L','2,5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','1ml x L','-','-'],['OHN (Ajo, jengibre, canela)','5ml x L','2,5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','2,5ml x L','5ml x L','-','-','-']
   ]},
   Veges:{headers:shortAmendmentHeaders.Veges,rows:[
-    ['Compost','20L','20L','20L'],['Turba','20L','20L','20L'],['Harina de hueso','2400g','-','-'],['Harina de pescado','800g','800g','800g'],['Basalto','2700g','-','-'],['Bokashi','200g','150g','150g'],['Harina de dolomita','420g','-','-'],['Azufre agrícola','550g','-','-'],['Tierra de diatomeas','450g','-','-'],['Harina de alfalfa (top dress)','-','-','-'],['FPJ','5ml x L','2,5ml x L','2,5ml x L'],['FFJ','-','-','-'],['FRJ','-','-','-'],['LAB','5ml x L','2,5ml x L','2,5ml x L'],['OHN (Ajo, jengibre, canela)','5ml x L','2,5ml x L','2,5ml x L']
+    ["Compost", "20L", "20L"],["Turba", "20L", "20L"],["Harina de hueso", "2400g", "-"],["Harina de pescado", "800g", "800g"],["Basalto", "2700g", "-"],["Bokashi", "200g", "150g"],["Harina de dolomita", "420g", "-"],["Azufre agrícola", "550g", "-"],["Tierra de diatomeas", "450g", "-"],["Harina de alfalfa (top dress)", "-", "-"],["FPJ", "5ml x L", "2,5ml x L"],["FFJ", "-", "-"],["FRJ", "-", "-"],["LAB", "5ml x L", "2,5ml x L"],["OHN (Ajo, jengibre, canela)", "5ml x L", "2,5ml x L"]
   ]},
   Madres:{headers:shortAmendmentHeaders.Madres,rows:[
     ['Compost','20L','20L','20L'],['Turba','20L','20L','20L'],['Harina de hueso','2400g','-','-'],['Harina de pescado','800g','800g','800g'],['Basalto','2700g','-','-'],['Bokashi','200g','150g','150g'],['Harina de dolomita','420g','-','-'],['Azufre agrícola','550g','-','-'],['Tierra de diatomeas','450g','-','-'],['Harina de alfalfa (top dress)','-','-','-'],['FPJ','5ml x L','2,5ml x L','2,5ml x L'],['FFJ','-','-','-'],['FRJ','-','-','-'],['LAB','5ml x L','2,5ml x L','2,5ml x L'],['OHN (Ajo, jengibre, canela)','5ml x L','2,5ml x L','2,5ml x L']
