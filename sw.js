@@ -1,4 +1,4 @@
-const VERSION='3.26.76';
+const VERSION='3.26.77';
 const CACHE=`rainbows-v${VERSION.replaceAll('.','-')}`;
 const SUPABASE_MODULE='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 const APP_SHELL='./index.html';
@@ -8,6 +8,7 @@ const FILES=[
   `./app.js?v=${VERSION}`,
   `./supply-consumption.js?v=${VERSION}`,
   `./palestina-cash.js?v=${VERSION}`,
+  `./palestina-payroll.js?v=${VERSION}`,
   `./rainbows-overrides.js?v=${VERSION}`,
   `./manifest.json?v=${VERSION}`,
   `./rainbows-logo.webp?v=${VERSION}`,

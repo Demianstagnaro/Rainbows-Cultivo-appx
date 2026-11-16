@@ -1,10 +1,11 @@
+import {createPalestinaPayrollController} from './palestina-payroll.js?v=3.26.77';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.76';
+import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.77';
 
-import {createPalestinaCashController} from './palestina-cash.js?v=3.26.76';
+import {createPalestinaCashController} from './palestina-cash.js?v=3.26.77';
 
-const APP_VERSION='3.26.76';
+const APP_VERSION='3.26.77';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -3522,8 +3523,9 @@ let palestinaCashController=null;
 function renderPalestinaAdministration(){
   if(!canManagePalestina())return;
   $('screen-title').textContent='Administración · Palestina';
-  app.innerHTML='<section class="panel"><h2>Administración de Palestina</h2><p class="muted">Control de ingresos y gastos de la sede.</p></section><section class="pc-admin-grid"><button class="panel cultivo-info-card" type="button" data-palestina-cash><strong>Caja</strong><span>Planilla mensual, efectivo, transferencias y gastos por categoría.</span></button></section>';
+  app.innerHTML='<section class="panel"><h2>Administración de Palestina</h2><p class="muted">Control de ingresos y gastos de la sede.</p></section><section class="pc-admin-grid"><button class="panel cultivo-info-card" type="button" data-palestina-cash><strong>Caja</strong><span>Planilla mensual, efectivo, transferencias y gastos por categoría.</span></button><button class="panel cultivo-info-card" type="button" data-palestina-payroll><strong>Asistencias y sueldos</strong><span>Jornadas, pagos y saldo por empleado.</span></button></section>';
   app.querySelector('[data-palestina-cash]').onclick=()=>{state.view='palestina-caja';render()};
+  app.querySelector('[data-palestina-payroll]').onclick=()=>{state.view='palestina-sueldos';render()};
 }
 function renderPalestinaCash(){
   if(!canManagePalestina())return;
@@ -3535,6 +3537,17 @@ function renderPalestinaCash(){
     back:()=>{state.view='palestina-administracion';render()}
   });
   palestinaCashController.render();
+}
+
+let palestinaPayrollController=null;
+function renderPalestinaPayroll(){
+  if(!canManagePalestina())return;
+  if(!palestinaPayrollController)palestinaPayrollController=createPalestinaPayrollController({
+    db,app,canManage:canManagePalestina,isActive:()=>state.site==='palestina'&&state.view==='palestina-sueldos',escapeHtml,formatMoney,moneyParse:medranoMoneyInputNumber,
+    getMonth:()=>state.palestinaPayrollMonth||(state.palestinaPayrollMonth=medranoJobDay(new Date().toISOString()).slice(0,7)),
+    setMonth:value=>{state.palestinaPayrollMonth=value},setTitle:value=>{$('screen-title').textContent=value},back:()=>{state.view='palestina-administracion';render()}
+  });
+  palestinaPayrollController.render();
 }
 
 const cultivoInfoViews=new Set(['cultivo-info','next-harvests','amendments','genetics','croquis','rooms','parameters','insumos']);
@@ -3969,6 +3982,7 @@ function appNavigationSnapshot(){
     view:state.view,
     medranoView:state.medranoView,
     palestinaCashMonth:state.palestinaCashMonth||null,
+    palestinaPayrollMonth:state.palestinaPayrollMonth||null,
     month:state.month instanceof Date?ymd(state.month).slice(0,7):null,
     day:state.day?ymd(state.day):null,
     room:state.room||null,
@@ -4000,6 +4014,7 @@ function restoreAppNavigation(snapshot){
   state.view=snapshot.view||'today';
   state.medranoView=snapshot.medranoView||'today';
   state.palestinaCashMonth=snapshot.palestinaCashMonth||null;
+  state.palestinaPayrollMonth=snapshot.palestinaPayrollMonth||null;
   state.month=snapshot.month?parse(`${snapshot.month}-01`):new Date(today().getFullYear(),today().getMonth(),1);
   state.day=snapshot.day?parse(snapshot.day):null;
   state.room=snapshot.room||null;
@@ -4072,7 +4087,7 @@ $('harvest-total').oninput=updateHarvestLineTotal;
 $('save-harvest').onclick=handleHarvestSave;
 $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
 
-document.querySelectorAll('.top-nav button').forEach(b=>{const view=b.dataset.view;const allowed=canViewOperations()&&(view==='harvests'?canViewHarvests():view==='stock'?canViewStock():view==='palestina-administracion'?canManagePalestina():true);b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',view==='cultivo-info'?cultivoInfoViews.has(state.view):view==='palestina-administracion'?['palestina-administracion','palestina-caja'].includes(state.view):view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='harvests'&&!canViewHarvests()){state.view='today';state.selectedHarvest=null;}if(state.view==='stock'&&!canViewStock()){state.view='today';state.stockRoom=null;state.stockCycle=null;}if(['palestina-administracion','palestina-caja'].includes(state.view)&&!canManagePalestina())state.view='today';if(state.view==='settings'&&currentRole()!=='administrador')state.view='today';if(state.view==='palestina-administracion')renderPalestinaAdministration();if(state.view==='palestina-caja')renderPalestinaCash();if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='cultivo-info')renderCultivoInfo();if(state.view==='next-harvests')renderNextHarvests();if(state.view==='amendments')renderAmendmentsView();if(state.view==='parameters')renderParameters();if(state.view==='insumos')renderInsumos();if(state.view==='croquis')renderCroquisView();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
+document.querySelectorAll('.top-nav button').forEach(b=>{const view=b.dataset.view;const allowed=canViewOperations()&&(view==='harvests'?canViewHarvests():view==='stock'?canViewStock():view==='palestina-administracion'?canManagePalestina():true);b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',view==='cultivo-info'?cultivoInfoViews.has(state.view):view==='palestina-administracion'?['palestina-administracion','palestina-caja','palestina-sueldos'].includes(state.view):view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='harvests'&&!canViewHarvests()){state.view='today';state.selectedHarvest=null;}if(state.view==='stock'&&!canViewStock()){state.view='today';state.stockRoom=null;state.stockCycle=null;}if(['palestina-administracion','palestina-caja','palestina-sueldos'].includes(state.view)&&!canManagePalestina())state.view='today';if(state.view==='settings'&&currentRole()!=='administrador')state.view='today';if(state.view==='palestina-administracion')renderPalestinaAdministration();if(state.view==='palestina-caja')renderPalestinaCash();if(state.view==='palestina-sueldos')renderPalestinaPayroll();if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='cultivo-info')renderCultivoInfo();if(state.view==='next-harvests')renderNextHarvests();if(state.view==='amendments')renderAmendmentsView();if(state.view==='parameters')renderParameters();if(state.view==='insumos')renderInsumos();if(state.view==='croquis')renderCroquisView();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
 function renderHelp(){
   $('screen-title').textContent='Ayuda';
   app.innerHTML=`

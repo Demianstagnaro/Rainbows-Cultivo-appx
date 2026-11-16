@@ -1,3 +1,7 @@
+## v3.26.77
+
+Palestina → Administración → Asistencias y sueldos. Grilla mensual por empleado con jornadas completas, medias jornadas, horas, guardias y ausencias. Valores configurables, importes históricos conservados, pagos, ajustes, saldo acumulado y auditoría. Sólo Administradores y Encargados de Palestina. Requiere `Palestina_V32677_asistencias_sueldos.sql`. Ver `INSTRUCCIONES_V32677.md`.
+
 ## v3.26.76
 
 Veges conserva la enmienda de trasplante y programa reposiciones cada 10 días desde el ingreso hasta el pase a Flora. Tabla y precarga con dos etapas: Trasplante y Cada 10 días. Cronograma nuevo desde el 16/11/2026; fechas anteriores conservadas. No requiere SQL. Ver `INSTRUCCIONES_V32676.md`.
@@ -45,7 +49,7 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.76. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.77. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
 
 ## V3.26.60 — Tabla de parámetros compacta
 
