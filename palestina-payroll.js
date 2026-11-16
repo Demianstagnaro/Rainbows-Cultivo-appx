@@ -1,4 +1,4 @@
-import {palestinaCashMoneyInput,palestinaCashToday,palestinaCashMonthShift} from './palestina-cash.js?v=3.26.78';
+import {palestinaCashMoneyInput,palestinaCashToday,palestinaCashMonthShift} from './palestina-cash.js?v=3.26.79';
 export const payrollTypes={completa:'Jornada completa',media:'Media jornada',horas:'Por horas',sabado:'Guardia sábado (2 h)',domingo:'Guardia domingo / feriado (2 h)',ausente:'Ausente'};
 export function payrollEstimate(t,type,hours){
  const day=Number(t.jornada),base=Number(t.horas);
@@ -15,6 +15,8 @@ export function payrollSummary(employees,records){
  });
 }
 export function payrollDates(month){const [y,m]=month.split('-').map(Number),n=new Date(Date.UTC(y,m,0)).getUTCDate();return Array.from({length:n},(_,i)=>`${month}-${String(i+1).padStart(2,'0')}`)}
+const monthlySalaryNames=new Set(['fran','demi','chomi','cone','lua']);
+function usesDailyWages(employee){return !monthlySalaryNames.has(String(employee.nombre||'').trim().toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g,''))}
 export function createPalestinaPayrollController(ctx){
  const {app,db,escapeHtml:esc,formatMoney:money,moneyParse}=ctx;let data=null,serial=0,quickBusy=false;
  const dateText=d=>new Date(d+'T12:00:00').toLocaleDateString('es-AR');
@@ -31,8 +33,8 @@ export function createPalestinaPayrollController(ctx){
  }
  async function write(operation,values){const q=await db.rpc('guardar_sueldos_palestina',{p_operacion:operation,p_datos:values});if(q.error)throw q.error;return q.data}
  function tariffEditor(employeeId=null){
-  if(!data.empleados.length)return alert('Agregá primero los empleados desde Configuración.');
-  const {form}=dialog('Valores por jornada',`<label class="field-label">Empleado<select class="text-input" name="empleado">${data.empleados.map(e=>`<option value="${esc(e.id)}">${esc(e.nombre)}${e.activo?'':' (inactivo)'}</option>`).join('')}</select></label><label class="pc-check"><input type="checkbox" name="habilitado" checked> Habilitado para registrar nuevas asistencias</label><div class="pc-form-grid"><label class="field-label">Jornada completa ($)<input class="text-input" name="jornada" data-money inputmode="decimal" required></label><label class="field-label">Horas de una jornada completa<input class="text-input" name="horas" inputmode="decimal" value="9" required></label><label class="field-label">Guardia sábado, 2 h ($)<input class="text-input" name="sabado" data-money inputmode="decimal" placeholder="Opcional"></label><label class="field-label">Guardia domingo / feriado, 2 h ($)<input class="text-input" name="domingo" data-money inputmode="decimal" placeholder="Opcional"></label></div><p class="muted">Sin valor fijo de guardia: valor por hora × 2 horas × 1,5 (sábado) o × 2 (domingo / feriado). Los feriados se eligen manualmente. Cambiar valores sólo afecta registros nuevos.</p><label class="field-label">Motivo del cambio (obligatorio al modificar valores)<textarea class="text-input" name="motivo" maxlength="1000"></textarea></label>`,async f=>{
+  if(!data.empleados.some(usesDailyWages))return alert('No hay empleados por jornada para configurar.');
+  const {form}=dialog('Valores por jornada',`<label class="field-label">Empleado<select class="text-input" name="empleado">${data.empleados.filter(usesDailyWages).map(e=>`<option value="${esc(e.id)}">${esc(e.nombre)}${e.activo?'':' (inactivo)'}</option>`).join('')}</select></label><label class="pc-check"><input type="checkbox" name="habilitado" checked> Habilitado para registrar nuevas asistencias</label><div class="pc-form-grid"><label class="field-label">Jornada completa ($)<input class="text-input" name="jornada" data-money inputmode="decimal" required></label><label class="field-label">Horas de una jornada completa<input class="text-input" name="horas" inputmode="decimal" value="9" required></label><label class="field-label">Guardia sábado, 2 h ($)<input class="text-input" name="sabado" data-money inputmode="decimal" placeholder="Opcional"></label><label class="field-label">Guardia domingo / feriado, 2 h ($)<input class="text-input" name="domingo" data-money inputmode="decimal" placeholder="Opcional"></label></div><p class="muted">Sin valor fijo de guardia: valor por hora × 2 horas × 1,5 (sábado) o × 2 (domingo / feriado). Los feriados se eligen manualmente. Cambiar valores sólo afecta registros nuevos.</p><label class="field-label">Motivo del cambio (obligatorio al modificar valores)<textarea class="text-input" name="motivo" maxlength="1000"></textarea></label>`,async f=>{
    const employee=data.empleados.find(e=>e.id===f.get('empleado')),t=employee.tarifa;
    const day=moneyParse(f.get('jornada')),hours=Number(String(f.get('horas')).replace(',','.'));
    if(!Number.isFinite(day)||day<=0||!Number.isFinite(hours)||hours<=0||hours>24)throw new Error('Revisá el valor por jornada y las horas.');
@@ -43,7 +45,7 @@ export function createPalestinaPayrollController(ctx){
   if(employeeId)form.elements.empleado.value=employeeId;form.elements.empleado.onchange=fill;fill();
  }
  function recordEditor(clase='asistencia',employeeId=null,date=null,row=null){
-  const employees=configured().filter(e=>clase!=='asistencia'||row||e.activo&&e.tarifa.habilitado);
+  const employees=configured().filter(e=>(row||usesDailyWages(e))&&(clase!=='asistencia'||row||e.activo&&e.tarifa.habilitado));
   if(!employees.length){tariffEditor();return}
   const today=palestinaCashToday(),month=ctx.getMonth(),defaultDate=month===today.slice(0,7)?today:(month+'-01'>today?today:month+'-01');
   const request=crypto.randomUUID();
@@ -102,12 +104,13 @@ export function createPalestinaPayrollController(ctx){
   }finally{quickBusy=false}
  }
  function draw(host){
-  const summary=payrollSummary(data.empleados,data.registros),visible=summary.filter(e=>e.activo||e.days||e.absences||e.paid||e.adjustments||e.previous),month=ctx.getMonth(),today=palestinaCashToday();
+  const summary=payrollSummary(data.empleados,data.registros),visible=summary.filter(e=>usesDailyWages(e)&&(e.activo||e.days||e.absences||e.paid||e.adjustments||e.previous)),month=ctx.getMonth(),today=palestinaCashToday();
   const total=k=>visible.reduce((s,e)=>s+Math.round(Number(e[k])*100),0)/100,owed=visible.reduce((s,e)=>s+Math.max(0,Math.round(e.balance*100)),0)/100;
-  const live=data.registros.filter(r=>!r.anulado_at),paymentDates=[...new Set(live.filter(r=>r.clase==='pago').map(r=>r.fecha))].sort();
+  const dailyIds=new Set(visible.map(e=>e.id));
+  const live=data.registros.filter(r=>!r.anulado_at&&dailyIds.has(r.empleado_id)),paymentDates=[...new Set(live.filter(r=>r.clase==='pago').map(r=>r.fecha))].sort();
   const options={completa:'Completa',media:'Parcial (½)',horas:'Por horas',sabado:'Guardia sáb.',domingo:'Dom. / feriado',ausente:'Ausente'};
   const totalsRow=(label,key,last=total(key))=>`<tr class="ps-total"><th>${label}</th>${visible.map(e=>`<td>${money(e[key])}</td>`).join('')}<td>${money(last)}</td></tr>`;
-  host.innerHTML=`<section class="panel ps-panel"><div class="pc-header"><div><h2>Asistencias y sueldos</h2><p class="muted">Una planilla por mes · todos los empleados</p></div><button class="secondary" type="button" data-tariffs>Valores por jornada</button></div><div class="pc-month"><button class="secondary" type="button" data-prev aria-label="Mes anterior">‹</button><label class="field-label">Mes<input class="text-input" type="month" min="1900-01" max="2200-12" value="${esc(month)}" data-month></label><button class="secondary" type="button" data-next aria-label="Mes siguiente">›</button></div><p class="muted ps-help">Elegí Completa o Parcial (media jornada) y tildá el día. Se guarda y calcula automáticamente. Para otra duración, elegí Por horas.</p><p class="pc-form-error ps-status" role="status" aria-live="polite" data-sheet-status></p>${!visible.length?'<p>Agregá los empleados desde Configuración para comenzar.</p>':`<div class="stock-table-wrap ps-scroll" data-sheet-scroll><table class="stock-table ps-sheet"><thead><tr><th>Día</th>${visible.map(e=>`<th><strong>${esc(e.nombre)}</strong><button type="button" class="ps-rate" data-rate-employee="${esc(e.id)}">${e.tarifa?money(e.tarifa.jornada)+' / día':'Definir valor'}</button></th>`).join('')}<th>Total</th></tr></thead><tbody>${payrollDates(month).map(date=>{
+  host.innerHTML=`<section class="panel ps-panel"><div class="pc-header"><div><h2>Asistencias y sueldos</h2><p class="muted">Una planilla por mes · todos los empleados</p></div><button class="secondary" type="button" data-tariffs>Valores por jornada</button></div><div class="pc-month"><button class="secondary" type="button" data-prev aria-label="Mes anterior">‹</button><label class="field-label">Mes<input class="text-input" type="month" min="1900-01" max="2200-12" value="${esc(month)}" data-month></label><button class="secondary" type="button" data-next aria-label="Mes siguiente">›</button></div><p class="muted ps-help">Elegí Completa o Parcial (media jornada) y tildá el día. Se guarda y calcula automáticamente. Para otra duración, elegí Por horas.</p><p class="pc-form-error ps-status" role="status" aria-live="polite" data-sheet-status></p>${!visible.length?'<p>No hay empleados por jornada para mostrar.</p>':`<div class="stock-table-wrap ps-scroll" data-sheet-scroll><table class="stock-table ps-sheet"><thead><tr><th>Día</th>${visible.map(e=>`<th><strong>${esc(e.nombre)}</strong><button type="button" class="ps-rate" data-rate-employee="${esc(e.id)}">${e.tarifa?money(e.tarifa.jornada)+' / día':'Definir valor'}</button></th>`).join('')}<th>Total</th></tr></thead><tbody>${payrollDates(month).map(date=>{
    const rows=live.filter(r=>r.clase==='asistencia'&&r.fecha===date),daily=rows.reduce((n,r)=>n+Math.round(Number(r.importe)*100),0)/100;
    return `<tr class="${[0,6].includes(new Date(date+'T12:00:00').getDay())?'pp-weekend':''}"><th>${esc(dateLabel(date))}</th>${visible.map(e=>{
     const r=rows.find(r=>r.empleado_id===e.id),disabled=date>today||!r&&(!e.activo||!e.tarifa?.habilitado);
