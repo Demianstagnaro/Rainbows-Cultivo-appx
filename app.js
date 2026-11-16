@@ -1,11 +1,11 @@
-import {createPalestinaPayrollController} from './palestina-payroll.js?v=3.26.80';
+import {createPalestinaPayrollController} from './palestina-payroll.js?v=3.26.83';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.80';
+import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.83';
 
-import {createPalestinaCashController} from './palestina-cash.js?v=3.26.80';
+import {createPalestinaCashController} from './palestina-cash.js?v=3.26.83';
 
-const APP_VERSION='3.26.80';
+const APP_VERSION='3.26.83';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -3730,12 +3730,13 @@ async function renderMadresCroquis(){
 function localEditor(title,fields,save){
  const dlg=document.createElement('dialog');dlg.className='dialog';dlg.innerHTML='<form><h3>'+escapeHtml(title)+'</h3>'+fields+'<menu><button type="button" class="secondary">Cancelar</button><button class="primary">Guardar</button></menu></form>';document.body.append(dlg);dlg.onclose=()=>dlg.remove();dlg.querySelector('button').onclick=()=>dlg.close();dlg.querySelector('form').onsubmit=async e=>{e.preventDefault();const btn=dlg.querySelector('.primary');if(btn.disabled)return;btn.disabled=true;try{await save(new FormData(e.target));dlg.close()}catch(err){alert(err.message)}finally{btn.disabled=false}};dlg.showModal();
 }
+function nurseryTrayCount(sala){return sala==='Esquejes'?26:sala==='Vege 1'?12:11}
 async function renderSemillero(sala){
- const clone=sala==='Esquejes',unit=clone?'Almácigo':'Bandeja';
+ const clone=sala==='Esquejes',unit=clone?'Almácigo':'Bandeja',trayCount=nurseryTrayCount(sala);
  app.innerHTML='<button class="secondary">← Croquis</button><section class="panel">Cargando…</section>';app.firstChild.onclick=()=>{state.room=null;render()};const host=app.lastChild;
  const {data:rows,error}=await db.from('palestina_semillero').select('*').eq('sala',sala);if(!host.isConnected)return;if(error){host.textContent=error.message;return}
  const occupied=rows.reduce((n,r)=>n+Number(r.cantidad),0);
- host.innerHTML='<h2>'+escapeHtml(sala)+'</h2><div class="croquis-metrics"><div><span>'+(clone?'Esquejes':'Plantas')+'</span><strong>'+occupied+'</strong></div><div><span>Capacidad</span><strong>'+(clone?936:99)+'</strong></div><div><span>'+unit+'s</span><strong>'+(clone?26:11)+'</strong></div></div><div class="beds-grid nursery-grid" style="--bed-columns:4">'+Array.from({length:clone?26:11},(_,i)=>{
+ host.innerHTML='<h2>'+escapeHtml(sala)+'</h2><div class="croquis-metrics"><div><span>'+(clone?'Esquejes':'Plantas')+'</span><strong>'+occupied+'</strong></div><div><span>Capacidad</span><strong>'+(trayCount*(clone?36:9))+'</strong></div><div><span>'+unit+'s</span><strong>'+trayCount+'</strong></div></div><div class="beds-grid nursery-grid" style="--bed-columns:4">'+Array.from({length:trayCount},(_,i)=>{
   const tray=i+1, count=rows.filter(r=>r.bandeja===tray).reduce((n,r)=>n+Number(r.cantidad),0);
   return '<article class="bed-card"><div class="bed-card-head"><strong>'+unit+' '+String(tray).padStart(2,'0')+'</strong>'+(!clone?'<span>'+count+'/9</span>':'')+'</div><div class="'+(clone?'clone-tray-body':'plant-grid')+'">'+Array.from({length:clone?1:9},(_,j)=>{
    const r=rows.find(x=>x.bandeja===tray&&x.posicion===j+1),g=state.geneticas.find(x=>x.id===r?.genetica_id);
@@ -3745,7 +3746,7 @@ async function renderSemillero(sala){
  }).join('')+'</div>'+resumenGeneticas(rows)+croquisSalaControlsMarkup(sala);
  bindCroquisSalaControls();
  host.querySelectorAll('[data-tray]').forEach(btn=>btn.onclick=()=>{const bandeja=+btn.dataset.tray,posicion=+btn.dataset.pos,r=rows.find(x=>x.bandeja===bandeja&&x.posicion===posicion);
- localEditor(unit+' '+bandeja+(clone?'':' · Maceta '+posicion),'<label>Genética<select class="text-input" name="g"><option value="">Vacío</option>'+state.geneticas.filter(g=>g.activa!==false||g.id===r?.genetica_id).map(g=>'<option value="'+escapeHtml(g.id)+'" '+(g.id===r?.genetica_id?'selected':'')+'>'+escapeHtml(g.nombre)+'</option>').join('')+'</select></label>'+(clone?'<label>Esquejes<input class="text-input" type="number" min="1" max="36" name="n" required value="'+(r?.cantidad||36)+'"></label><label class="field-label">Fecha de inicio<input class="text-input" type="date" name="fecha_inicio" max="'+ymd(today())+'" value="'+escapeHtml(r?.fecha_inicio||'')+'"></label>':''),async f=>{const key={sala,bandeja,posicion},genetica_id=f.get('g');const q=await (genetica_id?db.from('palestina_semillero').upsert({...key,genetica_id,cantidad:clone?Number(f.get('n')):1,...(clone?{fecha_inicio:f.get('fecha_inicio')||null}:{})}):db.from('palestina_semillero').delete().match(key));if(q.error)throw q.error;if(host.isConnected)renderSemillero(sala)})});
+ localEditor(unit+' '+bandeja+(clone?'':' · Maceta '+posicion),'<label>Genética<select class="text-input" name="g"><option value="">Vacío</option>'+state.geneticas.filter(g=>g.activa!==false||g.id===r?.genetica_id).map(g=>'<option value="'+escapeHtml(g.id)+'" '+(g.id===r?.genetica_id?'selected':'')+'>'+escapeHtml(g.nombre)+'</option>').join('')+'</select></label>'+(!clone?'<label class="pc-check"><input type="checkbox" name="fill"> Completar las macetas vacías de esta bandeja con la misma genética</label><p class="muted">Las otras macetas ya ocupadas conservan su genética.</p>':'')+(clone?'<label>Esquejes<input class="text-input" type="number" min="1" max="36" name="n" required value="'+(r?.cantidad||36)+'"></label><label class="field-label">Fecha de inicio<input class="text-input" type="date" name="fecha_inicio" max="'+ymd(today())+'" value="'+escapeHtml(r?.fecha_inicio||'')+'"></label>':''),async f=>{const key={sala,bandeja,posicion},genetica_id=f.get('g'),fill=!clone&&!!f.get('fill');if(fill&&!genetica_id)throw new Error('Elegí una genética para completar la bandeja.');const q=fill?await db.rpc('completar_bandeja_croquis',{p_sala:sala,p_bandeja:bandeja,p_posicion:posicion,p_genetica_id:genetica_id}):await (genetica_id?db.from('palestina_semillero').upsert({...key,genetica_id,cantidad:clone?Number(f.get('n')):1,...(clone?{fecha_inicio:f.get('fecha_inicio')||null}:{})}):db.from('palestina_semillero').delete().match(key));if(q.error)throw q.error;if(host.isConnected)renderSemillero(sala)})});
 }
 async function renderInsumos(){
  $('screen-title').textContent='Insumos';app.innerHTML='<button class="secondary">← Info cultivo</button><section class="panel">Cargando…</section>';app.firstChild.onclick=openCultivoInfo;const host=app.lastChild, cats=['Cultivo','Personal','Oficina','Limpieza'];
@@ -4231,7 +4232,7 @@ function renderCroquisView(){
   $('screen-title').textContent='Croquis';
   const floraRooms=rules.filter(rule=>rule.type==='flora');
   if(!state.room){
-    app.innerHTML=`<button id="back-cultivo-info" class="secondary cultivo-info-back" type="button">← Info cultivo</button><section class="panel cultivo-info-head"><h2>Croquis</h2><p class="muted">Elegí una sala para abrir directamente la distribución actual de camas y plantas.</p></section><section class="harvest-room-selector" aria-label="Salas con croquis">${floraRooms.map(room=>{const roomBeds=beds(room.name),roomPlants=roomBeds.flatMap(plants),occupied=roomPlants.filter(plant=>plant.ocupada).length;return`<button class="panel harvest-room-button" type="button" data-croquis-room="${room.name}"><span>${room.name}</span><strong>${roomBeds.length} camas · ${occupied}/${roomPlants.length} plantas</strong></button>`}).join('')}${['Vege 1','Vege 2','Esquejes','Madres'].map(n=>`<button class="panel harvest-room-button" data-croquis-room="${n}"><span>${n}</span><strong>${n==='Madres'?'Lista de genéticas':n==='Esquejes'?'26 almácigos de 36':'11 bandejas de 9'}</strong></button>`).join('')}</section>`;
+    app.innerHTML=`<button id="back-cultivo-info" class="secondary cultivo-info-back" type="button">← Info cultivo</button><section class="panel cultivo-info-head"><h2>Croquis</h2><p class="muted">Elegí una sala para abrir directamente la distribución actual de camas y plantas.</p></section><section class="harvest-room-selector" aria-label="Salas con croquis">${floraRooms.map(room=>{const roomBeds=beds(room.name),roomPlants=roomBeds.flatMap(plants),occupied=roomPlants.filter(plant=>plant.ocupada).length;return`<button class="panel harvest-room-button" type="button" data-croquis-room="${room.name}"><span>${room.name}</span><strong>${roomBeds.length} camas · ${occupied}/${roomPlants.length} plantas</strong></button>`}).join('')}${['Vege 1','Vege 2','Esquejes','Madres'].map(n=>`<button class="panel harvest-room-button" data-croquis-room="${n}"><span>${n}</span><strong>${n==='Madres'?'Lista de genéticas':n==='Esquejes'?'26 almácigos de 36':nurseryTrayCount(n)+' bandejas de 9'}</strong></button>`).join('')}</section>`;
     $('back-cultivo-info').onclick=openCultivoInfo;
     app.querySelectorAll('[data-croquis-room]').forEach(button=>button.onclick=()=>{state.room=button.dataset.croquisRoom;state.tab='croquis';render()});
     return;

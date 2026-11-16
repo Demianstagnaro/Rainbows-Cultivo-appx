@@ -1,3 +1,11 @@
+## v3.26.83
+
+Croquis de Vege 1 y Vege 2: opción para completar las macetas vacías de una bandeja con la genética elegida. Guardado atómico, conserva las otras macetas ocupadas. Incluye Vege 1 con 12 bandejas. Ejecutar `Palestina_V32683_completar_bandejas.sql`. Ver `INSTRUCCIONES_V32683.md`.
+
+## v3.26.82
+
+Vege 1 tiene 12 bandejas de 9 plantas (108 posiciones). Croquis, capacidad y validación de base de datos actualizados; Vege 2 conserva 11 bandejas. Ejecutar `Palestina_V32682_vege1_12_bandejas.sql`. Ver `INSTRUCCIONES_V32682.md`.
+
 ## v3.26.81
 
 Norma aparece al final de la planilla de asistencias y de los desplegables de esa sección. Se conserva el orden de los demás empleados. No requiere SQL. Ver `INSTRUCCIONES_V32681.md`.
@@ -65,7 +73,7 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.81. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.83. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
 
 ## V3.26.60 — Tabla de parámetros compacta
 
