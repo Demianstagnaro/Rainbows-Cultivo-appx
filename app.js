@@ -1,10 +1,10 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.75';
+import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.76';
 
-import {createPalestinaCashController} from './palestina-cash.js?v=3.26.75';
+import {createPalestinaCashController} from './palestina-cash.js?v=3.26.76';
 
-const APP_VERSION='3.26.75';
+const APP_VERSION='3.26.76';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -124,13 +124,15 @@ function upcomingHarvestDates(r,from=today(),count=10){
 }
 function routine(date){const out=[],day=dow(date),push=(room,name,detail,keyName=name)=>{const keyRoom=room==='Vege 1'?'Veges':room;out.push({id:`${ymd(date)}|${keyRoom}|${keyName}`,key:`${ymd(date)}|${keyRoom}|${keyName}`,date:ymd(date),room,task:name,detail,type:'rutina',custom:false})};for(const r of rules){const c=r.type==='esquejes'?{cut:cut(date)}:cycle(r,date);if(r.type==='vege'&&!vegesOccupied(date))continue;if(!['esquejes','trabajo'].includes(r.type)&&!(r.name==='Flora 1'&&r.automaticIrrigation))push(r.name,'Riego','');if(r.type==='esquejes'&&c.cut.active)push(r.name,'Mantenimiento',c.cut.label);if(r.name==='Flora 1'){if(transplant(r,date))push(r.name,'Calibrar riego','');if(startWeek(r,date,1))push(r.name,'Calibrar riego','');if(startWeek(r,date,7))push(r.name,'Calibrar riego','')}if(['lunes','miercoles','viernes'].includes(day)){if(['vege','madres'].includes(r.type))push(r.name,'Fumigacion',day==='miercoles'?'ABA + OIL + Nissorun':'ABA + OIL');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=3)))push(r.name,'Fumigacion',day==='miercoles'?'ABA + OIL + Nissorun':'ABA + OIL')}if(day==='jueves'){if(['vege','madres'].includes(r.type))push(r.name,'KNF','');if(r.type==='flora'&&(c.stage==='vege'||(c.stage==='flora'&&c.week<=6)))push(r.name,'KNF','')}if(r.type==='flora'){if(transplant(r,date)){push(r.name,'Enmienda','');push(r.name,'Trasplante','')}if(startWeek(r,date,1)){push(r.name,'Enmienda','');push(r.name,'Inicio flora','')}if(startWeek(r,date,4))push(r.name,'Enmienda','');if(same(date,add(c.fl,-1))){push(r.name,'Esquejes','');push(r.name,'Poda bajos','')}if(startWeek(r,date,4))push(r.name,'Schwazzing','');if(same(date,add(c.tr,1)))push(r.name,'Redes','');if(harvest(r,date))push(r.name,'Cosecha','')}
 if(r.type==='vege'){
-  if(cloneTransfer(date))push(r.name,'Trasplante',`Esquejes → ${r.name}`);
-  const transferDate14=new Date(date);
-  transferDate14.setDate(transferDate14.getDate()-14);
-  if(cloneTransfer(transferDate14))push(r.name,'Enmienda','1ª aplicación · 14 días desde ingreso');
-  const transferDate28=new Date(date);
-  transferDate28.setDate(transferDate28.getDate()-28);
-  if(cloneTransfer(transferDate28))push(r.name,'Enmienda','2ª aplicación · 28 días desde ingreso');
+  if(cloneTransfer(date))push(r.name,'Trasplante',`Esquejes → ${r.name} · Enmienda completa`);
+  if(ymd(date)>='2026-11-16'){
+    const current=vegeCalendarCycle(date),daysSinceEntry=current?diff(date,current.entry):0;
+    if(daysSinceEntry>0&&daysSinceEntry%10===0)push(r.name,'Enmienda',`${daysSinceEntry/10}ª aplicación · ${daysSinceEntry} días desde ingreso · Cada 10 días`);
+  }else{
+    // Conserva el cronograma histórico anterior al cambio.
+    if(cloneTransfer(add(date,-14)))push(r.name,'Enmienda','1ª aplicación · 14 días desde ingreso');
+    if(cloneTransfer(add(date,-28)))push(r.name,'Enmienda','2ª aplicación · 28 días desde ingreso');
+  }
 }
 if(r.type==='madres'){
   const motherAmendmentStart=parse('2026-07-28');
@@ -3576,7 +3578,7 @@ function supplyRecipeContext(t){
   if(room.type==='flora'){
     const c=cycle(room,d);column=c.stage==='flora'?c.week+3:c.week||1;
   }else if(room.type==='madres')column=Number(t.task.match(/\d+/)?.[0])||((Math.floor(diff(d,parse('2026-07-28'))/14)%3+3)%3+1);
-  else if(t.task!=='Trasplante')column=/2ª|28 días/.test(t.detail||'')?3:2;
+  else if(t.task!=='Trasplante')column=2;
   return {section,column,knf,room:room.type==='vege'?'Veges (Vege 1 y Vege 2)':t.room};
 }
 async function openSupplyApplication(t,preselected=[]){
