@@ -195,8 +195,11 @@ jobs:
       - run: psql -v ON_ERROR_STOP=1 -f Palestina_V32677_asistencias_sueldos.sql
       - run: psql -v ON_ERROR_STOP=1 -f Palestina_V32680_norma_mensual.sql
       - run: psql -v ON_ERROR_STOP=1 -f Palestina_V32680_norma_mensual.sql
+      - run: psql -v ON_ERROR_STOP=1 -f Palestina_V32684_sueldos_por_produccion.sql
+      - run: psql -v ON_ERROR_STOP=1 -f Palestina_V32684_sueldos_por_produccion.sql
       - run: psql -v ON_ERROR_STOP=1 -f tests/sql/payroll-assertions.sql
       - run: psql -v ON_ERROR_STOP=1 -f tests/sql/payroll-monthly-assertions.sql
+      - run: psql -v ON_ERROR_STOP=1 -f tests/sql/payroll-production-assertions.sql
 
   vege-trays:
     runs-on: ubuntu-24.04
