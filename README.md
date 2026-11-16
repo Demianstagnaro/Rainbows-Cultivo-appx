@@ -1,3 +1,7 @@
+## v3.26.80
+
+Norma se incorpora a la planilla con sueldo mensual configurable. El sueldo se registra una sola vez por mes en el día 1 y admite pagos parciales en efectivo. Se conservan empleados y registros anteriores. Requiere `Palestina_V32680_norma_mensual.sql`. Ver `INSTRUCCIONES_V32680.md`.
+
 ## v3.26.79
 
 La planilla por jornada excluye a Fran, Demi, Chomi, Cone y Lua, que cobran sueldo mensual fijo. Sus registros anteriores se conservan en el historial y no se incluyen en los totales de la planilla por jornada. No requiere SQL. Ver `INSTRUCCIONES_V32679.md`.
@@ -57,7 +61,7 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.79. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.80. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
 
 ## V3.26.60 — Tabla de parámetros compacta
 
