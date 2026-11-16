@@ -1,3 +1,7 @@
+## v3.26.78
+
+Asistencias y sueldos se simplifica a una planilla mensual compartida. Cada día se tilda directamente con jornada completa, parcial o por horas y cálculo automático. Al pie aparecen totales, pagos por fecha y pendiente por empleado. Correcciones e historial quedan plegados. Conserva datos y permisos de V3.26.77. No requiere SQL nuevo. Ver `INSTRUCCIONES_V32678.md`.
+
 ## v3.26.77
 
 Palestina → Administración → Asistencias y sueldos. Grilla mensual por empleado con jornadas completas, medias jornadas, horas, guardias y ausencias. Valores configurables, importes históricos conservados, pagos, ajustes, saldo acumulado y auditoría. Sólo Administradores y Encargados de Palestina. Requiere `Palestina_V32677_asistencias_sueldos.sql`. Ver `INSTRUCCIONES_V32677.md`.
@@ -49,7 +53,7 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.77. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.78. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
 
 ## V3.26.60 — Tabla de parámetros compacta
 
