@@ -40,3 +40,19 @@ test('cero omite productos; errores de vínculo o unidades impiden guardar',()=>
  assert.throws(()=>consumptionPayload([{id:'fish',name:'Pescado',unit:'L',quantity:'1'}],supplies),/no son compatibles/);
  assert.throws(()=>consumptionPayload([{id:'fish',name:'Pescado',unit:'g',quantity:'.1'}],supplies),/precisión/);
 });
+
+test('Veges usa la receta completa al trasplantar y la misma reposición cada 10 días',()=>{
+ const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+ const fn=app.slice(app.indexOf('function supplyRecipeContext(t){'),app.indexOf('async function openSupplyApplication('));
+ const context=Function('rr','parse',`${fn};return supplyRecipeContext;`)(()=>({type:'vege'}),value=>new Date(value));
+ for(const room of ['Vege 1','Vege 2']){
+  assert.equal(context({room,date:'2026-11-13',task:'Trasplante'}).column,1);
+  for(const days of [10,20,30,40])assert.equal(context({room,date:'2026-11-23',task:'Enmienda',detail:`${days} días desde ingreso`}).column,2);
+ }
+ const complete=recipeMaterials(recipes.Veges,1),maintenance=recipeMaterials(recipes.Veges,2);
+ assert.equal(complete.find(m=>m.name==='Harina de hueso').quantity,2400);
+ assert.equal(complete.find(m=>m.name==='Bokashi').quantity,200);
+ assert.equal(maintenance.find(m=>m.name==='Bokashi').quantity,150);
+ assert.equal(maintenance.find(m=>m.name==='Harina de pescado').quantity,800);
+ assert.equal(maintenance.find(m=>m.name==='Harina de hueso'),undefined);
+});

@@ -22,13 +22,14 @@ test('cada fila de enmiendas coincide con las columnas de su sala',()=>{
 });
 
 test('Veges y Madres conservan las dosis nuevas de la planilla',()=>{
-  assert.deepEqual(amendments.Veges.headers,['Producto','Trasplante','Semana 3','Semana 5']);
+  assert.deepEqual(amendments.Veges.headers,['Producto','Trasplante','Cada 10 días']);
   assert.deepEqual(amendments.Madres.headers,['Producto','Enmienda 1','Enmienda 2','Enmienda 3']);
   for(const section of [amendments.Veges,amendments.Madres]){
-    assert.deepEqual(section.rows.find(row=>row[0]==='Compost'),['Compost','20L','20L','20L']);
-    assert.deepEqual(section.rows.find(row=>row[0]==='Harina de pescado'),['Harina de pescado','800g','800g','800g']);
-    assert.deepEqual(section.rows.find(row=>row[0]==='Bokashi'),['Bokashi','200g','150g','150g']);
-    assert.deepEqual(section.rows.find(row=>row[0]==='FPJ'),['FPJ','5ml x L','2,5ml x L','2,5ml x L']);
+    const expected=row=>section===amendments.Veges?row.slice(0,3):row;
+    assert.deepEqual(section.rows.find(row=>row[0]==='Compost'),expected(['Compost','20L','20L','20L']));
+    assert.deepEqual(section.rows.find(row=>row[0]==='Harina de pescado'),expected(['Harina de pescado','800g','800g','800g']));
+    assert.deepEqual(section.rows.find(row=>row[0]==='Bokashi'),expected(['Bokashi','200g','150g','150g']));
+    assert.deepEqual(section.rows.find(row=>row[0]==='FPJ'),expected(['FPJ','5ml x L','2,5ml x L','2,5ml x L']));
   }
 });
 

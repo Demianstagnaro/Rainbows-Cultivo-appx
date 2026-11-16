@@ -130,3 +130,28 @@ test('Vege queda vacía al trasladar a Flora y reinicia la semana con el nuevo i
   assert.equal(calendar.vegeCalendarCycle(calendar.parse('2026-12-18')).number,12);
   assert.equal(calendar.calendarRoomState(room('Flora 1'),calendar.parse('2026-11-11')),'F1: C11 · F S4');
 });
+
+test('Veges repite enmiendas a los 10, 20 y 30 días y mantiene la completa en el trasplante',()=>{
+ const entry=calendar.parse('2026-11-13');
+ for(const name of ['Vege 1','Vege 2']){
+  const transplant=calendar.routine(entry).find(t=>t.room===name&&t.task==='Trasplante');assert.match(transplant.detail,/Enmienda completa/);
+  for(let days=1;days<=33;days++){
+   const date=calendar.add(entry,days),rows=calendar.routine(date).filter(t=>t.room===name&&t.task==='Enmienda');
+   assert.equal(rows.length,[10,20,30].includes(days)?1:0,`${name} día ${days}`);
+   if(rows.length)assert.match(rows[0].detail,new RegExp(`${days} días desde ingreso`));
+  }
+ }
+});
+test('Veges corta enmiendas al pasar a Flora aunque coincida con el día 40 y reinicia con otro ingreso',()=>{
+ const entry=calendar.parse('2026-12-18');assert.equal(calendar.cloneTransfer(entry),true);
+ for(const name of ['Vege 1','Vege 2']){
+  for(const days of [10,20,30])assert(calendar.routine(calendar.add(entry,days)).some(t=>t.room===name&&t.task==='Enmienda'));
+  const exit=calendar.add(entry,40);assert.equal(calendar.ymd(exit),'2027-01-27');assert.equal(calendar.vegesOccupied(exit),false);
+  assert.equal(calendar.routine(exit).some(t=>t.room===name&&t.task==='Enmienda'),false);
+  assert.equal(calendar.routine(calendar.add(entry,1)).some(t=>t.room===name&&t.task==='Enmienda'),false);
+ }
+});
+test('se conservan las fechas de enmiendas anteriores al cambio del 16/11/2026',()=>{
+ for(const days of [14,28])assert(calendar.routine(calendar.add(calendar.parse('2026-10-02'),days)).some(t=>t.room==='Vege 1'&&t.task==='Enmienda'));
+ assert.equal(calendar.routine(calendar.parse('2026-10-12')).some(t=>t.room==='Vege 1'&&t.task==='Enmienda'),false);
+});
