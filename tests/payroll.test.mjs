@@ -13,3 +13,10 @@ test('sueldos arrastra saldo, cuenta presencias y ausencias, resta pagos y exclu
 test('grilla respeta meses cortos y años bisiestos',()=>{
  assert.equal(payrollDates('2026-02').length,28);assert.equal(payrollDates('2028-02').length,29);assert.equal(payrollDates('2026-11').at(-1),'2026-11-30');
 });
+
+test('sueldo mensual se suma una sola vez y no cuenta como día trabajado',()=>{
+ const t={jornada:1200,horas:1,modalidad:'mensual'};
+ assert.deepEqual(payrollEstimate(t,'mensual',0),{hours:0,amount:1200});
+ const [e]=payrollSummary([{id:'n',saldo_anterior:0}],[{empleado_id:'n',clase:'asistencia',tipo:'mensual',importe:1200},{empleado_id:'n',clase:'pago',importe:300},{empleado_id:'n',clase:'pago',importe:400}]);
+ assert.equal(e.accrued,1200);assert.equal(e.days,0);assert.equal(e.balance,500);
+});
