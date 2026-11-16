@@ -20,3 +20,12 @@ test('sueldo mensual se suma una sola vez y no cuenta como día trabajado',()=>{
  const [e]=payrollSummary([{id:'n',saldo_anterior:0}],[{empleado_id:'n',clase:'asistencia',tipo:'mensual',importe:1200},{empleado_id:'n',clase:'pago',importe:300},{empleado_id:'n',clase:'pago',importe:400}]);
  assert.equal(e.accrued,1200);assert.equal(e.days,0);assert.equal(e.balance,500);
 });
+
+test('producción calcula unidades por valor unitario con centavos',async()=>{
+ const {payrollProductionAmount:amount}=await import('../palestina-payroll.js');
+ assert.equal(amount(5,100),500);assert.equal(amount(1.5,30),45);assert.equal(amount(.333,30),9.99);
+});
+test('producción se suma a jornadas y pagos sin contarse como horas ni días de asistencia',()=>{
+ const [e]=payrollSummary([{id:'a',saldo_anterior:0}],[{empleado_id:'a',clase:'asistencia',tipo:'completa',importe:900},{empleado_id:'a',clase:'produccion',tipo:'produccion',unidades:5,valor_unidad:100,importe:500},{empleado_id:'a',clase:'produccion',tipo:'produccion',unidades:2,valor_unidad:25,importe:50},{empleado_id:'a',clase:'pago',importe:200}]);
+ assert.equal(e.accrued,1450);assert.equal(e.balance,1250);assert.equal(e.days,1);
+});
