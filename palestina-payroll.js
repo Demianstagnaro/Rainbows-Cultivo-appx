@@ -1,4 +1,4 @@
-import {palestinaCashMoneyInput,palestinaCashToday,palestinaCashMonthShift} from './palestina-cash.js?v=3.26.80';
+import {palestinaCashMoneyInput,palestinaCashToday,palestinaCashMonthShift} from './palestina-cash.js?v=3.26.81';
 export const payrollTypes={mensual:'Sueldo mensual',completa:'Jornada completa',media:'Media jornada',horas:'Por horas',sabado:'Guardia sábado (2 h)',domingo:'Guardia domingo / feriado (2 h)',ausente:'Ausente'};
 export function payrollEstimate(t,type,hours){
  const day=Number(t.jornada),base=Number(t.horas);
@@ -19,6 +19,7 @@ export function payrollDates(month){const [y,m]=month.split('-').map(Number),n=n
 const monthlySalaryNames=new Set(['fran','demi','chomi','cone','lua']);
 function usesDailyWages(employee){return !monthlySalaryNames.has(String(employee.nombre||'').trim().toLocaleLowerCase('es').normalize('NFD').replace(/[\u0300-\u036f]/g,''))}
 function isMonthly(employee){return employee.tarifa?.modalidad==='mensual'||String(employee.nombre||'').trim().toLocaleLowerCase('es')==='norma'}
+function normaLast(employees){const isNorma=e=>String(e.nombre||'').trim().toLocaleLowerCase('es')==='norma';return [...employees.filter(e=>!isNorma(e)),...employees.filter(isNorma)]}
 export function createPalestinaPayrollController(ctx){
  const {app,db,escapeHtml:esc,formatMoney:money,moneyParse}=ctx;let data=null,serial=0,quickBusy=false;
  const dateText=d=>new Date(d+'T12:00:00').toLocaleDateString('es-AR');
@@ -96,11 +97,11 @@ export function createPalestinaPayrollController(ctx){
    else await write('registro',{id:row?.id||null,version:row?.version||0,solicitud:crypto.randomUUID(),empleado_id:employeeId,fecha:date,clase:'asistencia',tipo:select.value,horas:h||0,importe_manual:null,notas:row?.notas||'',motivo:row?'Cambio de jornada desde la planilla mensual':''});
    const q=await db.rpc('consultar_sueldos_palestina',{p_mes:ctx.getMonth()+'-01'});if(q.error)throw q.error;
    if(run!==serial||!host.isConnected||!ctx.isActive()||!ctx.canManage())return;
-   data=q.data;draw(host);host.querySelector('[data-sheet-scroll]').scrollLeft=left;host.querySelector('[data-sheet-scroll]').scrollTop=top;host.querySelector('[data-sheet-status]').textContent='Guardado';
+   data={...q.data,empleados:normaLast(q.data.empleados)};draw(host);host.querySelector('[data-sheet-scroll]').scrollLeft=left;host.querySelector('[data-sheet-scroll]').scrollTop=top;host.querySelector('[data-sheet-status]').textContent='Guardado';
   }catch(e){
    // Volver a consultar evita repetir una carga que pudo haberse guardado antes de un corte de conexión.
    if(run===serial&&host.isConnected&&ctx.isActive()){
-    try{const q=await db.rpc('consultar_sueldos_palestina',{p_mes:ctx.getMonth()+'-01'});if(q.error)throw q.error;data=q.data;draw(host);host.querySelector('[data-sheet-scroll]').scrollLeft=left;host.querySelector('[data-sheet-scroll]').scrollTop=top;host.querySelector('[data-sheet-status]').textContent=err(e)}
+    try{const q=await db.rpc('consultar_sueldos_palestina',{p_mes:ctx.getMonth()+'-01'});if(q.error)throw q.error;data={...q.data,empleados:normaLast(q.data.empleados)};draw(host);host.querySelector('[data-sheet-scroll]').scrollLeft=left;host.querySelector('[data-sheet-scroll]').scrollTop=top;host.querySelector('[data-sheet-status]').textContent=err(e)}
     catch(_){host.innerHTML=`<section class="panel error-panel"><p>${esc(err(e))}</p><p>Volvé a cargar la planilla para comprobar si se guardó.</p><button class="secondary" type="button" data-reload>Volver a cargar</button></section>`;host.querySelector('[data-reload]').onclick=render}
    }
   }finally{quickBusy=false}
@@ -140,7 +141,7 @@ export function createPalestinaPayrollController(ctx){
  }
  async function render(){
   const run=++serial;if(!ctx.canManage()||!ctx.isActive())return;ctx.setTitle('Asistencias y sueldos · Palestina');app.innerHTML='<button class="secondary cultivo-info-back" type="button" data-back>← Administración</button><div data-payroll-root><section class="panel">Cargando asistencias…</section></div>';app.querySelector('[data-back]').onclick=ctx.back;const host=app.querySelector('[data-payroll-root]');
-  try{const q=await db.rpc('consultar_sueldos_palestina',{p_mes:ctx.getMonth()+'-01'});if(q.error)throw q.error;if(run!==serial||!host.isConnected||!ctx.canManage()||!ctx.isActive())return;data=q.data;draw(host)}catch(e){if(run===serial&&host.isConnected){host.innerHTML=`<section class="panel error-panel"><p>${esc(err(e))}</p><button class="secondary" type="button" data-retry>Reintentar</button></section>`;host.querySelector('[data-retry]').onclick=render}}
+  try{const q=await db.rpc('consultar_sueldos_palestina',{p_mes:ctx.getMonth()+'-01'});if(q.error)throw q.error;if(run!==serial||!host.isConnected||!ctx.canManage()||!ctx.isActive())return;data={...q.data,empleados:normaLast(q.data.empleados)};draw(host)}catch(e){if(run===serial&&host.isConnected){host.innerHTML=`<section class="panel error-panel"><p>${esc(err(e))}</p><button class="secondary" type="button" data-retry>Reintentar</button></section>`;host.querySelector('[data-retry]').onclick=render}}
  }
  return {render};
 }
