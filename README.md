@@ -1,4 +1,4 @@
-## v3.26.84
+## v3.26.85
 
 Asistencias y sueldos admite trabajos Por producción con descripción, unidades y valor por unidad. Permite varios trabajos por día, cargos adicionales o conversión de una jornada sin duplicar el importe. Se integra a totales, pagos e historial. Requiere `Palestina_V32684_sueldos_por_produccion.sql`. Ver `INSTRUCCIONES_V32684.md`.
 
@@ -77,7 +77,7 @@ Aplicación compartida de gestión de cultivo y sede Medrano, con Supabase.
 - Croquis, camas y plantas compartidos.
 - Actualización con Supabase Realtime.
 
-La versión actual es V3.26.84. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
+La versión actual es V3.26.85. El registro público permanece deshabilitado. Los administradores pueden invitar usuarios desde Config luego de instalar la función protegida descrita en `INSTALACION_ALTAS_USUARIOS.md`.
 
 ## V3.26.60 — Tabla de parámetros compacta
 
