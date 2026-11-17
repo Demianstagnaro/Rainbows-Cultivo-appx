@@ -28,7 +28,7 @@ test('Veges y Madres conservan las dosis nuevas de la planilla',()=>{
     const expected=row=>section===amendments.Veges?row.slice(0,3):row;
     assert.deepEqual(section.rows.find(row=>row[0]==='Compost'),expected(['Compost','20L','20L','20L']));
     assert.deepEqual(section.rows.find(row=>row[0]==='Harina de pescado'),expected(['Harina de pescado','800g','800g','800g']));
-    assert.deepEqual(section.rows.find(row=>row[0]==='Bokashi'),expected(['Bokashi','200g','150g','150g']));
+    assert.deepEqual(section.rows.find(row=>row[0]==='Bokashi'),expected(['Bokashi','0,5L','0,375L','0,375L']));
     assert.deepEqual(section.rows.find(row=>row[0]==='FPJ'),expected(['FPJ','5ml x L','2,5ml x L','2,5ml x L']));
   }
 });

@@ -22,7 +22,7 @@ test('precarga exactamente las dosis por sala y separa KNF',()=>{
  assert.equal(f12.find(x=>x.name==='Compost').quantity,105);
  assert.ok(!f12.some(x=>x.name==='FPJ'));
  assert.equal(recipeMaterials(recipes['Flora 3'],7).find(x=>x.name==='Harina de pescado').quantity,5500);
- assert.equal(recipeMaterials(recipes.Madres,2).find(x=>x.name==='Bokashi').quantity,150);
+ assert.equal(recipeMaterials(recipes.Madres,2).find(x=>x.name==='Bokashi').quantity,.375);
  assert.ok(!recipeMaterials(recipes.Veges,2).some(x=>x.name==='Harina de hueso'));
  const knf=recipeMaterials(recipes['Flora 1 y 2'],4,true,100);
  assert.equal(knf.find(x=>x.name==='FPJ').quantity,250);
@@ -51,8 +51,29 @@ test('Veges usa la receta completa al trasplantar y la misma reposición cada 10
  }
  const complete=recipeMaterials(recipes.Veges,1),maintenance=recipeMaterials(recipes.Veges,2);
  assert.equal(complete.find(m=>m.name==='Harina de hueso').quantity,2400);
- assert.equal(complete.find(m=>m.name==='Bokashi').quantity,200);
- assert.equal(maintenance.find(m=>m.name==='Bokashi').quantity,150);
+ assert.equal(complete.find(m=>m.name==='Bokashi').quantity,.5);
+ assert.equal(maintenance.find(m=>m.name==='Bokashi').quantity,.375);
  assert.equal(maintenance.find(m=>m.name==='Harina de pescado').quantity,800);
  assert.equal(maintenance.find(m=>m.name==='Harina de hueso'),undefined);
+});
+
+
+test('Bokashi usa la equivalencia 200 g = 0,5 L en todas las salas y descuenta stock en litros',()=>{
+ const doses={
+  'Flora 1 y 2':[2.5,1,1],
+  'Flora 3':[1.25,.5,.5],
+  Veges:[.5,.375],
+  Madres:[.5,.375,.375]
+ };
+ for(const [name,expected] of Object.entries(doses)){
+  const materials=recipes[name].headers.slice(1).flatMap((_,index)=>recipeMaterials(recipes[name],index+1).filter(row=>row.name==='Bokashi'));
+  assert.deepEqual(materials.map(row=>row.quantity),expected,name);
+  for(const material of materials){
+   assert.equal(material.unit,'L');
+   const item={id:'bokashi',nombre:'Bokashi',categoria:'Cultivo',unidad:'litros',stock:10};
+   assert.equal(supplyName(material.name),supplyName(item.nombre));
+   assert.notEqual(convertSupply(1,material.unit,item.unidad),null);
+   assert.deepEqual(consumptionPayload([{...material,id:item.id}],[item]),[{insumo_id:item.id,cantidad:material.quantity,unidad:'litros'}]);
+  }
+ }
 });
