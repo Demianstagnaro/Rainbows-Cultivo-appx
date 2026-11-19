@@ -1,4 +1,4 @@
-import {palestinaCashMoneyInput,palestinaCashToday,palestinaCashMonthShift} from './palestina-cash.js?v=3.26.86';
+import {palestinaCashMoneyInput,palestinaCashToday,palestinaCashMonthShift} from './palestina-cash.js?v=3.26.87';
 export const payrollTypes={produccion:'Por producción',mensual:'Sueldo mensual',completa:'Jornada completa',media:'Media jornada',horas:'Por horas',sabado:'Guardia sábado (2 h)',domingo:'Guardia domingo / feriado (2 h)',ausente:'Ausente'};
 export function payrollEstimate(t,type,hours){
  const day=Number(t.jornada),base=Number(t.horas);

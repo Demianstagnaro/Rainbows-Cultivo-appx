@@ -1,11 +1,11 @@
-import {createPalestinaPayrollController} from './palestina-payroll.js?v=3.26.86';
+import {createPalestinaPayrollController} from './palestina-payroll.js?v=3.26.87';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.86';
+import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.87';
 
-import {createPalestinaCashController} from './palestina-cash.js?v=3.26.86';
+import {createPalestinaCashController} from './palestina-cash.js?v=3.26.87';
 
-const APP_VERSION='3.26.86';
+const APP_VERSION='3.26.87';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -23,7 +23,7 @@ Object.assign(state,{medranoDispensaryProducts:[],medranoLabDispMovements:[],med
 Object.assign(state,{medranoStockHistoryScope:null});
 Object.assign(state,{medranoLabJobs:[],medranoLabJobEvents:[],medranoLabMaterials:[],medranoLabJobsReady:false,medranoProductionReady:false,editMedranoLabJob:null});
 Object.assign(state,{pendingLabOrderItem:null});
-Object.assign(state,{medranoMultiOrders:[],medranoMultiItems:[],medranoMultiReady:false,editMedranoMultiOrder:null});
+Object.assign(state,{medranoMultiOrders:[],medranoMultiItems:[],medranoMultiReady:false,editMedranoMultiOrder:null,medranoCreateAttempt:null});
 Object.assign(state,{medranoCajaMovements:[],medranoTokenMovements:[],medranoCashClosings:[],medranoCajaBaseReady:false,medranoCashClosingReady:false,medranoCajaReady:false,pendingMedranoPayment:null});
 Object.assign(state,{medranoDateHistory:{}});
 Object.assign(state,{medranoDashboardPeriod:'month',medranoDashboardMonth:''});
@@ -2252,6 +2252,8 @@ function openMedranoMultiDialog(order=null){
   if(!state.medranoCajaReady){alert('Primero aplicá la migración V3.24.0 de Caja y Tokens en Supabase.');return}
   if(order?.pago_estado==='pagada'){alert('Una comanda pagada no se puede editar. Si necesitás cancelarla, eliminála y los Tokens volverán al saldo del paciente.');return}
   state.editMedranoMultiOrder=order;
+  state.medranoCreateAttempt=null;
+  setMedranoCreatePending(false);
   $('medrano-multi-title').textContent=order?'Editar comanda':'Nueva comanda';
   $('medrano-multi-patient').innerHTML='<option value="">Seleccionar paciente</option>'+medranoSortedPatients().map(p=>`<option value="${escapeHtml(p.id)}">${escapeHtml(medranoPatientName(p))}</option>`).join('');
   $('medrano-multi-patient').value=order?.paciente_id||'';
@@ -2261,7 +2263,46 @@ function openMedranoMultiDialog(order=null){
   updateMedranoMultiTotal();
   $('medrano-multi-dialog').showModal();
 }
+function setMedranoCreatePending(pending){
+  for(const id of ['medrano-multi-patient','medrano-multi-date','medrano-multi-add']) $(id).disabled=pending;
+  $('medrano-multi-lines').inert=pending;
+  $('medrano-multi-save').textContent=pending?'Reintentar guardado':'Guardar comanda';
+}
+async function confirmMedranoCreate(){
+  const attempt=state.medranoCreateAttempt;
+  let result;
+  try{
+    result=await db.rpc('crear_comanda_medrano_v87',attempt);
+  }catch{
+    throw new Error('No se pudo confirmar si se guardó. Tocá Reintentar guardado.');
+  }
+  if(result.error){
+    // Un error de PostgreSQL confirma que la transacción falló.
+    if(/^[0-9A-Z]{5}$/.test(result.error.code||'')&&!/^(08|57)/.test(result.error.code)){
+      state.medranoCreateAttempt=null;
+      setMedranoCreatePending(false);
+      throw result.error;
+    }
+    if(result.error.code==='PGRST202'){
+      state.medranoCreateAttempt=null;
+      setMedranoCreatePending(false);
+      throw new Error('Falta instalar el SQL de la versión 3.26.87.');
+    }
+    throw new Error('No se pudo confirmar si se guardó. Tocá Reintentar guardado.');
+  }
+  state.medranoCreateAttempt=null;
+  setMedranoCreatePending(false);
+}
+async function finishMedranoMultiSave(){
+  state.editMedranoMultiOrder=null;
+  closeDialog('medrano-multi-dialog');
+  await refreshMedranoModules('orders');
+}
 async function saveMedranoMultiOrder(){
+  if(state.medranoCreateAttempt){
+    await confirmMedranoCreate();
+    return finishMedranoMultiSave();
+  }
   const patient=$('medrano-multi-patient').value;
   if(!patient)throw new Error('Seleccioná un paciente.');
   const rows=[...$('medrano-multi-lines').querySelectorAll('.medrano-multi-line')];
@@ -2279,9 +2320,16 @@ async function saveMedranoMultiOrder(){
     const balance=product.custom?null:medranoOrderAvailability(item.tipo,product,state.editMedranoMultiOrder?.id);
     if(balance&&item.cantidad>balance.available)throw new Error(`Stock insuficiente de “${product.name}”. Disponible: ${balance.available.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}. Solicitado: ${item.cantidad.toLocaleString('es-AR',{maximumFractionDigits:2})} ${product.unit}.`);
   }
-  const q=await db.rpc('guardar_comanda_multiproducto',{p_id:state.editMedranoMultiOrder?.id||null,p_paciente:patient,p_fecha:$('medrano-multi-date').value,p_items:items});
-  if(q.error)throw q.error;
-  state.editMedranoMultiOrder=null;closeDialog('medrano-multi-dialog');await refreshMedranoModules('orders');
+  const values={p_paciente:patient,p_fecha:$('medrano-multi-date').value,p_items:items};
+  if(state.editMedranoMultiOrder){
+    const q=await db.rpc('guardar_comanda_multiproducto',{p_id:state.editMedranoMultiOrder.id,...values});
+    if(q.error)throw q.error;
+  }else{
+    state.medranoCreateAttempt={p_solicitud:crypto.randomUUID(),...values};
+    setMedranoCreatePending(true);
+    await confirmMedranoCreate();
+  }
+  await finishMedranoMultiSave();
 }
 function openMedranoOrderDialog(order=null){
   if(state.medranoMultiReady&&(!order||order.multiple)){openMedranoMultiDialog(order);return}
@@ -3942,7 +3990,15 @@ function bindMedranoDialogActions(){
   $('lab-production-finish-cancel').onclick=()=>{state.finishMedranoLabJob=null;closeDialog('lab-production-finish-dialog')};
   $('lab-production-finish-confirm').onclick=async()=>{const b=$('lab-production-finish-confirm');b.disabled=true;try{await finishLabProduction()}catch(e){console.error(e);alert(e.message||'No se pudo finalizar la producción.')}finally{b.disabled=false}};
   $('medrano-multi-add').onclick=()=>addMedranoMultiLine();
-  $('medrano-multi-cancel').onclick=()=>{state.editMedranoMultiOrder=null;closeDialog('medrano-multi-dialog')};
+  const closeMedranoMulti=()=>{
+    if($('medrano-multi-save').disabled)return;
+    if(state.medranoCreateAttempt&&!confirm('El guardado quedó sin confirmar. Si cerrás, revisá las comandas antes de crear otra. ¿Cerrar igual?'))return;
+    state.medranoCreateAttempt=null;
+    state.editMedranoMultiOrder=null;
+    closeDialog('medrano-multi-dialog');
+  };
+  $('medrano-multi-cancel').onclick=closeMedranoMulti;
+  $('medrano-multi-dialog').oncancel=event=>{event.preventDefault();closeMedranoMulti()};
   $('medrano-multi-save').onclick=async()=>{const button=$('medrano-multi-save');button.disabled=true;try{await saveMedranoMultiOrder()}catch(e){console.error(e);alert(e.message||'No se pudo guardar la comanda.')}finally{button.disabled=false}};
   $('lab-job-type').onchange=()=>{$('lab-job-patient-field').hidden=$('lab-job-type').value!=='comanda_paciente'};
   $('lab-job-unit').onchange=()=>configureWholeUnitInput($('lab-job-quantity'),$('lab-job-unit').value,false);
