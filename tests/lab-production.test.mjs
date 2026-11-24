@@ -49,6 +49,7 @@ test('si falta solo la migración nueva, Dispensario y comandas existentes sigue
   const query={select(){return this},eq(){return this},order(){return this},maybeSingle(){return Promise.resolve({data:{id:'admin',rol:'administrador',activo:true},error:null})},then(resolve){return Promise.resolve({data:[],error:null}).then(resolve)}};
   const context={state,db:{from(){return Object.create(query)},rpc(){return Promise.resolve({data:[],error:null})}},
     normalizeRole:x=>x,canAccessMedrano:()=>true,canViewOperations:()=>true,
+    loadAllRows:()=>Promise.resolve({data:[],error:null}),
     loadMedranoCounterItems:()=>Promise.resolve({data:[],error:null}),
     loadMedranoStockTable:table=>Promise.resolve({data:[],error:null,missing:table==='medrano_laboratorio_trabajos_materiales'}),
     ymd:()=> '2026-09-18',today:()=>new Date('2026-09-18T12:00:00Z'),medranoMultiOrderView:x=>x,Promise};
@@ -63,10 +64,10 @@ test('una respuesta momentánea de tabla no encontrada se reintenta y conserva e
   const code=app.slice(app.indexOf('async function loadMedranoStockTable('),app.indexOf('async function load(){'));
   let reads=0;
   const context={canAccessMedrano:()=>true,setTimeout:callback=>callback(),Promise,
-    db:{from:()=>({select(){return this},order(){return this},range(){reads++;return Promise.resolve(reads===1?{error:{code:'PGRST205',message:'Schema cache'}}:{data:[{id:'stock'}],error:null})}})}};
+    db:{from:()=>({select(){return this},order(){return this},range(offset){reads++;return Promise.resolve(reads===1?{error:{code:'PGRST205',message:'Schema cache'}}:{data:offset?[]:[{id:'stock'}],error:null})}})}};
   vm.runInNewContext(`${code}\nglobalThis.loadTable=loadMedranoStockTable;`,context);
   const result=await context.loadTable('medrano_laboratorio_stock');
-  assert.equal(reads,2);
+  assert.equal(reads,3);
   assert.equal(result.missing,undefined);
   assert.equal(result.data[0].id,'stock');
 });
@@ -75,12 +76,12 @@ test('la carga de materiales usa su clave compuesta y no una columna id inexiste
   const code=app.slice(app.indexOf('async function loadMedranoStockTable('),app.indexOf('async function load(){'));
   const orders=[];
   const context={canAccessMedrano:()=>true,Promise,
-    db:{from:()=>({select(){return this},order(column){orders.push(column);return this},range(){
-      return Promise.resolve(orders.includes('id')?{error:{code:'42703',message:'column medrano_laboratorio_trabajos_materiales.id does not exist'}}:{data:[{trabajo_id:'t',stock_id:'s'}],error:null});
+    db:{from:()=>({select(){return this},order(column){orders.push(column);return this},range(offset){
+      return Promise.resolve(orders.includes('id')?{error:{code:'42703',message:'column medrano_laboratorio_trabajos_materiales.id does not exist'}}:{data:offset?[]:[{trabajo_id:'t',stock_id:'s'}],error:null});
     }})}};
   vm.runInNewContext(`${code}\nglobalThis.loadTable=loadMedranoStockTable;`,context);
   const result=await context.loadTable('medrano_laboratorio_trabajos_materiales');
   assert.equal(result.error,null);
   assert.equal(result.data.length,1);
-  assert.deepEqual(orders,['created_at','trabajo_id','stock_id']);
+  assert.deepEqual(orders,['created_at','trabajo_id','stock_id','created_at','trabajo_id','stock_id']);
 });

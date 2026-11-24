@@ -68,8 +68,6 @@ test('Medrano es un tablero exclusivo para administradores y se carga bajo deman
   assert.match(app,/data-medrano-module="dashboard"[^>]*>Medrano</);
   assert.match(app,/\['today','dashboard'\]\.includes\(mv\)&&!isAdmin/);
   assert.match(app,/function renderMedranoDashboard[\s\S]*?currentRole\(\)!=='administrador'/);
-  assert.match(app,/const dashboardPage=state\.medranoView==='dashboard'&&admin/);
-  assert.match(app,/orderHistoryPage=dashboardPage\|\|/);
   assert.match(app,/openMedranoDataView\('dashboard'\)/);
   assert.match(app,/id="medrano-dashboard-month"[^>]*type="month"/);
   assert.match(app,/id="medrano-dashboard-month-open"[\s\S]*?Elegir mes/);

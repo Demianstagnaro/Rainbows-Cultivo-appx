@@ -5,20 +5,19 @@ import test from 'node:test';
 const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 const load=app.slice(app.indexOf('async function load(){'),app.indexOf('\nlet refreshInFlight='));
 
-test('la carga normal limita registros históricos de Medrano',()=>{
-  assert.match(load,/medrano_comandas',orderHistoryPage\?Infinity:1000/);
-  assert.match(load,/medrano_comandas_multiproducto',orderHistoryPage\?Infinity:1000/);
-  assert.match(load,/medrano_comandas_multiproducto_items',orderHistoryPage\?Infinity:4000/);
+test('las comandas se cargan completas y los trabajos conservan su límite histórico',()=>{
+  assert.match(load,/loadMedranoStockTable\('medrano_comandas'\)/);
+  assert.match(load,/loadMedranoStockTable\('medrano_comandas_multiproducto'\)/);
+  assert.match(load,/loadMedranoStockTable\('medrano_comandas_multiproducto_items'\)/);
   assert.match(load,/medrano_laboratorio_trabajos',laboratoryHistoryPage\?Infinity:1000/);
   assert.match(load,/medrano_laboratorio_trabajos_materiales',laboratoryHistoryPage\?Infinity:4000/);
 });
 
-test('los historiales completos se cargan solamente al abrirlos',()=>{
+test('las pantallas de historial abren los módulos que necesitan',()=>{
   assert.match(app,/function openMedranoDataView\(view\)/);
   assert.match(app,/openMedranoDataView\('administracion-comandas-historial'\)/);
   assert.match(app,/openMedranoDataView\('dispensario-historial'\)/);
   assert.match(app,/openMedranoDataView\('laboratorio-historial'\)/);
-  assert.match(load,/orderHistoryPage\?Infinity/);
   assert.match(load,/laboratoryHistoryPage\?Infinity/);
   assert.match(load,/dispensaryHistoryPage\?Infinity/);
 });

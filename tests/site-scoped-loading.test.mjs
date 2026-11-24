@@ -7,10 +7,10 @@ const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
 test('la carga separa los datos de Palestina y Medrano',()=>{
   assert.match(app,/const medranoPage=state\.site==='medrano'&&canAccessMedrano\(\)/);
   assert.match(app,/const palestinaPage=!medranoPage/);
-  assert.match(app,/palestinaPage\?db\.from\('tareas'\)\.select\('\*'\):empty\(\)/);
+  assert.match(app,/palestinaPage\?loadAllRows\(\(\)=>db\.from\('tareas'\)\.select\('\*'\)\):empty\(\)/);
   assert.match(app,/medranoPage\?loadMedranoStockTable\('medrano_laboratorio_stock'\):empty\(\)/);
-  assert.match(app,/palestinaManager&&palestinaPage\?db\.from\('cosechas'\)/);
-  assert.match(app,/medranoPage\?db\.from\('medrano_pacientes'\)/);
+  assert.match(app,/palestinaManager&&palestinaPage\?loadAllRows\(\(\)=>db\.from\('cosechas'\)/);
+  assert.match(app,/medranoPage\?loadAllRows\(\(\)=>db\.from\('medrano_pacientes'\)/);
 });
 
 test('cambiar de sede muestra carga y trae únicamente sus datos',()=>{

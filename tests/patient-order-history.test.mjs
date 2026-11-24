@@ -56,9 +56,8 @@ test('el detalle conserva productos, trazabilidad, tokens, pago y entrega',()=>{
   assert.match(app,/incluye pendientes, dispensados y eliminados/);
 });
 
-test('el historial completo se descarga sólo al abrir esta pantalla',()=>{
-  assert.match(app,/orderHistoryPage=dashboardPage\|\|state\.medranoView==='administracion-pacientes-historial'/);
-  assert.match(app,/loadMedranoStockTable\('medrano_comandas',orderHistoryPage\?Infinity:1000\)/);
-  assert.match(app,/loadMedranoStockTable\('medrano_comandas_multiproducto',orderHistoryPage\?Infinity:1000\)/);
-  assert.match(app,/loadMedranoStockTable\('medrano_comandas_multiproducto_items',orderHistoryPage\?Infinity:4000\)/);
+test('el historial reutiliza las comandas y detalles paginados',()=>{
+  assert.match(app,/loadMedranoStockTable\('medrano_comandas'\)/);
+  assert.match(app,/loadMedranoStockTable\('medrano_comandas_multiproducto'\)/);
+  assert.match(app,/loadMedranoStockTable\('medrano_comandas_multiproducto_items'\)/);
 });
