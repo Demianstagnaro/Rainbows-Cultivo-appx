@@ -17,7 +17,7 @@ begin
       and tablename = 'medrano_comandas'
       and policyname = 'medrano_comandas_delete'
       and cmd = 'DELETE'
-      and regexp_replace(coalesce(qual, ''), '[()[:space:]]', '', 'g') = 'usuario_rainbows_medrano()'
+      and regexp_replace(coalesce(qual, ''), '[()[:space:]]', '', 'g') in ('usuario_rainbows_medrano','public.usuario_rainbows_medrano')
   ) then
     raise exception 'No se pudo verificar la política segura para eliminar comandas.';
   end if;

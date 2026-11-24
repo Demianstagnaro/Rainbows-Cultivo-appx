@@ -1,11 +1,11 @@
-import {createPalestinaPayrollController} from './palestina-payroll.js?v=3.26.87';
+import {createPalestinaPayrollController} from './palestina-payroll.js?v=3.26.88';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.87';
+import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.88';
 
-import {createPalestinaCashController} from './palestina-cash.js?v=3.26.87';
+import {createPalestinaCashController} from './palestina-cash.js?v=3.26.88';
 
-const APP_VERSION='3.26.87';
+const APP_VERSION='3.26.88';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -254,9 +254,12 @@ function actor(t){const r=real(t);if(!r?.registrada_por)return'';const p=state.p
 async function ensure(t){
   if(t.db?.id)return t.db;
   const payload={clave_externa:t.key,sala_id:requiredRoomId(t.room),fecha:t.date,nombre:t.task,detalle:cleanContinuationDetail(t.detail),tipo:'rutina',estado:'pendiente'};
-  const q=await db.from('tareas').upsert(payload,{onConflict:'clave_externa'}).select().single();
+  const q=await db.from('tareas').upsert(payload,{onConflict:'clave_externa',ignoreDuplicates:true}).select().maybeSingle();
   if(q.error)throw q.error;
-  return q.data;
+  if(q.data)return q.data;
+  const existing=await db.from('tareas').select('*').eq('clave_externa',t.key).single();
+  if(existing.error)throw existing.error;
+  return existing.data;
 }
 async function complete(t,ids,continueTomorrow=false){
   if(isSupplyApplicationTask(t)&&!real(t))throw new Error('Confirmá esta tarea desde la ventana de aplicación de insumos.');
@@ -265,16 +268,7 @@ async function complete(t,ids,continueTomorrow=false){
   const storedDetail=isContinuable(t)&&continueTomorrow
     ? `${baseDetail}${baseDetail?' · ':''}${CONTINUE_MARKER}`
     : baseDetail;
-  const update=await db.from('tareas').update({estado:'realizada',detalle:storedDetail}).eq('id',row.id);
-  if(update.error)throw update.error;
-  const q=await db.from('realizaciones_tarea').upsert({tarea_id:row.id,realizada_at:new Date().toISOString(),registrada_por:state.session.user.id},{onConflict:'tarea_id'}).select().single();
-  if(q.error)throw q.error;
-  await db.from('realizacion_empleados').delete().eq('realizacion_id',q.data.id);
-  if(ids.length){
-    const j=await db.from('realizacion_empleados').insert(ids.map(id=>({realizacion_id:q.data.id,empleado_id:id})));
-    if(j.error)throw j.error;
-  }
-  await refresh();
+  await saveTaskState(row.id,false,true,storedDetail,ids);
 }
 async function undo(t){
   if(isSupplyApplicationTask(t)){
@@ -284,11 +278,7 @@ async function undo(t){
     await refresh();return;
   }
   const row=t.db||await ensure(t);
-  const realization=directRealByTaskId(row.id);
-  if(realization)await db.from('realizaciones_tarea').delete().eq('id',realization.id);
-  const update=await db.from('tareas').update({estado:'pendiente',detalle:cleanContinuationDetail(row.detalle||t.detail)}).eq('id',row.id);
-  if(update.error)throw update.error;
-  await refresh();
+  await saveTaskState(row.id,false,false,cleanContinuationDetail(row.detalle||t.detail),[]);
 }
 async function loadMedranoCounterItems(allowed){
   if(!allowed)return {data:[],error:null};
@@ -306,7 +296,7 @@ async function loadMedranoStockTable(table,maxRows=Infinity){
     for(const column of sortColumns)query=query.order(column);
     return query.range(offset,offset+pageSize-1);
   };
-  for(let offset=0;;offset+=1000){
+  for(let offset=0;;offset=rows.length){
     const pageSize=Math.min(1000,maxRows-offset);
     if(pageSize<=0)return {data:rows,error:null,complete:false};
     let q=await queryPage(offset,pageSize);
@@ -317,10 +307,22 @@ async function loadMedranoStockTable(table,maxRows=Infinity){
     if(['42P01','PGRST205'].includes(q.error?.code))return {data:[],error:null,missing:true,issue:{table,code:q.error.code,message:q.error.message||''}};
     if(q.error)return q;
     rows.push(...(q.data||[]));
-    if((q.data||[]).length<pageSize)return {data:rows,error:null,complete:true};
+    if(!q.data?.length)return {data:rows,error:null,complete:true};
     if(rows.length>=maxRows)return {data:rows,error:null,complete:false};
   }
 }
+async function loadAllRows(buildQuery,sortColumns=['id']){
+  const rows=[];
+  for(;;){
+    let query=buildQuery();
+    for(const column of sortColumns)query=query.order(column);
+    const result=await query.range(rows.length, rows.length+999);
+    if(result.error)return result;
+    if(!result.data?.length)return {data:rows,error:null};
+    rows.push(...result.data);
+  }
+}
+
 function applyMedranoOrderRows(legacyOrders,multiOrders,multiItems){
   state.medranoMultiOrders=multiOrders||[];
   state.medranoMultiItems=multiItems||[];
@@ -348,34 +350,32 @@ async function load(){
   const empty=()=>Promise.resolve({data:[],error:null});
   const medranoPage=state.site==='medrano'&&canAccessMedrano();
   const palestinaPage=!medranoPage;
-  const dashboardPage=state.medranoView==='dashboard'&&admin;
-  const orderHistoryPage=dashboardPage||state.medranoView==='administracion-pacientes-historial'||String(state.medranoView||'').startsWith('administracion-comandas-historial')||state.medranoView==='administracion-comandas-eliminadas'||state.medranoView==='dispensario-historial';
   const laboratoryHistoryPage=state.medranoView==='laboratorio-historial';
   const dispensaryHistoryPage=state.medranoView==='dispensario-historial';
   const cashPage=String(state.medranoView||'').startsWith('administracion-caja');
   const qs=await Promise.all([
     palestinaPage?db.from('salas').select('*'):empty(),
     palestinaPage?db.from('camas').select('*'):empty(),
-    palestinaPage?db.from('plantas').select('*'):empty(),
+    palestinaPage?loadAllRows(()=>db.from('plantas').select('*')):empty(),
     db.from('geneticas').select('*').order('nombre'),
-    palestinaManager&&palestinaPage?db.from('cosechas').select('*').order('fecha',{ascending:false}):empty(),
-    palestinaManager&&palestinaPage?db.from('cosecha_geneticas').select('*'):empty(),
-    stockAccess&&palestinaPage?db.from('stock_ciclos').select('*').order('sala').order('ciclo',{ascending:false}):empty(),
-    stockAccess&&palestinaPage?db.from('stock_existencias').select('*').order('orden'):empty(),
-    stockAccess&&palestinaPage?db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false}):empty(),
-    medranoPage?db.from('medrano_dispensario_lotes').select('*').order('fecha_ingreso',{ascending:false}).order('created_at',{ascending:false}):empty(),
+    palestinaManager&&palestinaPage?loadAllRows(()=>db.from('cosechas').select('*').order('fecha',{ascending:false})):empty(),
+    palestinaManager&&palestinaPage?loadAllRows(()=>db.from('cosecha_geneticas').select('*')):empty(),
+    stockAccess&&palestinaPage?loadAllRows(()=>db.from('stock_ciclos').select('*').order('sala').order('ciclo',{ascending:false})):empty(),
+    stockAccess&&palestinaPage?loadAllRows(()=>db.from('stock_existencias').select('*').order('orden')):empty(),
+    stockAccess&&palestinaPage?loadAllRows(()=>db.from('stock_movimientos').select('*').order('fecha',{ascending:false}).order('created_at',{ascending:false})):empty(),
+    medranoPage?loadAllRows(()=>db.from('medrano_dispensario_lotes').select('*').order('fecha_ingreso',{ascending:false}).order('created_at',{ascending:false})):empty(),
     loadMedranoCounterItems(medranoPage),
-    medranoPage?db.from('medrano_pacientes').select('*').order('apellido').order('nombre'):empty(),
-    medranoPage?loadMedranoStockTable('medrano_comandas',orderHistoryPage?Infinity:1000):empty(),
+    medranoPage?loadAllRows(()=>db.from('medrano_pacientes').select('*').order('apellido').order('nombre')):empty(),
+    medranoPage?loadMedranoStockTable('medrano_comandas'):empty(),
     (stockAccess||canAccessMedrano())?db.from('stock_transferencias').select('*').order('created_at',{ascending:false}):empty(),
     (stockAccess||canAccessMedrano())?db.from('stock_transferencia_items').select('*').order('created_at'):empty(),
     palestinaPage?db.from('empleados').select('*').eq('activo',true).order('nombre'):empty(),
-    palestinaPage?db.from('tareas').select('*'):empty(),
-    palestinaPage?db.from('realizaciones_tarea').select('*'):empty(),
-    palestinaPage?db.from('realizacion_empleados').select('*'):empty(),
+    palestinaPage?loadAllRows(()=>db.from('tareas').select('*')):empty(),
+    palestinaPage?loadAllRows(()=>db.from('realizaciones_tarea').select('*')):empty(),
+    palestinaPage?loadAllRows(()=>db.from('realizacion_empleados').select('*'),['realizacion_id','empleado_id']):empty(),
     admin?db.from('perfiles').select('*').order('nombre'):db.rpc('listar_perfiles_directorio'),
-    palestinaPage?db.from('tareas_generales').select('*').order('created_at',{ascending:false}):empty(),
-    palestinaPage?db.from('tarea_general_empleados').select('*'):empty(),
+    palestinaPage?loadAllRows(()=>db.from('tareas_generales').select('*').order('created_at',{ascending:false})):empty(),
+    palestinaPage?loadAllRows(()=>db.from('tarea_general_empleados').select('*'),['tarea_general_id','empleado_id']):empty(),
     medranoPage?loadMedranoStockTable('medrano_laboratorio_stock'):empty(),
     medranoPage?loadMedranoStockTable('medrano_traslados_laboratorio',dispensaryHistoryPage?Infinity:1000):empty(),
     medranoPage?loadMedranoStockTable('medrano_stock_historial',state.medranoView==='stock-historial'?Infinity:500):empty(),
@@ -383,8 +383,8 @@ async function load(){
     medranoPage?loadMedranoStockTable('medrano_laboratorio_dispensario_movimientos',dispensaryHistoryPage?Infinity:1000):empty(),
     medranoPage?loadMedranoStockTable('medrano_laboratorio_trabajos',laboratoryHistoryPage?Infinity:1000):empty(),
     empty(),
-    medranoPage?loadMedranoStockTable('medrano_comandas_multiproducto',orderHistoryPage?Infinity:1000):empty(),
-    medranoPage?loadMedranoStockTable('medrano_comandas_multiproducto_items',orderHistoryPage?Infinity:4000):empty(),
+    medranoPage?loadMedranoStockTable('medrano_comandas_multiproducto'):empty(),
+    medranoPage?loadMedranoStockTable('medrano_comandas_multiproducto_items'):empty(),
     medranoPage?loadMedranoStockTable('medrano_laboratorio_trabajos_materiales',laboratoryHistoryPage?Infinity:4000):empty(),
     medranoPage?loadMedranoStockTable('medrano_caja_movimientos'):empty(),
     medranoPage&&cashPage?loadMedranoStockTable('medrano_tokens_movimientos'):empty(),
@@ -450,17 +450,16 @@ async function refreshMedranoModules(...requested){
     ...(scopes.has('transfers')?['stock_transferencias','stock_transferencia_items']:[])
   ]);
   const jobs=new Map(),add=(key,promise)=>jobs.set(key,promise);
-  const orderHistory=state.medranoView==='administracion-pacientes-historial'||String(state.medranoView||'').startsWith('administracion-comandas-historial')||state.medranoView==='administracion-comandas-eliminadas'||state.medranoView==='dispensario-historial';
   const labHistory=state.medranoView==='laboratorio-historial';
   const dispensaryHistory=state.medranoView==='dispensario-historial';
   const cashView=String(state.medranoView||'').startsWith('administracion-caja');
   if(scopes.has('orders')){
-    add('legacyOrders',loadMedranoStockTable('medrano_comandas',orderHistory?Infinity:1000));
-    add('multiOrders',loadMedranoStockTable('medrano_comandas_multiproducto',orderHistory?Infinity:1000));
-    add('multiItems',loadMedranoStockTable('medrano_comandas_multiproducto_items',orderHistory?Infinity:4000));
+    add('legacyOrders',loadMedranoStockTable('medrano_comandas'));
+    add('multiOrders',loadMedranoStockTable('medrano_comandas_multiproducto'));
+    add('multiItems',loadMedranoStockTable('medrano_comandas_multiproducto_items'));
   }
   if(scopes.has('inventory')){
-    add('dispensaryLots',db.from('medrano_dispensario_lotes').select('*').order('fecha_ingreso',{ascending:false}).order('created_at',{ascending:false}));
+    add('dispensaryLots',loadAllRows(()=>db.from('medrano_dispensario_lotes').select('*').order('fecha_ingreso',{ascending:false}).order('created_at',{ascending:false})));
     add('counterItems',loadMedranoCounterItems(true));
     add('labItems',loadMedranoStockTable('medrano_laboratorio_stock'));
     add('labTransfers',loadMedranoStockTable('medrano_traslados_laboratorio',dispensaryHistory?Infinity:1000));
@@ -476,7 +475,7 @@ async function refreshMedranoModules(...requested){
     add('cashClosings',loadMedranoStockTable('medrano_caja_arqueos'));
     if(cashView)add('tokenMovements',loadMedranoStockTable('medrano_tokens_movimientos'));
   }
-  if(scopes.has('patients'))add('patients',db.from('medrano_pacientes').select('*').order('apellido').order('nombre'));
+  if(scopes.has('patients'))add('patients',loadAllRows(()=>db.from('medrano_pacientes').select('*').order('apellido').order('nombre')));
   if(scopes.has('catalog')){
     add('flowerPrices',loadMedranoStockTable('medrano_precios_flores'));
     add('categoryPrices',loadMedranoStockTable('medrano_precios_categorias'));
@@ -947,28 +946,20 @@ async function deleteGeneralTask(){
   await refresh();
 }
 
-async function completeGeneralTask(t,ids){
-  const q=await db.from('tareas_generales').update({
-    estado:'realizada',
-    realizada_at:new Date().toISOString(),
-    registrada_por:state.session.user.id
-  }).eq('id',t.id);
+async function saveTaskState(id,general,completeTask,detail,employees){
+  const q=await db.rpc('registrar_estado_tarea_palestina',{
+    p_id:id,p_general:general,p_completar:completeTask,p_detalle:detail,p_empleados:employees
+  });
   if(q.error)throw q.error;
-  await db.from('tarea_general_empleados').delete().eq('tarea_general_id',t.id);
-  if(ids.length){
-    const j=await db.from('tarea_general_empleados').insert(ids.map(id=>({tarea_general_id:t.id,empleado_id:id})));
-    if(j.error)throw j.error;
-  }
   await refresh();
 }
 
+async function completeGeneralTask(t,ids){
+  await saveTaskState(t.id,true,true,null,ids);
+}
+
 async function undoGeneralTask(t){
-  const q=await db.from('tareas_generales').update({
-    estado:'pendiente',realizada_at:null,registrada_por:null
-  }).eq('id',t.id);
-  if(q.error)throw q.error;
-  await db.from('tarea_general_empleados').delete().eq('tarea_general_id',t.id);
-  await refresh();
+  await saveTaskState(t.id,true,false,null,[]);
 }
 
 function fillRoomSelect(selectedRoom=''){
@@ -2388,6 +2379,7 @@ async function deleteMedranoOrder(orderId,reason=''){
   if(!canManageMedrano())throw new Error('No tenés permiso para eliminar comandas.');
   const order=findEditableMedranoOrder(orderId);
   if(!order)throw new Error('No se encontró la comanda.');
+  if(order.multiple&&order.dispensada_at)throw new Error('La comanda ya fue dispensada.');
   const q=order.multiple?await db.rpc('eliminar_comanda_tokens',{p_id:order.id,p_motivo:reason.trim()||null}):await db.rpc('eliminar_comanda_medrano',{objetivo_id:order.id,motivo:reason.trim()||null});
   if(q.error)throw q.error;
   state.pendingDeleteMedranoOrder=null;
@@ -2428,6 +2420,7 @@ async function confirmMedranoPayment(){
 }
 
 function medranoOrderOptionsHtml(order){
+  if(order.multiple&&order.dispensada_at)return '';
   const safeId=escapeHtml(order.id);
   const editable=!order.multiple||order.pago_estado!=='pagada';
   return `<details class="medrano-order-menu"><summary aria-label="Opciones de la comanda">⋮</summary><div class="medrano-order-menu-options">${editable?`<button type="button" data-edit-medrano-order="${safeId}">Editar</button>`:''}<button type="button" class="danger-text" data-delete-medrano-order="${safeId}">Eliminar</button></div></details>`;
