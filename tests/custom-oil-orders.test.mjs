@@ -32,7 +32,7 @@ test('la comanda ofrece aceites valorizados para preparar a pedido',()=>{
 test('Laboratorio abre la receta y vincula la producción a la comanda',()=>{
   assert.match(app,/data-prepare-custom-oil/);
   assert.match(app,/Preparar aceite de comanda/);
-  assert.match(app,/vincular_produccion_aceite_comanda/);
+  assert.match(app,/preparar_aceite_pedido_v89/);
   assert.match(sql,/create or replace function public\.vincular_produccion_aceite_comanda/i);
   assert.match(sql,/create trigger completar_aceite_comanda_desde_produccion/i);
   assert.match(sql,/set origen_id=v_stock\.id,catalogo_producto_id=v_stock\.catalogo_producto_id,nombre=v_stock\.nombre,preparacion_estado='listo'/i);
