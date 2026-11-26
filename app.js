@@ -1,11 +1,11 @@
-import {createPalestinaPayrollController} from './palestina-payroll.js?v=3.26.89';
+import {createPalestinaPayrollController} from './palestina-payroll.js?v=3.26.90';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.89';
+import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.90';
 
-import {createPalestinaCashController} from './palestina-cash.js?v=3.26.89';
+import {createPalestinaCashController} from './palestina-cash.js?v=3.26.90';
 
-const APP_VERSION='3.26.89';
+const APP_VERSION='3.26.90';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -30,7 +30,7 @@ Object.assign(state,{medranoDashboardPeriod:'month',medranoDashboardMonth:''});
 Object.assign(state,{medranoIntegrity:{loaded:false,loading:false,issues:[],error:null,checkedAt:null}});
 Object.assign(state,{medranoStockControl:{loaded:false,loading:false,rows:[],error:null,checkedAt:null}});
 Object.assign(state,{medranoTodayControlsLoading:false});
-Object.assign(state,{medranoPhysicalControls:[],medranoPhysicalControlItems:[],medranoPhysicalControlReady:false,medranoPhysicalControlLoading:false,medranoPhysicalControlError:null,medranoPhysicalControlFilter:'criticos'});
+Object.assign(state,{medranoPhysicalControls:[],medranoPhysicalControlItems:[],medranoPhysicalControlReady:false,medranoPhysicalControlLoading:false,medranoPhysicalControlError:null,medranoPhysicalControlFilter:'criticos',medranoPhysicalControlSector:'todos'});
 Object.assign(state,{cultivationParameters:[],cultivationMeasurements:[],cultivationParametersReady:false,cultivationParametersLoading:false,cultivationParametersError:null,cultivationParameterMonth:ymd(new Date()).slice(0,7),cultivationParameterRoom:'todas',editCultivationParameter:null});
 function today(){const d=new Date();d.setHours(0,0,0,0);return d}function sd(d){const x=new Date(d);x.setHours(0,0,0,0);return x}function add(d,n){const x=new Date(d);x.setDate(x.getDate()+n);x.setHours(0,0,0,0);return x}function diff(a,b){return Math.round((sd(a)-sd(b))/86400000)}function parse(s){const[y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d)}function ymd(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}function same(a,b){return ymd(a)===ymd(b)}function shortRoomDate(d){const wd=d.toLocaleDateString('es-AR',{weekday:'short'}).replace('.','');const cap=wd.charAt(0).toUpperCase()+wd.slice(1);return `${cap} ${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`}
 function nice(d){return d.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}function monthName(d){return d.toLocaleDateString('es-AR',{month:'long',year:'numeric'})}function dow(d){return['domingo','lunes','martes','miercoles','jueves','viernes','sabado'][d.getDay()]}function rr(n){return rules.find(r=>r.name===n)}function sr(n){return state.salas.find(r=>r.nombre===n)}
@@ -1513,6 +1513,9 @@ function medranoPhysicalStockRows(){
 function updateMedranoPhysicalStockRow(input){
   const row=input.closest('[data-physical-stock-row]'),difference=row?.querySelector('[data-physical-stock-difference]');
   if(!row||!difference)return;
+  const actualCell=input.closest('td'),differenceCell=difference.closest('td');
+  actualCell.dataset.sortValue=input.value;
+  differenceCell.dataset.sortValue=input.value===''?'':String(Number(input.value)-Number(row.dataset.expected));
   if(input.value===''){difference.textContent='Sin contar';difference.className='stock-control-difference';return}
   const actual=Number(input.value),expected=Number(row.dataset.expected),delta=actual-expected,unit=row.dataset.unit;
   difference.textContent=Number.isFinite(actual)?`${delta>0?'+':''}${medranoPhysicalStockQuantity(delta)} ${unit}`:'Cantidad inválida';
@@ -1521,10 +1524,14 @@ function updateMedranoPhysicalStockRow(input){
 function filterMedranoPhysicalStockRows(){
   const term=String($('physical-stock-search')?.value||'').trim().toLocaleLowerCase('es');
   const filter=$('physical-stock-filter')?.value||'criticos';
+  const sector=$('physical-stock-sector').value;
+  let visible=0;
   app.querySelectorAll('[data-physical-stock-row]').forEach(row=>{
     const matchesFilter=filter==='todos'||(filter==='revision'?Number(row.dataset.expected)<Number(row.dataset.reserved):row.dataset.critical==='true');
-    row.hidden=!matchesFilter||(term&&!row.textContent.toLocaleLowerCase('es').includes(term));
+    row.hidden=!matchesFilter||(sector!=='todos'&&row.dataset.sector!==sector)||(term&&!row.textContent.toLocaleLowerCase('es').includes(term));
+    if(!row.hidden)visible++;
   });
+  $('physical-stock-empty').hidden=visible>0;
 }
 async function loadMedranoPhysicalControlData(force=false){
   if(currentRole()!=='administrador'||state.medranoPhysicalControlLoading)return;
@@ -1559,7 +1566,9 @@ async function saveMedranoPhysicalControl(){
   if(differences.length&&notes.length<5)throw new Error('Explicá en Observaciones el motivo de las diferencias (al menos 5 caracteres).');
   const belowReserved=items.filter(item=>{const row=app.querySelector(`[data-physical-stock-row][data-stock-id="${item.stock_id}"]`);return item.cantidad_real<Number(row?.dataset.reserved||0)}).length;
   const message=differences.length?`Se registrarán ${items.length} productos y ${differences.length} diferencias.${belowReserved?` ${belowReserved} quedarán pendientes de revisión porque el conteo es menor que lo reservado.`:''} ¿Confirmar el control físico?`:`Los ${items.length} productos coinciden con el sistema. ¿Registrar el control físico?`;
-  if(!confirm(message))return;
+  const hiddenCounts=[...app.querySelectorAll('[data-physical-stock-row][hidden] [data-physical-stock-actual]')].filter(input=>input.value!=='').length;
+  const scope=hiddenCounts?` Hay ${hiddenCounts} conteo(s) cargado(s) en filas ocultas por los filtros.`:'';
+  if(!confirm(message+scope))return;
   const query=await db.rpc('registrar_control_stock_medrano',{p_items:items,p_observaciones:notes||null});
   if(query.error)throw query.error;
   state.medranoPhysicalControlReady=false;
@@ -1592,7 +1601,11 @@ function renderMedranoPhysicalControl(medranoNav,bindModuleNav){
     bindModuleNav();$('physical-stock-back').onclick=()=>{state.medranoView='stock';render()};$('physical-stock-retry').onclick=()=>{state.medranoPhysicalControlReady=false;state.medranoPhysicalControlError=null;openMedranoPhysicalControl(false)};return;
   }
   const rows=medranoPhysicalStockRows();
-  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="physical-stock-back" class="secondary compact-button" type="button">← Stock Medrano</button><h2>Control físico de stock</h2><p class="muted">Cargá solamente lo que contaste. Los productos no contados no se modifican.</p></div><button id="physical-stock-history" class="secondary compact-button" type="button">Historial</button></section><section class="panel stock-detail-panel"><div class="stock-control-tools"><input id="physical-stock-search" class="text-input" type="search" aria-label="Buscar producto para controlar" placeholder="Buscar producto, lote o categoría…"><select id="physical-stock-filter" class="text-input" aria-label="Filtrar productos"><option value="criticos" ${state.medranoPhysicalControlFilter==='criticos'?'selected':''}>Materias primas críticas</option><option value="todos" ${state.medranoPhysicalControlFilter==='todos'?'selected':''}>Todos los productos</option><option value="revision" ${state.medranoPhysicalControlFilter==='revision'?'selected':''}>Saldo negativo o reservas sin cubrir</option></select></div><div class="stock-table-wrap"><table class="stock-table stock-control-table"><thead><tr><th>Sector</th><th>Producto</th><th>Lote</th><th>Registrado</th><th>Reservado</th><th>Disponible</th><th>Conteo físico</th><th>Diferencia</th></tr></thead><tbody>${rows.length?rows.map(row=>{const available=row.expected-row.reserved;return `<tr data-physical-stock-row data-sector="${row.sector}" data-category="${row.category}" data-stock-id="${escapeHtml(row.id)}" data-unit="${escapeHtml(row.unit)}" data-expected="${row.expected}" data-reserved="${row.reserved}" data-critical="${row.critical}"><td>${escapeHtml(row.sector==='laboratorio'?'Laboratorio':'Dispensario')}<br><span class="muted">${escapeHtml(medranoPhysicalStockCategory(row))}</span>${row.critical?'<br><span class="stock-control-critical">Materia prima crítica</span>':''}</td><td><strong>${escapeHtml(row.name)}</strong></td><td>${escapeHtml(row.lot)}</td><td>${medranoPhysicalStockQuantity(row.expected)} ${escapeHtml(row.unit)}</td><td>${medranoPhysicalStockQuantity(row.reserved)} ${escapeHtml(row.unit)}</td><td class="${available<0?'stock-control-alert':''}">${medranoPhysicalStockQuantity(available)} ${escapeHtml(row.unit)}</td><td><input class="text-input stock-control-input" data-physical-stock-actual type="number" min="0" step="${row.unit==='unidades'?'1':'0.001'}" inputmode="${row.unit==='unidades'?'numeric':'decimal'}" placeholder="Sin contar" aria-label="Cantidad física de ${escapeHtml(row.name)}"></td><td><span class="stock-control-difference" data-physical-stock-difference>Sin contar</span></td></tr>`}).join(''):'<tr><td colspan="8" class="muted">No hay productos para controlar.</td></tr>'}</tbody></table></div><label class="field-label stock-control-notes">Observaciones<textarea id="physical-stock-notes" class="text-input" maxlength="1000" placeholder="Obligatorias si hay diferencias. Ej.: merma, rotura, error de carga…"></textarea></label><div class="stock-control-submit"><p class="muted">Las diferencias seguras ajustan el stock. Si el conteo queda por debajo de lo reservado, se registra para revisión sin afectar comandas ni producciones.</p><button id="physical-stock-save" class="primary" type="button">Confirmar control</button></div></section>`;
+  app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="physical-stock-back" class="secondary compact-button" type="button">← Stock Medrano</button><h2>Control físico de stock</h2><p class="muted">Cargá solamente lo que contaste. Los productos no contados no se modifican.</p></div><button id="physical-stock-history" class="secondary compact-button" type="button">Historial</button></section><section class="panel stock-detail-panel" data-stock-table-tools><div class="stock-control-tools"><input id="physical-stock-search" class="text-input" type="search" aria-label="Buscar producto para controlar" placeholder="Buscar producto, lote o categoría…"><select id="physical-stock-sector" class="text-input" aria-label="Filtrar por sector"><option value="todos">Todos los sectores</option><option value="dispensario">Dispensario</option><option value="laboratorio">Laboratorio</option></select><select id="physical-stock-filter" class="text-input" aria-label="Filtrar productos"><option value="criticos" ${state.medranoPhysicalControlFilter==='criticos'?'selected':''}>Materias primas críticas</option><option value="todos" ${state.medranoPhysicalControlFilter==='todos'?'selected':''}>Todos los productos</option><option value="revision" ${state.medranoPhysicalControlFilter==='revision'?'selected':''}>Saldo negativo o reservas sin cubrir</option></select></div><div class="stock-table-wrap"><table class="stock-table stock-control-table"><thead><tr><th data-sort-type="text">Sector</th><th data-sort-type="text">Producto</th><th data-sort-type="text">Lote</th><th data-sort-type="number">Registrado</th><th data-sort-type="number">Reservado</th><th data-sort-type="number">Disponible</th><th data-sort-type="number">Conteo físico</th><th data-sort-type="number">Diferencia</th></tr></thead><tbody>${rows.map(row=>{const available=row.expected-row.reserved;return `<tr data-physical-stock-row data-sector="${row.sector}" data-category="${row.category}" data-stock-id="${escapeHtml(row.id)}" data-unit="${escapeHtml(row.unit)}" data-expected="${row.expected}" data-reserved="${row.reserved}" data-critical="${row.critical}"><td data-sort-value="${row.sector}">${escapeHtml(row.sector==='laboratorio'?'Laboratorio':'Dispensario')}<br><span class="muted">${escapeHtml(medranoPhysicalStockCategory(row))}</span>${row.critical?'<br><span class="stock-control-critical">Materia prima crítica</span>':''}</td><td><strong>${escapeHtml(row.name)}</strong></td><td>${escapeHtml(row.lot)}</td><td data-sort-value="${row.expected}">${medranoPhysicalStockQuantity(row.expected)} ${escapeHtml(row.unit)}</td><td data-sort-value="${row.reserved}">${medranoPhysicalStockQuantity(row.reserved)} ${escapeHtml(row.unit)}</td><td data-sort-value="${available}" class="${available<0?'stock-control-alert':''}">${medranoPhysicalStockQuantity(available)} ${escapeHtml(row.unit)}</td><td data-sort-value=""><input class="text-input stock-control-input" data-physical-stock-actual type="number" min="0" step="${row.unit==='unidades'?'1':'0.001'}" inputmode="${row.unit==='unidades'?'numeric':'decimal'}" placeholder="Sin contar" aria-label="Cantidad física de ${escapeHtml(row.name)}"></td><td data-sort-value=""><span class="stock-control-difference" data-physical-stock-difference>Sin contar</span></td></tr>`}).join('')}<tr id="physical-stock-empty" data-empty-row="true" hidden><td colspan="8" class="muted">${rows.length?'No hay productos que coincidan con los filtros.':'No hay productos para controlar.'}</td></tr></tbody></table></div><label class="field-label stock-control-notes">Observaciones<textarea id="physical-stock-notes" class="text-input" maxlength="1000" placeholder="Obligatorias si hay diferencias. Ej.: merma, rotura, error de carga…"></textarea></label><div class="stock-control-submit"><p class="muted">Las diferencias seguras ajustan el stock. Si el conteo queda por debajo de lo reservado, se registra para revisión sin afectar comandas ni producciones.</p><button id="physical-stock-save" class="primary" type="button">Confirmar control</button></div></section>`;
+  bindStockTableTools(app);
+  const sector=$('physical-stock-sector');
+  sector.value=state.medranoPhysicalControlSector;
+  sector.onchange=()=>{state.medranoPhysicalControlSector=sector.value;filterMedranoPhysicalStockRows()};
   bindModuleNav();$('physical-stock-back').onclick=()=>{state.medranoView='stock';render()};$('physical-stock-history').onclick=()=>{resetMedranoDateHistory('control-fisico');state.medranoView='stock-control-history';render()};$('physical-stock-search').oninput=filterMedranoPhysicalStockRows;$('physical-stock-filter').onchange=event=>{state.medranoPhysicalControlFilter=event.target.value;filterMedranoPhysicalStockRows()};app.querySelectorAll('[data-physical-stock-actual]').forEach(input=>input.oninput=()=>updateMedranoPhysicalStockRow(input));$('physical-stock-save').onclick=async()=>{const button=$('physical-stock-save');button.disabled=true;try{await saveMedranoPhysicalControl()}catch(error){console.error(error);alert(error.message||'No se pudo registrar el control físico.')}finally{button.disabled=false}};filterMedranoPhysicalStockRows();
 }
 function medranoTransferKey(){
@@ -4667,6 +4680,7 @@ function stockSearchNormalize(value){
 function stockSortValue(cell,type){
   const raw=cell?.dataset?.sortValue ?? cell?.textContent ?? '';
   if(type==='number'){
+    if(cell?.dataset?.sortValue==='')return null;
     const cleaned=String(raw).replace(/[^0-9,.-]/g,'').replace(/\.(?=.*\.)/g,'').replace(',','.');
     const n=Number(cleaned);return Number.isFinite(n)?n:-Infinity;
   }
@@ -4703,10 +4717,11 @@ function bindStockTableTools(root=document){
         const body=table.tBodies[0];
         rows().sort((a,b)=>{
           const av=stockSortValue(a.cells[col],type),bv=stockSortValue(b.cells[col],type);
+          if(av===null||bv===null)return av===bv?0:av===null?1:-1;
           const cmp=(typeof av==='number'&&typeof bv==='number')?av-bv:String(av).localeCompare(String(bv),'es',{numeric:true,sensitivity:'base'});
           return dir==='asc'?cmp:-cmp;
         }).forEach(r=>body.appendChild(r));
-        applyFilter();
+        if(input)applyFilter();
       };
       th.addEventListener('click',sort);
       th.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();sort()}});

@@ -1060,7 +1060,7 @@ body{
 @media(max-width:620px){.medrano-stock-alert-card,.medrano-stock-alert-item{display:grid}.medrano-stock-alert-card button,.medrano-stock-alert-item button{width:100%}.medrano-stock-minimum-row{grid-template-columns:1fr}.medrano-stock-minimum-row input{width:100%}}
 /* V3.26.56 — control físico de stock */
 .stock-control-card{border-color:rgba(249,115,22,.42)}
-.stock-control-tools{display:grid;grid-template-columns:minmax(220px,1fr) minmax(220px,320px);gap:.75rem;margin-bottom:1rem}
+.stock-control-tools{display:grid;grid-template-columns:minmax(180px,1fr) minmax(150px,.65fr) minmax(200px,1fr);gap:.75rem;margin-bottom:1rem}
 .stock-control-table{min-width:1180px}
 .stock-control-input{width:130px;min-width:110px;padding:8px 10px}
 .stock-control-difference{display:inline-flex;white-space:nowrap;color:var(--muted);font-weight:800}
