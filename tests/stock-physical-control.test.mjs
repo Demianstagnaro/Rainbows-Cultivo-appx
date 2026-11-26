@@ -11,7 +11,7 @@ test('el control conserva conteo, reservas, disponible, diferencia y resultado',
     assert.match(sql,new RegExp(field));
   }
   assert.match(sql,/estado in \('coincide','ajustado','requiere_revision'\)/);
-  assert.match(app,/Registrado<\/th><th>Reservado<\/th><th>Disponible<\/th><th>Conteo físico<\/th><th>Diferencia/);
+  for(const label of ['Registrado','Reservado','Disponible','Conteo físico','Diferencia'])assert.ok(app.includes(`<th data-sort-type="number">${label}</th>`));
 });
 
 test('solamente administración puede consultar y registrar controles',()=>{
