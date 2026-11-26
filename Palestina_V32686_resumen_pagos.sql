@@ -39,20 +39,4 @@ begin
 end; $$;
 revoke all on function public.consultar_datos_pago_palestina(),public.guardar_datos_pago_palestina(uuid,integer,jsonb) from public,anon,authenticated;
 grant execute on function public.consultar_datos_pago_palestina(),public.guardar_datos_pago_palestina(uuid,integer,jsonb) to authenticated;
--- Datos del Excel 30_10. No se importan sueldos, asistencias ni pagos.
--- Solo vincula coincidencias inequívocas; no crea empleados ni sobrescribe datos existentes.
-with source(nombres,nombre_completo,dni,telefono,alias) as (values
-(array['cone','carlos insaurralde (cone)','carlos insaurralde'],'Carlos Insaurralde (Cone)','34537652','1153417531','cerroscardones'),
-(array['pata','juan gonzalo jimenez (pata)','juan gonzalo jimenez'],'Juan Gonzalo Jimenez (Pata)','35148576','1167060734','juan.teatro'),
-(array['mar','mariana garcia (mar)','mariana garcia'],'Mariana Garcia (Mar)','43193130','1156439116','tachameeladoble.'),
-(array['chomi','julian cordoba (chomi)','julian cordoba'],'Julian Cordoba (Chomi)','32334154','1161802903','Jcordobamartinez'),
-(array['tortu','guillermo agustin gomez (tortu)','guillermo agustin gomez'],'Guillermo Agustin Gomez (Tortu)','33708988','1173650401','djtor.mp'),
-(array['eric','eric jhon ingram'],'Eric Jhon Ingram','42699727','5492945608762','dice.vaso.emerge.mp'),
-(array['lua','luana ailin michelangeli'],'Luana Ailin Michelangeli','39148629','1141979187','Luana.michelangeli')
-), matched as (
- select s.*,e.id,count(*) over(partition by s.dni) matches from source s join public.empleados e on lower(btrim(e.nombre))=any(s.nombres)
-)
-insert into public.palestina_sueldos_datos_pago(empleado_id,nombre_completo,dni,telefono,alias)
-select id,nombre_completo,dni,telefono,alias from matched where matches=1
-on conflict(empleado_id) do nothing;
 commit;
