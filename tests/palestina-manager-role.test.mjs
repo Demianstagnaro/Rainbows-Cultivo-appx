@@ -39,8 +39,8 @@ test('la base amplía las RPC de cosechas y stock sin copiar su lógica',()=>{
 test('Encargado P no obtiene Config ni Medrano',()=>{
   assert.match(app,/function canAccessMedrano\(\)[\s\S]*\['administrador','medrano'\]/);
   assert.doesNotMatch(app,/function canAccessMedrano\(\)[\s\S]{0,120}encargado_p/);
-  assert.match(app,/const ok=currentRole\(\)==='administrador';cb\.hidden=!ok/);
-  assert.match(app,/if\(state\.view==='settings'&&currentRole\(\)!=='administrador'\)state\.view='today'/);
+  assert.match(app,/const ok=consultaAdministrativa\(\);cb\.hidden=!ok/);
+  assert.match(app,/if\(state\.view==='settings'&&!consultaAdministrativa\(\)\)state\.view='today'/);
   assert.match(sql,/pg_get_functiondef\('public\.usuario_rainbows_medrano\(\)'::regprocedure\)/);
   assert.match(sql,/tablename='configuracion'[\s\S]*usuario_rainbows_admin/);
   assert.doesNotMatch(sql,/create policy configuracion_admin[\s\S]*usuario_rainbows_palestina_gestion/);

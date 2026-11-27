@@ -1,12 +1,23 @@
-import {createPalestinaPayrollController} from './palestina-payroll.js?v=3.26.91';
+import {createPalestinaPayrollController} from './palestina-payroll.js?v=3.26.92';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.91';
+import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.92';
 
-import {createPalestinaCashController} from './palestina-cash.js?v=3.26.91';
+import {createPalestinaCashController} from './palestina-cash.js?v=3.26.92';
 
-const APP_VERSION='3.26.91';
-const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
+const APP_VERSION='3.26.92';
+const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt',{global:{fetch:fetchRainbows}}); 
+async function fetchRainbows(input,init){
+ const url=new URL(typeof input==='string'?input:input.url||input,location.href);
+ const metodo=(init?.method||input?.method||'GET').toUpperCase();
+ if(url.pathname.startsWith('/rest/v1/')&&esContador()){
+   const rpc=url.pathname.split('/rpc/')[1];
+   if(rpc?!["listar_perfiles_directorio","listar_control_stock_medrano","revisar_integridad_medrano","consultar_caja_palestina","consultar_sueldos_palestina","consultar_datos_pago_palestina"].includes(rpc):!['GET','HEAD'].includes(metodo)){
+     return new Response(JSON.stringify({code:'42501',message:'Contador tiene acceso de solo lectura.'}),{status:403,headers:{'Content-Type':'application/json'}});
+   }
+ }
+ return fetch(input,init);
+}
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
 {name:'Flora 2',type:'flora',transplant:'2026-06-10',floraStart:'2026-07-01',automaticIrrigation:false},
@@ -344,9 +355,9 @@ async function load(){
   if(selfProfile.error)throw selfProfile.error;
   state.profile=selfProfile.data||null;
   const role=state.profile?.activo===true?normalizeRole(state.profile.rol):'';
-  const admin=role==='administrador';
-  const palestinaManager=['administrador','encargado_p'].includes(role);
-  const stockAccess=['administrador','encargado_p','medrano'].includes(role);
+  const admin=role==='administrador'||role==='contador';
+  const palestinaManager=['administrador','encargado_p'].includes(role)||role==='contador';
+  const stockAccess=['administrador','encargado_p','medrano'].includes(role)||role==='contador';
   const empty=()=>Promise.resolve({data:[],error:null});
   const medranoPage=state.site==='medrano'&&canAccessMedrano();
   const palestinaPage=!medranoPage;
@@ -566,9 +577,9 @@ function findTask(id,d){return tasks(d).find(t=>String(t.id)===String(id))}
 
 function normalizeRole(value){
   const role=String(value||'').trim().toLowerCase();
-  return ['administrador','encargado_p','cultivo','medrano'].includes(role)?role:'';
+  return (['administrador','encargado_p','cultivo','medrano'].includes(role)||role==='contador')?role:'';
 }
-function roleLabel(role){return({administrador:'Administrador',encargado_p:'Encargado P',cultivo:'Cultivo',medrano:'Medrano'})[normalizeRole(role)]||'Sin rol'}
+function roleLabel(role){return({administrador:'Administrador',encargado_p:'Encargado P',cultivo:'Cultivo',medrano:'Medrano',contador:'Contador'})[normalizeRole(role)]||'Sin rol'}
 
 function currentProfile(){
   if(state.profile) return state.profile;
@@ -581,20 +592,23 @@ function currentRole(){
   return profile?.activo===true?normalizeRole(profile.rol):'';
 }
 
+function esContador(){return currentRole()==='contador'}
+function consultaAdministrativa(){return currentRole()==='administrador'||esContador()}
+function consultaPalestina(){return canManagePalestina()||esContador()}
 function canViewOperations(){
-  return Boolean(currentProfile()?.activo)&&['administrador','encargado_p','cultivo','medrano'].includes(currentRole());
+  return Boolean(currentProfile()?.activo)&&(['administrador','encargado_p','cultivo','medrano'].includes(currentRole())||esContador());
 }
 function canAccessMedrano(){
-  return ['administrador','medrano'].includes(currentRole());
+  return ['administrador','medrano'].includes(currentRole())||esContador();
 }
 function canManagePalestina(){
   return ['administrador','encargado_p'].includes(currentRole());
 }
 function canViewHarvests(){
-  return canManagePalestina();
+  return canManagePalestina()||esContador();
 }
 function canViewStock(){
-  return ['administrador','encargado_p','medrano'].includes(currentRole());
+  return ['administrador','encargado_p','medrano'].includes(currentRole())||esContador();
 }
 function canComplete(){
   return ['administrador','encargado_p','cultivo'].includes(currentRole());
@@ -1534,7 +1548,7 @@ function filterMedranoPhysicalStockRows(){
   $('physical-stock-empty').hidden=visible>0;
 }
 async function loadMedranoPhysicalControlData(force=false){
-  if(currentRole()!=='administrador'||state.medranoPhysicalControlLoading)return;
+  if(!consultaAdministrativa()||state.medranoPhysicalControlLoading)return;
   if(state.medranoPhysicalControlReady&&!force)return;
   state.medranoPhysicalControlLoading=true;state.medranoPhysicalControlError=null;
   try{
@@ -1590,12 +1604,12 @@ function medranoPhysicalControlDayMarkup(dayControls){
 }
 function renderMedranoPhysicalControlHistory(medranoNav,bindModuleNav){
   $('screen-title').textContent='Historial de controles';
-  if(currentRole()!=='administrador'){state.medranoView='stock';render();return}
+  if(!consultaAdministrativa()){state.medranoView='stock';render();return}
   renderMedranoDateHistory({key:'control-fisico',title:'Historial de controles físicos',description:'Conteos, diferencias, ajustes y revisiones pendientes.',rows:state.medranoPhysicalControls||[],dateOf:row=>row.fecha,countLabel:count=>`${count} control${count===1?'':'es'}`,emptyText:'Todavía no hay controles físicos registrados.',backLabel:'Control físico',backAction:()=>{state.medranoView='stock-control';render()},dayContent:(day,rows)=>`<section class="panel stock-detail-panel"><div class="stock-section-head"><div><h3>Controles del día</h3><p class="muted">${rows.length} control${rows.length===1?'':'es'}</p></div></div>${medranoPhysicalControlDayMarkup(rows)}</section>`,medranoNav,bindModuleNav});
 }
 function renderMedranoPhysicalControl(medranoNav,bindModuleNav){
   $('screen-title').textContent='Control físico de stock';
-  if(currentRole()!=='administrador'){state.medranoView='stock';render();return}
+  if(!consultaAdministrativa()){state.medranoView='stock';render();return}
   if(state.medranoPhysicalControlError){
     app.innerHTML=`${medranoNav}<section class="panel stock-page-head"><div><button id="physical-stock-back" class="secondary compact-button" type="button">← Stock Medrano</button><h2>Control físico de stock</h2></div></section><section class="panel error-panel"><strong>No se pudo abrir el control físico.</strong><p>${escapeHtml(state.medranoPhysicalControlError.message||'Aplicá la migración V3.26.56 en Supabase.')}</p><button id="physical-stock-retry" type="button" class="primary compact-button">Reintentar</button></section>`;
     bindModuleNav();$('physical-stock-back').onclick=()=>{state.medranoView='stock';render()};$('physical-stock-retry').onclick=()=>{state.medranoPhysicalControlReady=false;state.medranoPhysicalControlError=null;openMedranoPhysicalControl(false)};return;
@@ -3416,7 +3430,7 @@ function medranoIntegrityMarkup(){
   return `<section class="panel medrano-integrity-card has-errors"><div class="stock-section-head"><div><h3>Control de integridad · Requiere revisión</h3><p>${critical.length} problema${critical.length===1?'':'s'} crítico${critical.length===1?'':'s'} · ${warnings.length} advertencia${warnings.length===1?'':'s'}</p>${checked?`<small>Última revisión: ${escapeHtml(checked)}</small>`:''}</div><button type="button" class="secondary compact-button" data-integrity-refresh>Volver a revisar</button></div>${group('Problemas críticos',critical,true)}${group('Advertencias',warnings,!critical.length)}</section>`;
 }
 async function loadMedranoIntegrity(force=false){
-  if(currentRole()!=='administrador'||state.medranoIntegrity.loading||(!force&&state.medranoIntegrity.loaded))return;
+  if(!consultaAdministrativa()||state.medranoIntegrity.loading||(!force&&state.medranoIntegrity.loaded))return;
   state.medranoIntegrity={...state.medranoIntegrity,loading:true,error:null};
   if(state.site==='medrano'&&state.medranoView==='today')render();
   const result=await db.rpc('revisar_integridad_medrano');
@@ -3444,7 +3458,7 @@ function medranoStockControlMarkup(){
   return `<section class="panel medrano-stock-alert-card has-errors"><div class="stock-section-head"><div><h3>Stock bajo · ${alerts.length} alerta${alerts.length===1?'':'s'}</h3><p>El saldo libre ya alcanzó el mínimo configurado.</p>${checked?`<small>Última revisión: ${escapeHtml(checked)}</small>`:''}</div><button type="button" class="secondary compact-button" data-stock-minimum-config>Configurar mínimos</button></div><div class="medrano-stock-alert-list">${list}</div></section>`;
 }
 async function loadMedranoStockControl(force=false){
-  if(currentRole()!=='administrador'||state.medranoStockControl.loading||(!force&&state.medranoStockControl.loaded))return;
+  if(!consultaAdministrativa()||state.medranoStockControl.loading||(!force&&state.medranoStockControl.loaded))return;
   state.medranoStockControl={...state.medranoStockControl,loading:true,error:null};
   if(state.site==='medrano'&&state.medranoView==='today')render();
   const result=await db.rpc('listar_control_stock_medrano');
@@ -3454,7 +3468,7 @@ async function loadMedranoStockControl(force=false){
   if(state.site==='medrano'&&state.medranoView==='today')render();
 }
 async function loadMedranoTodayControls(){
-  if(currentRole()!=='administrador'||state.medranoTodayControlsLoading)return;
+  if(!consultaAdministrativa()||state.medranoTodayControlsLoading)return;
   const needIntegrity=!state.medranoIntegrity.loaded&&!state.medranoIntegrity.loading;
   const needStock=!state.medranoStockControl.loaded&&!state.medranoStockControl.loading;
   if(!needIntegrity&&!needStock)return;
@@ -3513,7 +3527,7 @@ async function saveMedranoStockMinimums(){
   await loadMedranoStockControl(true);
 }
 function renderMedranoDashboard(medranoNav,bindModuleNav){
-  if(currentRole()!=='administrador'){state.medranoView='stock';render();return}
+  if(!consultaAdministrativa()){state.medranoView='stock';render();return}
   $('screen-title').textContent='Medrano';
   const summary=medranoDashboardSummary();
   const monthRange=medranoDashboardPeriodRange('month');
@@ -3580,7 +3594,7 @@ function renderMedranoToday(medranoNav,bindModuleNav){
 function renderMedrano(){
   $('today-label').textContent=nice(today());
   let mv=state.medranoView||'today';
-  const isAdmin=currentRole()==='administrador';
+  const isAdmin=consultaAdministrativa();
   if(mv==='home')mv=isAdmin?'today':'stock';
   if(['today','dashboard'].includes(mv)&&!isAdmin)mv='stock';
   state.medranoView=mv;
@@ -3620,7 +3634,7 @@ function renderMedrano(){
   if(mv==='stock-control-history'){renderMedranoPhysicalControlHistory(medranoNav,bindModuleNav);return}
   if(mv==='stock'){
     $('screen-title').textContent='Stock Medrano';
-    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Stock Medrano</h2><p class="muted">Elegí el sector de stock que querés consultar.</p></div>${medranoStockHistoryButton()}</div><div class="medrano-stock-grid"><button class="medrano-stock-card" data-medrano-stock="dispensario" type="button"><strong>Dispensario</strong><span>Stock de Dispensario</span></button><button class="medrano-stock-card" data-medrano-stock="laboratorio" type="button"><strong>Laboratorio</strong><span>Stock de Laboratorio</span></button>${currentRole()==='administrador'?'<button class="medrano-stock-card stock-control-card" id="medrano-open-physical-stock" type="button"><strong>Control físico</strong><span>Conteo, diferencias e historial</span></button>':''}</div></section>`;
+    app.innerHTML=`${medranoNav}<section class="panel medrano-stock-home medrano-module-panel"><div class="medrano-section-head"><div><h2>Stock Medrano</h2><p class="muted">Elegí el sector de stock que querés consultar.</p></div>${medranoStockHistoryButton()}</div><div class="medrano-stock-grid"><button class="medrano-stock-card" data-medrano-stock="dispensario" type="button"><strong>Dispensario</strong><span>Stock de Dispensario</span></button><button class="medrano-stock-card" data-medrano-stock="laboratorio" type="button"><strong>Laboratorio</strong><span>Stock de Laboratorio</span></button>${consultaAdministrativa()?'<button class="medrano-stock-card stock-control-card" id="medrano-open-physical-stock" type="button"><strong>Control físico</strong><span>Conteo, diferencias e historial</span></button>':''}</div></section>`;
     bindModuleNav();bindMedranoStockHistoryButtons();
     document.querySelectorAll('[data-medrano-stock]').forEach(b=>b.onclick=()=>{state.medranoView=`stock-${b.dataset.medranoStock}`;state.medranoDispensarioSection=null;state.medranoDispensarioRoom=null;render()});
     const physical=$('medrano-open-physical-stock');if(physical)physical.onclick=()=>openMedranoPhysicalControl(false);
@@ -3639,16 +3653,16 @@ function renderMedrano(){
 }
 let palestinaCashController=null;
 function renderPalestinaAdministration(){
-  if(!canManagePalestina())return;
+  if(!consultaPalestina())return;
   $('screen-title').textContent='Administración · Palestina';
   app.innerHTML='<section class="panel"><h2>Administración de Palestina</h2><p class="muted">Control de ingresos y gastos de la sede.</p></section><section class="pc-admin-grid"><button class="panel cultivo-info-card" type="button" data-palestina-cash><strong>Caja</strong><span>Planilla mensual, efectivo, transferencias y gastos por categoría.</span></button><button class="panel cultivo-info-card" type="button" data-palestina-payroll><strong>Asistencias y sueldos</strong><span>Jornadas, pagos y saldo por empleado.</span></button></section>';
   app.querySelector('[data-palestina-cash]').onclick=()=>{state.view='palestina-caja';render()};
   app.querySelector('[data-palestina-payroll]').onclick=()=>{state.view='palestina-sueldos';render()};
 }
 function renderPalestinaCash(){
-  if(!canManagePalestina())return;
+  if(!consultaPalestina())return;
   if(!palestinaCashController)palestinaCashController=createPalestinaCashController({
-    db,app,canManage:canManagePalestina,isActive:()=>state.site==='palestina'&&state.view==='palestina-caja',escapeHtml,formatMoney,
+    db,app,canManage:consultaPalestina,isActive:()=>state.site==='palestina'&&state.view==='palestina-caja',escapeHtml,formatMoney,
     moneyParse:medranoMoneyInputNumber,
     getMonth:()=>state.palestinaCashMonth||(state.palestinaCashMonth=medranoJobDay(new Date().toISOString()).slice(0,7)),
     setMonth:value=>{state.palestinaCashMonth=value},setTitle:value=>{$('screen-title').textContent=value},
@@ -3659,9 +3673,9 @@ function renderPalestinaCash(){
 
 let palestinaPayrollController=null;
 function renderPalestinaPayroll(){
-  if(!canManagePalestina())return;
+  if(!consultaPalestina())return;
   if(!palestinaPayrollController)palestinaPayrollController=createPalestinaPayrollController({
-    db,app,canManage:canManagePalestina,isActive:()=>state.site==='palestina'&&state.view==='palestina-sueldos',escapeHtml,formatMoney,moneyParse:medranoMoneyInputNumber,
+    db,app,canManage:consultaPalestina,isActive:()=>state.site==='palestina'&&state.view==='palestina-sueldos',escapeHtml,formatMoney,moneyParse:medranoMoneyInputNumber,
     getMonth:()=>state.palestinaPayrollMonth||(state.palestinaPayrollMonth=medranoJobDay(new Date().toISOString()).slice(0,7)),
     setMonth:value=>{state.palestinaPayrollMonth=value},setTitle:value=>{$('screen-title').textContent=value},back:()=>{state.view='palestina-administracion';render()}
   });
@@ -4207,7 +4221,7 @@ function scheduleDayChangeRefresh(){
   const cashNext=new Date(`${medranoCashTodayKey()}T00:00:01-03:00`).getTime()+86400000;
   state.dayChangeTimer=setTimeout(()=>{state.dayChangeTimer=null;if(state.session)refresh()},(cashView?cashNext:next.getTime())-now.getTime());
 }
-function render(){scheduleDayChangeRefresh();const isPalestina=renderSiteShell();syncAppNavigationHistory();bindMedranoDialogActions();const cb=$('header-config');if(cb&&isPalestina){const ok=currentRole()==='administrador';cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';state.room=null;state.roomDay=null;state.day=null;render()}}const hb=$('header-help');if(hb&&isPalestina){hb.onclick=()=>{state.view='help';state.room=null;state.roomDay=null;state.day=null;render()}}if(!isPalestina){renderMedrano();return} $('today-label').textContent=nice(today());
+function render(){document.body.classList.toggle("contador-lectura",esContador());scheduleDayChangeRefresh();const isPalestina=renderSiteShell();syncAppNavigationHistory();bindMedranoDialogActions();const cb=$('header-config');if(cb&&isPalestina){const ok=consultaAdministrativa();cb.hidden=!ok;cb.style.display=ok?'inline-flex':'none';cb.onclick=()=>{state.view='settings';state.room=null;state.roomDay=null;state.day=null;render()}}const hb=$('header-help');if(hb&&isPalestina){hb.onclick=()=>{state.view='help';state.room=null;state.roomDay=null;state.day=null;render()}}if(!isPalestina){renderMedrano();return} $('today-label').textContent=nice(today());
 $('cancel-stock-movement').onclick=()=>closeDialog('stock-movement-dialog');
 $('stock-movement-cycle').onchange=updateStockMovementItems;
 $('stock-movement-type').onchange=updateStockMovementItems;
@@ -4222,7 +4236,7 @@ $('harvest-total').oninput=updateHarvestLineTotal;
 $('save-harvest').onclick=handleHarvestSave;
 $('delete-harvest').onclick=async()=>{try{await deleteHarvestDialog()}catch(e){console.error(e);alert(e.message||'No se pudo eliminar la cosecha.')}};
 
-document.querySelectorAll('.top-nav button').forEach(b=>{const view=b.dataset.view;const allowed=canViewOperations()&&(view==='harvests'?canViewHarvests():view==='stock'?canViewStock():view==='palestina-administracion'?canManagePalestina():true);b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',view==='cultivo-info'?cultivoInfoViews.has(state.view):view==='palestina-administracion'?['palestina-administracion','palestina-caja','palestina-sueldos'].includes(state.view):view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='harvests'&&!canViewHarvests()){state.view='today';state.selectedHarvest=null;}if(state.view==='stock'&&!canViewStock()){state.view='today';state.stockRoom=null;state.stockCycle=null;}if(['palestina-administracion','palestina-caja','palestina-sueldos'].includes(state.view)&&!canManagePalestina())state.view='today';if(state.view==='settings'&&currentRole()!=='administrador')state.view='today';if(state.view==='palestina-administracion')renderPalestinaAdministration();if(state.view==='palestina-caja')renderPalestinaCash();if(state.view==='palestina-sueldos')renderPalestinaPayroll();if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='cultivo-info')renderCultivoInfo();if(state.view==='next-harvests')renderNextHarvests();if(state.view==='amendments')renderAmendmentsView();if(state.view==='parameters')renderParameters();if(state.view==='insumos')renderInsumos();if(state.view==='croquis')renderCroquisView();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
+document.querySelectorAll('.top-nav button').forEach(b=>{const view=b.dataset.view;const allowed=canViewOperations()&&(view==='harvests'?canViewHarvests():view==='stock'?canViewStock():view==='palestina-administracion'?consultaPalestina():true);b.hidden=!allowed;b.style.display=allowed?'':'none';b.classList.toggle('active',view==='cultivo-info'?cultivoInfoViews.has(state.view):view==='palestina-administracion'?['palestina-administracion','palestina-caja','palestina-sueldos'].includes(state.view):view===state.view)});if(!canViewOperations()){app.innerHTML='<section class="panel error-panel"><strong>Sin permisos</strong><p>Tu usuario no tiene acceso a la información operativa.</p></section>';return}if(state.view==='harvests'&&!canViewHarvests()){state.view='today';state.selectedHarvest=null;}if(state.view==='stock'&&!canViewStock()){state.view='today';state.stockRoom=null;state.stockCycle=null;}if(['palestina-administracion','palestina-caja','palestina-sueldos'].includes(state.view)&&!consultaPalestina())state.view='today';if(state.view==='settings'&&!consultaAdministrativa())state.view='today';if(state.view==='palestina-administracion')renderPalestinaAdministration();if(state.view==='palestina-caja')renderPalestinaCash();if(state.view==='palestina-sueldos')renderPalestinaPayroll();if(state.view==='today')renderToday();if(state.view==='calendar')renderCalendar();if(state.view==='cultivo-info')renderCultivoInfo();if(state.view==='next-harvests')renderNextHarvests();if(state.view==='amendments')renderAmendmentsView();if(state.view==='parameters')renderParameters();if(state.view==='insumos')renderInsumos();if(state.view==='croquis')renderCroquisView();if(state.view==='rooms')renderRooms();if(state.view==='genetics')renderGenetics();if(state.view==='harvests')renderHarvests();if(state.view==='stock')renderStock();if(state.view==='help')renderHelp();if(state.view==='history')renderHistory();if(state.view==='settings')renderSettings()}
 function renderHelp(){
   $('screen-title').textContent='Ayuda';
   app.innerHTML=`
@@ -5258,10 +5272,23 @@ async function restoreBackup(){
     if(btn)btn.disabled=false;
   }
 }
+// Conserva filtros, navegación y detalle al desactivar las acciones de escritura.
+function actualizarControlesDeLectura(){
+  if(!document.body.classList.contains('contador-lectura'))return;
+  const acciones=/^(guardar|agregar|añadir|crear|nuevo|nueva|editar|modificar|eliminar|borrar|vaciar|registrar|dispensar|dispensada$|acreditar|pagar|cobrar|anular|confirmar|completar|trasplantar|iniciar producción|finalizar producción|ajustar|corregir|restaurar)(?:\\s|$)/i;
+  for(const b of document.querySelectorAll('#app button,dialog[open] button')){
+    if(acciones.test((b.getAttribute('aria-label')||b.title||b.textContent).trim())){b.disabled=true;b.title='Solo lectura';}
+  }
+}
+new MutationObserver(actualizarControlesDeLectura).observe(document.body,{subtree:true,childList:true});
 function renderSettings(){
+  if(esContador()){
+    $('screen-title').textContent='Configuración · Solo lectura';
+    app.innerHTML='<section class="panel"><h2>Usuarios</h2>'+state.perfiles.map(p=>'<p>'+escapeHtml(p.nombre||p.email||'Usuario')+' · '+escapeHtml(roleLabel(p.rol))+' · '+(p.activo?'Activo':'Inactivo')+'</p>').join('')+'</section><section class="panel"><h2>Empleados</h2>'+state.empleados.map(e=>'<p>'+escapeHtml(e.nombre)+'</p>').join('')+'</section>';return;
+  }
   if(currentRole()!=='administrador'){state.view='today';render();return}
   $('screen-title').textContent='Config';
-  const permissions={administrador:'Acceso total a Palestina y Medrano. Puede gestionar usuarios, roles, empleados, genéticas, tareas, configuración, cosechas, stock y backups.',encargado_p:'Acceso de gestión a toda Palestina: tareas, salas, genéticas, cosechas y movimientos o correcciones de stock. No accede a Config ni a Medrano.',cultivo:'Acceso únicamente a Palestina. Puede crear, editar, completar y reprogramar tareas y trabajar con Hoy, Calendario, Salas y Genéticas. No accede a Medrano, Cosechas, Stock Palestina ni Config.',medrano:'Acceso a toda la sección Medrano y acceso de consulta en Palestina a Hoy, Calendario, Genéticas, Salas y Stock. No puede modificar la operación de Palestina ni acceder a Cosechas o Config.'};
+  const permissions={contador:'Puede consultar Palestina y Medrano. Acceso de solo lectura.',administrador:'Acceso total a Palestina y Medrano. Puede gestionar usuarios, roles, empleados, genéticas, tareas, configuración, cosechas, stock y backups.',encargado_p:'Acceso de gestión a toda Palestina: tareas, salas, genéticas, cosechas y movimientos o correcciones de stock. No accede a Config ni a Medrano.',cultivo:'Acceso únicamente a Palestina. Puede crear, editar, completar y reprogramar tareas y trabajar con Hoy, Calendario, Salas y Genéticas. No accede a Medrano, Cosechas, Stock Palestina ni Config.',medrano:'Acceso a toda la sección Medrano y acceso de consulta en Palestina a Hoy, Calendario, Genéticas, Salas y Stock. No puede modificar la operación de Palestina ni acceder a Cosechas o Config.'};
   app.innerHTML=`
     <section class="panel backup-panel">
       <div class="backup-panel-head"><div><h3>Copias de seguridad</h3><p class="muted">Backup completo diario, cifrado antes de salir de Supabase y conservado durante 30 días.</p></div><button id="refresh-backups" class="secondary compact-button">Actualizar</button></div>
@@ -5272,8 +5299,8 @@ function renderSettings(){
     </section>
     <section class="panel"><h3>Empleados compartidos</h3><textarea id="emps" class="text-input" style="min-height:150px">${escapeHtml(state.empleados.map(e=>e.nombre).join('\n'))}</textarea></section>
     <button id="save-conf" class="primary">Guardar configuración</button>
-    <section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>{const safeId=escapeHtml(p.id),safeName=escapeHtml(p.nombre||'Sin nombre'),safeEmail=escapeHtml(p.email||''),safeDeleteName=escapeHtml(p.nombre||p.email||'este usuario'),self=p.id===state.session.user.id;return`<div class="user-row"><div><strong>${safeName}</strong><div class="user-email">${safeEmail}</div></div><select class="text-input user-role" data-role="${safeId}" ${self?'disabled aria-label="El rol de tu propia cuenta está protegido"':''}>${['administrador','encargado_p','cultivo','medrano'].map(r=>`<option value="${r}" ${normalizeRole(p.rol)===r?'selected':''}>${roleLabel(r)}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${safeId}" ${p.activo?'checked':''} ${self?'disabled':''}> Activo</label>${self?'<span class="self-account">Tu cuenta protegida</span>':`<button class="danger user-delete" type="button" data-delete-user="${safeId}" data-delete-name="${safeDeleteName}">Eliminar cuenta</button>`}</div>`}).join('')}</div><p class="muted">Tu propia cuenta no puede cambiar de rol ni desactivarse desde la aplicación.</p><p><button id="save-users" class="primary">Guardar usuarios</button></p></section>
-    <section class="panel"><h3>Crear cuenta</h3><form id="create-user-form" class="create-user-form"><label class="field-label">Nombre<input id="new-user-name" class="text-input" autocomplete="off" maxlength="120" required></label><label class="field-label">Correo electrónico<input id="new-user-email" class="text-input" type="email" autocomplete="off" maxlength="254" required></label><label class="field-label">Rol<select id="new-user-role" class="text-input"><option value="cultivo">Cultivo</option><option value="encargado_p">Encargado P</option><option value="medrano">Medrano</option><option value="administrador">Administrador</option></select></label><button id="create-user" class="primary" type="submit">Crear y enviar invitación</button><p id="create-user-status" class="muted" role="status" aria-live="polite">La persona recibirá un correo para configurar su acceso.</p></form></section>
+    <section class="panel"><h3>Usuarios</h3><div class="user-list">${state.perfiles.map(p=>{const safeId=escapeHtml(p.id),safeName=escapeHtml(p.nombre||'Sin nombre'),safeEmail=escapeHtml(p.email||''),safeDeleteName=escapeHtml(p.nombre||p.email||'este usuario'),self=p.id===state.session.user.id;return`<div class="user-row"><div><strong>${safeName}</strong><div class="user-email">${safeEmail}</div></div><select class="text-input user-role" data-role="${safeId}" ${self?'disabled aria-label="El rol de tu propia cuenta está protegido"':''}>${[...['administrador','encargado_p','cultivo','medrano'],'contador'].map(r=>`<option value="${r}" ${normalizeRole(p.rol)===r?'selected':''}>${roleLabel(r)}</option>`).join('')}</select><label class="user-active"><input type="checkbox" data-active="${safeId}" ${p.activo?'checked':''} ${self?'disabled':''}> Activo</label>${self?'<span class="self-account">Tu cuenta protegida</span>':`<button class="danger user-delete" type="button" data-delete-user="${safeId}" data-delete-name="${safeDeleteName}">Eliminar cuenta</button>`}</div>`}).join('')}</div><p class="muted">Tu propia cuenta no puede cambiar de rol ni desactivarse desde la aplicación.</p><p><button id="save-users" class="primary">Guardar usuarios</button></p></section>
+    <section class="panel"><h3>Crear cuenta</h3><form id="create-user-form" class="create-user-form"><label class="field-label">Nombre<input id="new-user-name" class="text-input" autocomplete="off" maxlength="120" required></label><label class="field-label">Correo electrónico<input id="new-user-email" class="text-input" type="email" autocomplete="off" maxlength="254" required></label><label class="field-label">Rol<select id="new-user-role" class="text-input"><option value="cultivo">Cultivo</option><option value="encargado_p">Encargado P</option><option value="medrano">Medrano</option><option value="contador">Contador</option><option value="administrador">Administrador</option></select></label><button id="create-user" class="primary" type="submit">Crear y enviar invitación</button><p id="create-user-status" class="muted" role="status" aria-live="polite">La persona recibirá un correo para configurar su acceso.</p></form></section>
     <section class="panel"><h3>Permisos por rol</h3><div class="role-permissions">${Object.entries(permissions).map(([role,text])=>`<div class="role-permission"><strong>${roleLabel(role)}</strong><p>${text}</p></div>`).join('')}</div></section>
     <section class="panel account-summary"><p><strong>Usuario:</strong> ${escapeHtml(state.session.user.email)}</p><p><strong>Rol:</strong> ${roleLabel(currentRole())}</p><p><strong>Tus permisos:</strong> ${permissions[currentRole()]||''}</p><p><strong>Versión:</strong> ${APP_VERSION}</p></section>`;
   $('save-conf').onclick=saveConfig;
@@ -6933,7 +6960,7 @@ function executeVoiceNavigation(rawText){
   ];
   const destination=destinations.find(item=>item.labels.some(label=>text.includes(label)));
   if(destination&&(text.includes('abrir')||text.includes('ir a')||text.includes('mostrar')||destination.labels.some(label=>text===label))){
-    if(destination.view==='settings'&&currentRole()!=='administrador')return {ok:false,message:'La configuración solo está disponible para administradores.'};
+    if(destination.view==='settings'&&!consultaAdministrativa())return {ok:false,message:'La configuración solo está disponible para administradores.'};
     if(destination.view==='harvests'&&!canViewHarvests())return {ok:false,message:`Tu usuario no tiene acceso a ${destination.name}.`};
     if(destination.view==='stock'&&!canViewStock())return {ok:false,message:`Tu usuario no tiene acceso a ${destination.name}.`};
     setVoiceView(destination.view);
