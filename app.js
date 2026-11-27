@@ -1,11 +1,11 @@
-import {createPalestinaPayrollController} from './palestina-payroll.js?v=3.26.90';
+import {createPalestinaPayrollController} from './palestina-payroll.js?v=3.26.91';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.6/+esm';
 
-import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.90';
+import {supplyUnit,supplyNumber,convertSupply,supplyName,recipeMaterials,consumptionPayload} from './supply-consumption.js?v=3.26.91';
 
-import {createPalestinaCashController} from './palestina-cash.js?v=3.26.90';
+import {createPalestinaCashController} from './palestina-cash.js?v=3.26.91';
 
-const APP_VERSION='3.26.90';
+const APP_VERSION='3.26.91';
 const db=createClient('https://fplbxirsbwruazvygciu.supabase.co','sb_publishable_y7EwYjE0W5SEIlumNdQpzw_PBlnkWOt');
 const rules=[
 {name:'Flora 1',type:'flora',transplant:'2026-04-29',floraStart:'2026-05-20',automaticIrrigation:true},
@@ -2812,10 +2812,20 @@ async function saveMedranoCashClosing(){
   const q=await db.rpc('cerrar_caja_medrano_diaria_digital',{p_efectivo_real:cash,p_digital_real:digital,p_fecha:state.medranoCashClosingDay,p_observaciones:$('medrano-cash-closing-notes').value.trim()||null});
   if(q.error)throw q.error;closeDialog('medrano-cash-closing-dialog');await refreshMedranoModules('cash');
 }
+async function registrarCajaConReintento(operacion,datos){
+  const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(JSON.stringify(datos)));
+  const firma=Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
+  const clave=['rainbows-caja-v91',state.session.user.id,operacion,firma].join(':');
+  let intento=localStorage.getItem(clave);
+  if(!intento){intento=crypto.randomUUID();localStorage.setItem(clave,intento)}
+  const respuesta=await db.rpc('registrar_caja_v91',{p_intento:intento,p_operacion:operacion,p_datos:datos});
+  if(!respuesta.error)localStorage.removeItem(clave);
+  return respuesta;
+}
 async function saveMedranoCashMovement(){
   const amount=medranoMoneyInputNumber($('medrano-cash-amount').value),concept=$('medrano-cash-concept').value.trim();
   if(!Number.isFinite(amount)||amount<=0||!concept)throw new Error('Completá un monto válido y el concepto.');
-  const q=await db.rpc('registrar_movimiento_caja',{p_tipo:$('medrano-cash-type').value,p_medio:$('medrano-cash-method').value,p_monto:amount,p_concepto:concept});
+  const q=await registrarCajaConReintento('registrar_movimiento_caja',{p_tipo:$('medrano-cash-type').value,p_medio:$('medrano-cash-method').value,p_monto:amount,p_concepto:concept});
   if(q.error)throw q.error;closeDialog('medrano-cash-dialog');await refreshMedranoModules('cash');
 }
 function updateMedranoCreditTotal(){$('medrano-credit-total').textContent=`Importe: ${formatMoney((Number($('medrano-credit-tokens').value)||0)*1000)}`}
@@ -2826,7 +2836,7 @@ function openMedranoCreditDialog(){
 async function saveMedranoCredit(){
   const patient=$('medrano-credit-patient').value,tokens=Number($('medrano-credit-tokens').value);
   if(!patient||!Number.isInteger(tokens)||tokens<=0)throw new Error('Seleccioná un paciente e ingresá una cantidad entera de Tokens.');
-  const q=await db.rpc('acreditar_tokens_paciente',{p_paciente:patient,p_tokens:tokens,p_medio:$('medrano-credit-method').value,p_detalle:$('medrano-credit-detail').value.trim()||null});
+  const q=await registrarCajaConReintento('acreditar_tokens_paciente',{p_paciente:patient,p_tokens:tokens,p_medio:$('medrano-credit-method').value,p_detalle:$('medrano-credit-detail').value.trim()||null});
   if(q.error)throw q.error;closeDialog('medrano-credit-dialog');await refreshMedranoModules('cash','patients');
 }
 async function saveMedranoTokenPrice(button){
