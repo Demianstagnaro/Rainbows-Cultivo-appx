@@ -14,10 +14,10 @@ test('el control conserva conteo, reservas, disponible, diferencia y resultado',
   for(const label of ['Registrado','Reservado','Disponible','Conteo físico','Diferencia'])assert.ok(app.includes(`<th data-sort-type="number">${label}</th>`));
 });
 
-test('solamente administración puede consultar y registrar controles',()=>{
+test('Contador puede consultar y solo Administración registra controles',()=>{
   assert.match(sql,/using \(public\.usuario_rainbows_admin\(\)\)/);
   assert.match(sql,/if not public\.usuario_rainbows_admin\(\) then/);
-  assert.match(app,/currentRole\(\)==='administrador'\?'<button class="medrano-stock-card stock-control-card"/);
+  assert.match(app,/consultaAdministrativa\(\)\?'<button class="medrano-stock-card stock-control-card"/);
   assert.match(app,/Solamente Administración puede registrar controles físicos/);
 });
 

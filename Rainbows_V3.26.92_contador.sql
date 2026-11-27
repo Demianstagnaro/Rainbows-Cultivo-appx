@@ -68,7 +68,7 @@ grant execute on function public.es_contador_rainbows() to authenticated;
 create or replace function public.proteger_escritura_contador() returns trigger
 language plpgsql security definer set search_path='' as $$
 begin
- if exists(select 1 from public.perfiles where id=auth.uid() and lower(trim(rol))=\x27contador\x27) then raise exception 'Contador tiene acceso de solo lectura.' using errcode='42501'; end if;
+ if exists(select 1 from public.perfiles where id=auth.uid() and lower(trim(rol))='contador') then raise exception 'Contador tiene acceso de solo lectura.' using errcode='42501'; end if;
  return null;
 end $$;
 do $$ declare rel record; begin

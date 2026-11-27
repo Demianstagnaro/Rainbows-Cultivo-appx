@@ -5275,7 +5275,7 @@ async function restoreBackup(){
 // Conserva filtros, navegación y detalle al desactivar las acciones de escritura.
 function actualizarControlesDeLectura(){
   if(!document.body.classList.contains('contador-lectura'))return;
-  const acciones=/^(guardar|agregar|añadir|crear|nuevo|nueva|editar|modificar|eliminar|borrar|vaciar|registrar|dispensar|dispensada$|acreditar|pagar|cobrar|anular|confirmar|completar|trasplantar|iniciar producción|finalizar producción|ajustar|corregir|restaurar)(?:\\s|$)/i;
+  const acciones=/^(guardar|agregar|añadir|crear|nuevo|nueva|editar|modificar|eliminar|borrar|vaciar|registrar|dispensar|dispensada$|acreditar|pagar|cobrar|anular|confirmar|completar|trasplantar|iniciar producción|finalizar producción|ajustar|corregir|restaurar)(?:\s|$)/i;
   for(const b of document.querySelectorAll('#app button,dialog[open] button')){
     if(acciones.test((b.getAttribute('aria-label')||b.title||b.textContent).trim())){b.disabled=true;b.title='Solo lectura';}
   }

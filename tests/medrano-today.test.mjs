@@ -13,8 +13,8 @@ test('Medrano abre con una vista Hoy propia',()=>{
   assert.match(app,/if\(mv==='today'\)\{renderMedranoToday\(medranoNav,bindModuleNav\);return\}/);
 });
 
-test('Hoy en Medrano está reservado a administradores',()=>{
-  assert.match(app,/const isAdmin=currentRole\(\)==='administrador'/);
+test('Hoy en Medrano permite la consulta administrativa',()=>{
+  assert.match(app,/const isAdmin=consultaAdministrativa\(\)/);
   assert.match(app,/if\(\['today','dashboard'\]\.includes\(mv\)&&!isAdmin\)mv='stock'/);
   assert.match(app,/\$\{isAdmin\?`<button type="button" data-medrano-module="dashboard"[\s\S]*data-medrano-module="today"/);
   assert.match(app,/medrano-top-nav \$\{isAdmin\?'':'without-today'\}/);

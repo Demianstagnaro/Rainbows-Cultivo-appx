@@ -52,6 +52,9 @@ jobs:
       - run: psql -f tests/sql/schema_assertions.sql
       - run: psql -v ON_ERROR_STOP=1 -f tests/sql/stock_medrano_assertions.sql
 
+      - run: psql -v ON_ERROR_STOP=1 -f Rainbows_V3.26.92_contador.sql
+      - run: psql -v ON_ERROR_STOP=1 -f tests/sql/contador-assertions.sql
+
   cultivation-consumption:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
